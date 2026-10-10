@@ -1,0 +1,12 @@
+{
+  "name": "AdminBhop",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "AdminBhop": { "$path": "src/ServerScriptService/AdminBhop.server.lua" }
+    },
+    "ServerStorage": {
+      "AdminBhopClient": { "$path": "src/ServerStorage/AdminBhopClient.client.lua" }
+    }
+  }
+}
