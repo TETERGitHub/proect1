@@ -1,8 +1,9 @@
 --[[
 	AdminBhop (сервер)
 
-	Выдаёт клиентский скрипт бхопа ТОЛЬКО админам (обычные игроки его даже не получают)
-	и сохраняет их настройки в DataStore.
+	Выдаёт клиентский скрипт бхопа ТОЛЬКО админам и сохраняет их настройки в DataStore.
+	Обычные игроки не получают ничего: ни скрипта, ни remote, ни атрибутов —
+	снаружи админ выглядит как обычный игрок.
 
 	Куда класть:
 	  - этот Script            -> ServerScriptService
@@ -11,7 +12,6 @@
 
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
 
@@ -40,9 +40,18 @@ local DATASTORE_NAME = "AdminBhop_v1"
 
 local clientTemplate = ServerStorage:WaitForChild("AdminBhopClient")
 
-local remote = Instance.new("RemoteFunction")
-remote.Name = "AdminBhopSettings"
-remote.Parent = ReplicatedStorage
+-- Серверный список активных админов. Нигде не реплицируется — клиенты о нём не знают.
+local activeAdmins = {}
+
+-- Проверка для твоего античита (ServerStorage клиентам не виден):
+--   local check = game.ServerStorage:WaitForChild("AdminBhopCheck")
+--   if check:Invoke(player) then return end -- не кикать за скорость
+local check = Instance.new("BindableFunction")
+check.Name = "AdminBhopCheck"
+check.OnInvoke = function(player)
+	return activeAdmins[player] == true
+end
+check.Parent = ServerStorage
 
 local store
 do
@@ -104,8 +113,8 @@ end
 
 local lastSave = {}
 
-remote.OnServerInvoke = function(player, action, data)
-	if not player:GetAttribute("BhopAdmin") then
+local function handleRequest(player, action, data)
+	if not activeAdmins[player] then
 		return false, "нет доступа"
 	end
 	if not store then
@@ -139,11 +148,24 @@ local function onPlayerAdded(player)
 	if not isAdmin(player) then
 		return
 	end
-	-- Атрибут можно проверять в своём античите, чтобы не кикал за скорость
-	player:SetAttribute("BhopAdmin", true)
+	activeAdmins[player] = true
 
+	-- Всё кладём в PlayerGui админа: он реплицируется только ему самому,
+	-- другие игроки не видят ни скрипт, ни remote.
 	local playerGui = player:WaitForChild("PlayerGui")
 	local client = clientTemplate:Clone()
+	client.Name = "ClientModule"
+
+	local remote = Instance.new("RemoteFunction")
+	remote.Name = "R"
+	remote.OnServerInvoke = function(invoker, action, data)
+		if invoker ~= player then
+			return false, "нет доступа"
+		end
+		return handleRequest(invoker, action, data)
+	end
+	remote.Parent = client
+
 	client.Parent = playerGui -- LocalScript прямо в PlayerGui не сбрасывается при респавне
 end
 
@@ -154,4 +176,5 @@ end
 
 Players.PlayerRemoving:Connect(function(p)
 	lastSave[p] = nil
+	activeAdmins[p] = nil
 end)

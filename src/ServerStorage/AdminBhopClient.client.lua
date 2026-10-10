@@ -11,11 +11,10 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local remote = ReplicatedStorage:WaitForChild("AdminBhopSettings", 10)
+local remote = script:WaitForChild("R", 10) -- создаётся сервером, виден только тебе
 
 -- ======================================================================
 -- НАСТРОЙКИ
@@ -160,7 +159,7 @@ local function corner(parent, r)
 end
 
 local gui = make("ScreenGui", {
-	Name = "AdminBhopGui",
+	Name = "HudGui",
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	DisplayOrder = 50,
