@@ -401,9 +401,9 @@ local function buildSearchPage()
 	local function addRow(order, title, desc, cat, onClick)
 		local row = pool:Acquire()
 		row.LayoutOrder = order
-		row.Title.Text = title
-		row.Desc.Text = desc
-		row.Cat.Text = cat
+		row.Title.Text = I18n.tr(title)
+		row.Desc.Text = I18n.tr(desc)
+		row.Cat.Text = I18n.tr(cat)
 		row.Parent = resultsHolder
 		local m = Maid.new("result")
 		m:Give(row.Activated:Connect(function()
@@ -439,7 +439,7 @@ local function buildSearchPage()
 			local results = Search.query(text, { onlyActive = filter.mode == "active", onlyFavorites = filter.mode == "favorites", category = filter.category, limit = 40 })
 			for i, item in ipairs(results) do
 				local catName = item.categoryName or item.category
-				addRow(i, item.title, item.desc, catName, function()
+				addRow(i, (I18n.get() == "ru" and item.ru and item.ru ~= "") and item.ru or item.title, item.desc, catName, function()
 					local id, key = pageForItem(item)
 					if item.kind == "feature" then
 						Recents.touch(item.id)
@@ -568,8 +568,8 @@ local function buildToasts(maid)
 
 	maid:Give(Notify.Shown:Connect(function(item)
 		local card = pool:Acquire()
-		card.Title.Text = item.title ~= "" and item.title or "MM2 Hub"
-		card.Text.Text = item.text
+		card.Title.Text = I18n.tr(item.title ~= "" and item.title or "MM2 Hub")
+		card.Text.Text = I18n.tr(item.text)
 		Theme.bind(card.Dot, "BackgroundColor3", levelToken[item.level] or "accent")
 		card.LayoutOrder = item.id
 		card.Parent = host
@@ -844,7 +844,7 @@ local function refreshQuickFavs(maid)
 	for _, id in ipairs(Recents.favorites()) do
 		local feat = Registry.get(id)
 		if feat and shown < 4 then
-			local text = string.sub(feat.name, 1, 10)
+			local text = I18n.cut(I18n.featureName(feat), 10)
 			local btn = F.button(w.quickFavs, text, function()
 				if feat.impl.kind == "setting" and Settings.schema(feat.impl.target).type == "bool" then
 					Settings.toggle(feat.impl.target, "quick")
@@ -856,7 +856,7 @@ local function refreshQuickFavs(maid)
 					Window.navigate(pageId, key)
 				end
 			end, "tinted", UDim2.fromOffset(#text * 7 + 20, 26), maid)
-			F.tooltip(btn, feat.name, maid)
+			F.tooltip(btn, I18n.featureName(feat), maid)
 			shown += 1
 		end
 	end
@@ -913,7 +913,7 @@ function Window.start(ctx)
 	ctx.maid:Give(gui)
 	Logger.info("Window", "GUI container: %s", how)
 
-	w = { gui = gui, built = {}, current = nil, visible = false, query = "", navButtons = {} }
+	w = { gui = gui, built = {}, current = nil, visible = false, query = "", navButtons = {}, maid = ctx.maid }
 	ctx.maid:Give(function()
 		F.closePopover()
 		if w then
@@ -925,6 +925,9 @@ function Window.start(ctx)
 	end)
 
 	F.init({ gui = gui, maid = ctx.maid })
+	ctx.maid:Give(I18n.Changed:Connect(function()
+		Window.relocalize()
+	end))
 	Theme.start(ctx.maid)
 
 	local root = Instance.new("Frame")
@@ -1076,6 +1079,35 @@ function Window.start(ctx)
 		updateShells()
 	end
 	ctx.maid:Give(w.openScale)
+end
+
+-- relocalize(): rebuild texts after the language changed (pages are rebuilt lazily from the new language).
+function Window.relocalize()
+	if not w then
+		return
+	end
+	for _, page in pairs(w.built) do
+		page:destroy()
+	end
+	w.built = {}
+	w.refreshSearch = nil
+	w.nameLabel.Text = I18n.t("app.title")
+	w.searchBox.PlaceholderText = I18n.tr(I18n.t("search.placeholder"))
+	for id, btn in pairs(w.navButtons) do
+		local label = btn:FindFirstChild("Label")
+		if label then
+			label.Text = titleOf(id)
+		end
+	end
+	refreshQuickFavs(w.maid)
+	local cur = w.current
+	w.current = nil
+	if not cur or cur == "search" or not pages[cur] then
+		cur = "dashboard"
+	end
+	w.query = ""
+	w.searchBox.Text = ""
+	Window.navigate(cur)
 end
 
 function Window.isRunning()

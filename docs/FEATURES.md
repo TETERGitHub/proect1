@@ -225,7 +225,7 @@ Status meaning:
 | `ui.lockPosition` | bool | false |  | Interface |
 | `ui.showTooltips` | bool | true |  | Interface |
 | `ui.decor` | bool | true |  | Interface |
-| `ui.language` | enum | en | en, ru | Interface |
+| `ui.language` | enum | ru | en, ru | Interface |
 | `ui.notifications` | bool | true |  | Interface |
 | `ui.notifyDuration` | number | 4 | 2..12 step 1 | Interface |
 | `ui.showLauncher` | bool | true |  | Interface |

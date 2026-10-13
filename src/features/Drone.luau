@@ -22,6 +22,7 @@ local Spec = import("data/ShahedSpec")
 local Training = import("features/Training")
 local Sounds = import("features/Sounds")
 local Theme = import("ui/Theme")
+local I18n = import("core/I18n")
 
 local Drone = {}
 
@@ -188,7 +189,7 @@ end
 
 local function feed(text)
 	if fl and fl.hud then
-		fl.hud.feed.Text = text
+		fl.hud.feed.Text = I18n.tr(text)
 		fl.feedUntil = os.clock() + 2.5
 	end
 end
@@ -270,7 +271,7 @@ local function buildTouch(gui, maid)
 	holdButton("+", -30, "throttle", 1)
 	holdButton("–", -112, "throttleDown", -1)
 	local exitBtn = Instance.new("TextButton")
-	exitBtn.Text = "EXIT"
+	exitBtn.Text = I18n.tr("EXIT")
 	exitBtn.AutoButtonColor = false
 	exitBtn.Position = UDim2.new(0, 22, 0, 22)
 	exitBtn.Size = UDim2.fromOffset(84, 36)
@@ -391,11 +392,11 @@ local function updateHud(dt)
 	end
 	fl.hudTimer = 0
 	h.root.Visible = s("showHud")
-	h.speed.Text = string.format("%d studs/s", st.speed + 0.5)
-	h.alt.Text = string.format("ALT %d", st.y + 0.5)
-	h.heading.Text = string.format("HDG %03d°", (math.deg(-st.yaw) % 360) + 0.5)
+	h.speed.Text = I18n.tr(string.format("%d studs/s", st.speed + 0.5))
+	h.alt.Text = I18n.tr(string.format("ALT %d", st.y + 0.5))
+	h.heading.Text = I18n.tr(string.format("HDG %03d°", (math.deg(-st.yaw) % 360) + 0.5))
 	local role = s("simRole")
-	h.mode.Text = string.upper(s("mode")) .. (s("mode") == "Eliminate" and (role == "Murderer" and "  ·  MURDERER" or "  ·  needs Murderer") or "")
+	h.mode.Text = I18n.tr(string.upper(s("mode"))) .. I18n.tr(s("mode") == "Eliminate" and (role == "Murderer" and "  ·  MURDERER" or "  ·  needs Murderer") or "")
 	h.mode.TextColor3 = (s("mode") == "Eliminate" and role ~= "Murderer") and Color3.fromRGB(255, 159, 10) or Color3.fromRGB(255, 255, 255)
 	if os.clock() - fl.startedAt > 7 then
 		h.hint.Text = ""
@@ -564,10 +565,10 @@ function Drone.launch()
 	}
 	fl.params = rayParams()
 	fl.hud = buildHud(gui, maid)
-	fl.hud.hint.Text = "W/S pitch · A/D turn · Space/Shift throttle · X exit"
+	fl.hud.hint.Text = I18n.tr("W/S pitch · A/D turn · Space/Shift throttle · X exit")
 	if Services.UserInputService.TouchEnabled then
 		buildTouch(gui, maid)
-		fl.hud.hint.Text = "Stick: steer · + / – throttle · EXIT to land"
+		fl.hud.hint.Text = I18n.tr("Stick: steer · + / – throttle · EXIT to land")
 	end
 	model:PivotTo(pivotCFrame(fl.st))
 

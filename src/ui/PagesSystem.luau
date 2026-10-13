@@ -25,6 +25,7 @@ local Sounds = import("features/Sounds")
 local Window = import("ui/Window")
 local Services = import("core/Services")
 local Search = import("core/Search")
+local I18n = import("core/I18n")
 
 local notify, visible, auto, section, resetButton, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.resetButton, Kit.dataList, Kit.infoLine
 
@@ -57,8 +58,8 @@ function S.perf(page)
 		local items = {}
 		for _, t in ipairs(Perf.timings()) do
 			table.insert(items, {
-				title = t.name,
-				sub = string.format("avg %.3f ms · max %.2f ms · %s Hz%s", t.avgMs, t.maxMs, t.hz >= 999 and "per-frame" or tostring(t.hz), t.visual and " · visual" or ""),
+				title = t.name, raw = true, rawValue = false,
+				sub = I18n.tr(string.format("avg %.3f ms · max %.2f ms · %s Hz%s", t.avgMs, t.maxMs, t.hz >= 999 and "per-frame" or tostring(t.hz), t.visual and " · visual" or "")),
 				value = t.disabled and "DISABLED" or (t.errors > 0 and (t.errors .. " errors") or (t.calls .. " calls")),
 				valueToken = (t.disabled or t.errors > 0) and "bad" or "textDim",
 			})
@@ -81,7 +82,7 @@ function S.perf(page)
 	local function renderLong()
 		local items = {}
 		for _, op in ipairs(Perf.longOps()) do
-			table.insert(items, { title = op.name, value = string.format("%.1f ms", op.ms), valueToken = "warn" })
+			table.insert(items, { title = op.name, raw = true, value = string.format("%.1f ms", op.ms), valueToken = "warn" })
 		end
 		if #items == 0 then
 			items[1] = { title = "none recorded", titleToken = "textDim" }
@@ -271,7 +272,7 @@ function S.configs(page)
 	local function render()
 		local items = {}
 		for _, name in ipairs(Config.list()) do
-			table.insert(items, { name = name, title = name, value = name == Config.active() and "active" or "", valueToken = "good" })
+			table.insert(items, { name = name, title = name, raw = true, rawValue = false, value = I18n.tr(name == Config.active() and "active" or ""), valueToken = "good" })
 		end
 		list.set(items)
 		activeLine()
@@ -418,14 +419,15 @@ function S.diagnostics(page)
 		local items = {}
 		for _, m in ipairs(Core.status()) do
 			table.insert(items, {
-				name = m.name, title = m.name, sub = m.err and string.sub(string.match(m.err, "^[^\n]*"), 1, 90) or string.format("started in %.1f ms · attempts %d", m.startMs, m.attempts),
-				value = m.state, valueToken = m.state == "running" and "good" or (m.state == "failed" and "bad" or "warn"),
+				name = m.name, title = m.name, raw = true, rawValue = false,
+				sub = m.err and string.sub(string.match(m.err, "^[^\n]*"), 1, 90) or I18n.tr(string.format("started in %.1f ms · attempts %d", m.startMs, m.attempts)),
+				value = I18n.tr(m.state), valueToken = m.state == "running" and "good" or (m.state == "failed" and "bad" or "warn"),
 			})
 		end
 		mods.set(items)
 		local ci = {}
 		for _, c in ipairs(Env.capList()) do
-			table.insert(ci, { title = c.name, value = c.available and "yes" or "no", valueToken = c.available and "good" or "textDim" })
+			table.insert(ci, { title = c.name, raw = true, rawValue = false, value = I18n.tr(c.available and "yes" or "no"), valueToken = c.available and "good" or "textDim" })
 		end
 		caps.set(ci)
 		local stats = Maid.stats()
@@ -449,7 +451,7 @@ function S.diagnostics(page)
 		local all = Settings.history()
 		for i = #all, math.max(1, #all - 11), -1 do
 			local e = all[i]
-			table.insert(hi, { title = e.key, value = short(e.old) .. " → " .. short(e.new), sub = e.source })
+			table.insert(hi, { title = e.key, raw = true, rawValue = true, value = short(e.old) .. " → " .. short(e.new), sub = e.source })
 		end
 		if #hi == 0 then
 			hi[1] = { title = "No changes yet this session.", titleToken = "textDim" }
@@ -459,7 +461,7 @@ function S.diagnostics(page)
 		local entries = Logger.entries()
 		for i = #entries, math.max(1, #entries - 24), -1 do
 			local e = entries[i]
-			table.insert(li, { title = e.message, value = e.level, valueToken = e.level == "error" and "bad" or (e.level == "warn" and "warn" or "textDim") })
+			table.insert(li, { title = e.message, raw = true, rawValue = false, value = I18n.tr(e.level), valueToken = e.level == "error" and "bad" or (e.level == "warn" and "warn" or "textDim") })
 		end
 		logList.set(li)
 	end
@@ -503,7 +505,8 @@ function S.about(page)
 	page:note(string.format("%d features catalogued: %d logic-tested, %d implemented (UI/engine code, verified only against a mock), %d environment-dependent, %d partial. Status of each feature is listed in docs/FEATURES.md.", Registry.count(), c.tested, c.implemented, c.env, c.partial), "text", 62)
 	page:section("Changelog")
 	for _, entry in ipairs(Version.changelog) do
-		page:note("v" .. entry.version .. "  ·  " .. entry.date .. "\n• " .. table.concat(entry.notes, "\n• "), "text", 24 + #entry.notes * 34)
+		local notes = (I18n.get() == "ru" and entry.notesRu) or entry.notes
+		page:note("v" .. entry.version .. "  ·  " .. entry.date .. "\n• " .. table.concat(notes, "\n• "), "text", 24 + #notes * 34)
 	end
 	page:section("Limits")
 	page:note("This hub is client-side. It cannot reveal hidden game data (such as other players' roles) and it does not interact with or affect other players. License keys are time-limited and signed; see the security note in the documentation for what that does and does not protect.", "textDim", 70)

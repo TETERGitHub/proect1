@@ -66,7 +66,7 @@ add(with("ui", "Interface", {
 	bool("ui.lockPosition", false, "Lock window", "Prevents moving and resizing the window."),
 	bool("ui.showTooltips", true, "Tooltips", "Shows descriptions when hovering a control."),
 	bool("ui.decor", true, "Decorative effects", "Animated accent line and soft gradient. Disabled automatically in low profile."),
-	enum("ui.language", "en", { "en", "ru" }, "Language", "Interface language."),
+	enum("ui.language", "ru", { "en", "ru" }, "Language", "Interface language."),
 	bool("ui.notifications", true, "Notifications", "Show toast notifications."),
 	num("ui.notifyDuration", 4, 2, 12, 1, "Notification time", "Seconds before a toast disappears."),
 	bool("ui.showLauncher", true, "Floating launcher button", "Round button that opens the hub (essential on mobile where there is no keyboard)."),

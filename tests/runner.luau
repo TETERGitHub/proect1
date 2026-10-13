@@ -13,6 +13,7 @@ local suites = {
 	"tests/t_registry",
 	"tests/t_features",
 	"tests/t_license",
+	"tests/t_i18n",
 	"tests/t_roblox",
 }
 for _, name in ipairs(suites) do

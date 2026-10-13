@@ -181,7 +181,7 @@ function F.label(parent, text, opts)
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
 	l.BorderSizePixel = 0
-	l.Text = text or ""
+	l.Text = I18n.tr(text or "")
 	l.TextXAlignment = opts.align or Enum.TextXAlignment.Left
 	l.TextYAlignment = opts.valign or Enum.TextYAlignment.Center
 	l.TextWrapped = opts.wrap or false
@@ -213,6 +213,7 @@ function F.tooltip(inst, textOrFn, maid)
 		if not text or text == "" then
 			return
 		end
+		text = I18n.tr(text)
 		tooltip.token += 1
 		local mine = tooltip.token
 		task.delay(0.45, function()
@@ -331,7 +332,7 @@ function F.button(parent, text, onClick, style, dim, maid)
 	local b = Instance.new("TextButton")
 	b.AutoButtonColor = false
 	b.BorderSizePixel = 0
-	b.Text = text
+	b.Text = I18n.tr(text)
 	b.Size = dim or UDim2.fromOffset(110, 32)
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	Theme.bind(b, "TextSize", function()
@@ -408,7 +409,7 @@ function F.textBox(parent, opts, maid)
 	local t = Instance.new("TextBox")
 	t.BorderSizePixel = 0
 	t.ClearTextOnFocus = opts.clear == true
-	t.PlaceholderText = opts.placeholder or ""
+	t.PlaceholderText = I18n.tr(opts.placeholder or "")
 	t.Text = opts.text or ""
 	t.TextXAlignment = opts.multiline and Enum.TextXAlignment.Left or Enum.TextXAlignment.Left
 	t.TextYAlignment = opts.multiline and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
@@ -685,7 +686,7 @@ function Page:section(title)
 	h.BorderSizePixel = 0
 	h.LayoutOrder = self:nextOrder()
 	h.Size = UDim2.new(1, 0, 0, 30)
-	local l = F.label(h, string.upper(title), { size = 11, bold = true, token = "textDim" })
+	local l = F.label(h, I18n.upper(I18n.tr(title)), { size = 11, bold = true, token = "textDim" })
 	l.Position = UDim2.fromOffset(6, 10)
 	l.Size = UDim2.new(1, -6, 0, 16)
 	h.Parent = self.content
@@ -694,8 +695,9 @@ end
 
 -- note(text, token): free text block
 function Page:note(text, token, height)
-	local frame = F.frame(self.content, { LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, height or 40) })
-	local l = F.label(frame, text, { size = 12, token = token or "textDim", wrap = true, dim = UDim2.new(1, -12, 1, 0), valign = Enum.TextYAlignment.Top })
+	local frame = F.frame(self.content, { LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, height or 40), AutomaticSize = Enum.AutomaticSize.Y })
+	local l = F.label(frame, text, { size = 12, token = token or "textDim", wrap = true, dim = UDim2.new(1, -12, 0, 0), valign = Enum.TextYAlignment.Top })
+	l.AutomaticSize = Enum.AutomaticSize.Y
 	l.Position = UDim2.fromOffset(6, 0)
 	return frame, l
 end
@@ -910,7 +912,7 @@ function Page:enum(opts)
 		local buttons = {}
 		for i, o in ipairs(options) do
 			local b = Instance.new("TextButton")
-			b.Text = o
+			b.Text = I18n.tr(o)
 			b.AutoButtonColor = false
 			b.BackgroundTransparency = 1
 			b.BorderSizePixel = 0
@@ -969,7 +971,7 @@ function Page:enum(opts)
 	chev.Rotation = 270
 	Motion.pressable(btn, self.maid, 0.03)
 	bindSetting(self, opts.key, function(v)
-		text.Text = tostring(v)
+		text.Text = I18n.tr(tostring(v))
 	end)
 	self.maid:Give(btn.Activated:Connect(function()
 		click()
@@ -992,7 +994,7 @@ function Page:enum(opts)
 			Theme.bind(item, "BackgroundColor3", "bg3")
 			F.corner(item, -2)
 			local sel = Settings.get(opts.key) == o
-			local l = F.label(item, tostring(o), { size = 13, bold = sel, token = sel and "accent" or "text", dim = UDim2.new(1, -34, 1, 0) })
+			local l = F.label(item, I18n.tr(tostring(o)), { size = 13, bold = sel, token = sel and "accent" or "text", dim = UDim2.new(1, -34, 1, 0) })
 			l.Position = UDim2.fromOffset(10, 0)
 			if sel then
 				local ck = Icons.draw(item, "check", 14, "accent")
@@ -1298,13 +1300,14 @@ function Page:stats(items)
 		F.corner(card, 0)
 		F.stroke(card, "stroke", 1, 0.75)
 		F.padding(card, 12, 8, 12, 8)
-		local t = F.label(card, item.title, { size = 11, bold = true, token = "textDim" })
+		local t = F.label(card, I18n.upper(I18n.tr(item.title)), { size = 11, bold = true, token = "textDim" })
 		local v = F.label(card, item.value or "—", { size = 22, bold = true, token = item.token or "text", dim = UDim2.new(1, 0, 0, 32) })
 		v.Position = UDim2.fromOffset(0, 22)
 		labels[i] = v
 	end
 	return function(i, text, token)
 		local l = labels[i]
+		text = I18n.tr(text)
 		if l and l.Text ~= text then
 			l.Text = text
 		end

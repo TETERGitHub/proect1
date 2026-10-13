@@ -50,10 +50,10 @@ local notify, visible, auto, section, resetButton, dataList, infoLine = Kit.noti
 
 local function buildDashboard(page)
 	local update = page:stats({
-		{ title = string.upper(I18n.t("dash.session")), value = "00:00" },
-		{ title = string.upper(I18n.t("dash.fps")), value = "—" },
-		{ title = string.upper(I18n.t("dash.ping")), value = "—" },
-		{ title = string.upper(I18n.t("dash.active")), value = "0" },
+		{ title = I18n.t("dash.session"), value = "00:00" },
+		{ title = I18n.t("dash.fps"), value = "—" },
+		{ title = I18n.t("dash.ping"), value = "—" },
+		{ title = I18n.t("dash.active"), value = "0" },
 	})
 
 	local conflictsNote, conflictsLabel = page:note("", "warn", 40)
@@ -122,7 +122,7 @@ local function buildDashboard(page)
 					local v = Settings.get(feat.impl.target)
 					value = type(v) == "boolean" and (v and "ON" or "off") or (type(v) == "table" and "" or tostring(v))
 				end
-				table.insert(out, { id = id, title = feat.name, value = value, valueToken = value == "ON" and "good" or "textDim" })
+				table.insert(out, { id = id, title = I18n.featureName(feat), value = value, valueToken = value == "ON" and "good" or "textDim" })
 			end
 		end
 		return out

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MM2 Hub licence key generator (run on YOUR machine; never ship this file or .license/).
+"""Генератор ключей лицензии MM2 Hub (запускайте на СВОЁМ компьютере; не раздавайте этот файл и папку .license/).
 
   python3 tools/keygen.py init
   python3 tools/keygen.py gen --duration "1mo 15d 12h"           # key valid for that long, counted from NOW
@@ -82,7 +82,7 @@ def load_secret() -> bytes:
     if env:
         return bytes.fromhex(env)
     if not SECRET_FILE.exists():
-        sys.exit("No secret yet. Run: python3 tools/keygen.py init")
+        sys.exit("Секрета ещё нет. Выполните: python3 tools/keygen.py init")
     return bytes.fromhex(SECRET_FILE.read_text().strip())
 
 
@@ -151,8 +151,8 @@ def fmt_ts(ts: int) -> str:
 
 
 def interactive() -> dict:
-    print("Key duration (leave empty = 0). Order: month, year, day, hour, minute, second.")
-    labels = [("months", "Months"), ("years", "Years"), ("days", "Days"), ("hours", "Hours"), ("minutes", "Minutes"), ("seconds", "Seconds")]
+    print("Срок ключа (пусто = 0). Порядок: месяц, год, день, час, минута, секунда.")
+    labels = [("months", "Месяцы"), ("years", "Годы"), ("days", "Дни"), ("hours", "Часы"), ("minutes", "Минуты"), ("seconds", "Секунды")]
     parts = dict(years=0, months=0, weeks=0, days=0, hours=0, minutes=0, seconds=0)
     for key, label in labels:
         raw = input(f"  {label}: ").strip()
@@ -163,11 +163,11 @@ def interactive() -> dict:
 def cmd_init(_args):
     LICENSE_DIR.mkdir(exist_ok=True)
     if SECRET_FILE.exists():
-        print(f"Secret already exists: {SECRET_FILE} (not overwritten)")
+        print(f"Секрет уже есть: {SECRET_FILE} (не перезаписан)")
         return
     SECRET_FILE.write_text(os.urandom(32).hex() + "\n")
     os.chmod(SECRET_FILE, 0o600)
-    print(f"Created {SECRET_FILE}. Back it up: losing it invalidates every key, leaking it lets anyone mint keys.")
+    print(f"Создан {SECRET_FILE}. Сделайте копию: потеряете его, и все ключи перестанут работать; утечка позволит любому выпускать ключи.")
 
 
 def cmd_gen(args):
@@ -179,19 +179,19 @@ def cmd_gen(args):
     else:
         parts = dict(years=args.years, months=args.months, weeks=args.weeks, days=args.days, hours=args.hours, minutes=args.minutes, seconds=args.seconds)
     if not any(parts.values()):
-        sys.exit("Duration is zero. Give --duration '30d', individual flags, or use -i.")
+        sys.exit("Срок равен нулю. Укажите --duration '30d', отдельные флаги или используйте -i.")
     if any(v < 0 for v in parts.values()):
-        sys.exit("Negative durations are not allowed.")
+        sys.exit("Отрицательный срок недопустим.")
     now = int(args.now) if args.now else int(time.time())
     issued = dt.datetime.fromtimestamp(now, dt.timezone.utc)
     mode = 1 if args.mode == "activation" else 0
     if mode == 0:
         expiry = expiry_absolute(issued, parts)
         value = int(expiry.timestamp())
-        summary = f"valid until {fmt_ts(value)}"
+        summary = f"действует до {fmt_ts(value)}"
     else:
         value = duration_seconds(parts)
-        summary = f"valid for {value} seconds ({value / 86400:.2f} days) from first activation"
+        summary = f"действует {value} секунд ({value / 86400:.2f} дн.) с момента первой активации"
     LICENSE_DIR.mkdir(exist_ok=True)
     new_file = not LOG_FILE.exists()
     with LOG_FILE.open("a", newline="") as f:
@@ -203,26 +203,26 @@ def cmd_gen(args):
             key = make_key(secret, mode, now, value, nonce)
             w.writerow([fmt_ts(now), nonce.hex(), args.mode, value, args.note, key])
             print(key)
-    print(f"# {args.count} key(s), {args.mode} mode, {summary}", file=sys.stderr)
+    print(f"# ключей: {args.count}, режим: {'с первой активации' if args.mode == 'activation' else 'с момента выдачи'}, {summary}", file=sys.stderr)
 
 
 def cmd_info(args):
     info = decode_key(load_secret(), args.key)
-    print("signature:", "VALID" if info["valid"] else "INVALID")
-    print("version  :", info["version"])
-    print("issued   :", fmt_ts(info["issued"]))
+    print("подпись  :", "ВЕРНА" if info["valid"] else "НЕВЕРНА")
+    print("версия   :", info["version"])
+    print("выдан    :", fmt_ts(info["issued"]))
     if info["mode"] == 0:
-        print("mode     : absolute  expires", fmt_ts(info["value"]))
+        print("режим    : с момента выдачи, действует до", fmt_ts(info["value"]))
         left = info["value"] - int(time.time())
-        print("remaining:", f"{left // 86400}d {(left % 86400) // 3600}h {(left % 3600) // 60}m" if left > 0 else "expired")
+        print("осталось :", f"{left // 86400} дн {(left % 86400) // 3600} ч {(left % 3600) // 60} мин" if left > 0 else "срок истёк")
     else:
-        print("mode     : activation  duration", info["value"], "seconds", f"({info['value'] / 86400:.2f} days)")
-    print("key id   :", info["nonce"])
+        print("режим    : с первой активации, срок", info["value"], "секунд", f"({info['value'] / 86400:.2f} дн.)")
+    print("номер    :", info["nonce"])
 
 
 def cmd_list(_args):
     if not LOG_FILE.exists():
-        print("No keys issued yet.")
+        print("Ключи ещё не выдавались.")
         return
     print(LOG_FILE.read_text())
 

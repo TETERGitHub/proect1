@@ -3,6 +3,7 @@
 -- STATUS: environment-dependent (needs an HTTP request function and loadstring in the executor).
 local import = ...
 local Loader = import("loader/Loader")
+local Ru = import("core/LicenseText")
 
 local SERVER_URL = "@@SERVER_URL@@"
 local KEY_PATH = "MM2Hub/license.key"
@@ -38,7 +39,7 @@ local function notify(title, text)
 end
 
 if not request or not compile then
-	notify("MM2 Hub", "This executor lacks an HTTP request function or loadstring; the licensed loader cannot run.")
+	notify("MM2 Hub", "В этом исполнителе нет HTTP-запросов или loadstring: загрузчик с лицензией не сможет работать.")
 	return nil
 end
 
@@ -66,7 +67,7 @@ local function prompt(onSubmit, lastError)
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextColor3 = lastError and Color3.fromRGB(255, 69, 58) or Color3.fromRGB(235, 235, 245)
-	label.Text = lastError or "MM2 Hub - enter your licence key"
+	label.Text = lastError and Ru.ru(lastError) or (Ru.UI.title .. " — " .. Ru.UI.pasteHint)
 	label.Parent = card
 	local box = Instance.new("TextBox")
 	box.Position = UDim2.fromOffset(20, 76)
@@ -76,7 +77,7 @@ local function prompt(onSubmit, lastError)
 	box.Font = Enum.Font.GothamMedium
 	box.TextSize = 14
 	box.TextColor3 = Color3.fromRGB(255, 255, 255)
-	box.PlaceholderText = "MM2H-XXXXX-XXXXX-..."
+	box.PlaceholderText = Ru.UI.placeholder
 	box.ClearTextOnFocus = false
 	box.Text = ""
 	box.Parent = card
@@ -87,7 +88,7 @@ local function prompt(onSubmit, lastError)
 	button.Size = UDim2.new(1, -40, 0, 40)
 	button.BackgroundColor3 = Color3.fromRGB(10, 132, 255)
 	button.BorderSizePixel = 0
-	button.Text = "Activate"
+	button.Text = Ru.UI.button
 	button.Font = Enum.Font.GothamBold
 	button.TextSize = 15
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)

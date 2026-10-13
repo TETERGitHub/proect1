@@ -151,10 +151,12 @@ local function dataList(page, spec)
 			end
 			local row = pool:Acquire()
 			row.LayoutOrder = i
-			row.Title.Text = item.title or ""
-			row.Sub.Text = item.sub or ""
+			-- raw items carry technical text (task names, log lines, keys) that must stay as written
+			local tr = item.raw and function(t) return t end or I18n.tr
+			row.Title.Text = tr(item.title or "")
+			row.Sub.Text = tr(item.sub or "")
 			row.Sub.Visible = (item.sub or "") ~= "" and height > 40
-			row.Value.Text = item.value or ""
+			row.Value.Text = item.rawValue and (item.value or "") or I18n.tr(item.value or "")
 			Theme.bind(row.Value, "TextColor3", item.valueToken or "textDim")
 			Theme.bind(row.Title, "TextColor3", item.titleToken or "text")
 			local m = Maid.new("datalist-row")
@@ -191,7 +193,7 @@ local function infoLine(page, label, valueFn)
 	v.AnchorPoint = Vector2.new(1, 0.5)
 	v.Position = UDim2.fromScale(1, 0.5)
 	return function()
-		local text = valueFn()
+		local text = I18n.tr(valueFn())
 		if v.Text ~= text then
 			v.Text = text
 		end

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""MM2 Hub control panel: one program for the whole licence setup on your own PC.
+"""Панель управления MM2 Hub: одна программа для всей настройки лицензий на вашем ПК.
 
-  python tools/control.py            # interactive menu
-  python tools/control.py serve      # build + start server + HTTPS tunnel, then wait (Ctrl+C stops)
-  python tools/control.py serve --no-tunnel --url https://your.domain     # you already have HTTPS in front
+  python tools/control.py            # меню
+  python tools/control.py serve      # собрать, запустить сервер и HTTPS-туннель и ждать (Ctrl+C - остановка)
+  python tools/control.py serve --no-tunnel --url https://ваш.домен     # если HTTPS у вас уже настроен
 
-What "serve" does: creates your licence secret (once), builds dist/MM2Hub.lua (the hub, no secret inside),
-starts the licence server, downloads and starts a free Cloudflare quick tunnel to give it an https:// address,
-builds dist/Loader.lua for that address and prints what to distribute.
-Quick-tunnel addresses change every run, so Loader.lua must be rebuilt (this program does it) and re-shared each time.
+Что делает "serve": создаёт секрет ключей (один раз), собирает dist/MM2Hub.lua (хаб, секрета внутри нет),
+запускает сервер лицензий, скачивает и запускает бесплатный туннель Cloudflare, чтобы получить https:// адрес,
+собирает dist/Loader.lua под этот адрес и показывает, что раздавать.
+Адрес быстрого туннеля меняется при каждом запуске, поэтому Loader.lua нужно пересобирать (программа делает это сама) и раздавать заново.
 """
 import argparse
 import os
@@ -39,6 +39,13 @@ CLOUDFLARED = {
 }
 
 
+try:  # Cyrillic must print correctly in any Windows console or redirected log
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+
 def say(msg=""):
     print(msg, flush=True)
 
@@ -53,9 +60,9 @@ def duration_args(months=0, years=0, days=0, hours=0, minutes=0, seconds=0):
     """keygen.py arguments for a duration entered in the order: month, year, day, hour, minute, second."""
     values = dict(months=months, years=years, days=days, hours=hours, minutes=minutes, seconds=seconds)
     if any(v < 0 for v in values.values()):
-        raise ValueError("durations cannot be negative")
+        raise ValueError("срок не может быть отрицательным")
     if not any(values.values()):
-        raise ValueError("the duration is zero")
+        raise ValueError("срок равен нулю")
     args = []
     for name, v in values.items():
         if v:
@@ -72,13 +79,13 @@ def ensure_secret():
 
 def build_hub():
     path = build.build(False)
-    say(f"  hub bundle:     {path} ({path.stat().st_size // 1024} KB)")
+    say(f"  хаб собран:        {path} ({path.stat().st_size // 1024} КБ)")
     return path
 
 
 def build_loader(url):
     path = build.build_loader(url)
-    say(f"  loader:         {path} ({path.stat().st_size // 1024} KB) -> server {url}")
+    say(f"  загрузчик собран:  {path} ({path.stat().st_size // 1024} КБ), сервер {url}")
     return path
 
 
@@ -86,19 +93,19 @@ def cloudflared_path():
     key = (platform.system().lower(), platform.machine().lower())
     name = CLOUDFLARED.get(key)
     if not name:
-        raise RuntimeError(f"no cloudflared build known for {key}; install it yourself or use --no-tunnel --url ...")
+        raise RuntimeError(f"для {key} нет готовой сборки cloudflared; установите её сами и запустите с --no-tunnel --url ...")
     BIN_DIR.mkdir(parents=True, exist_ok=True)
     target = BIN_DIR / ("cloudflared.exe" if key[0] == "windows" else "cloudflared")
     if target.exists() and target.stat().st_size > 1_000_000:
         return target
     if name.endswith(".tgz"):
-        raise RuntimeError("on macOS install cloudflared with: brew install cloudflared, then use --no-tunnel --url ...")
+        raise RuntimeError("на macOS установите cloudflared командой: brew install cloudflared, затем используйте --no-tunnel --url ...")
     url = f"https://github.com/cloudflare/cloudflared/releases/latest/download/{name}"
-    say(f"  downloading cloudflared (free tunnel program) from {url} ...")
+    say(f"  скачиваю cloudflared (бесплатная программа для туннеля): {url} ...")
     urllib.request.urlretrieve(url, target)
     if target.stat().st_size < 1_000_000:
         target.unlink()
-        raise RuntimeError("cloudflared download looks incomplete")
+        raise RuntimeError("cloudflared скачался не полностью")
     target.chmod(0o755)
     return target
 
@@ -123,15 +130,15 @@ class Stack:
         deadline = time.time() + 15
         while time.time() < deadline:
             if self.server.poll() is not None:
-                raise RuntimeError("server exited: " + (self.server.stderr.read() or "no output"))
+                raise RuntimeError("сервер завершился: " + (self.server.stderr.read() or "без сообщения"))
             try:
                 with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/health", timeout=1) as r:
                     if r.status == 200:
-                        say(f"  licence server: running on http://127.0.0.1:{self.port}")
+                        say(f"  сервер лицензий:   работает на http://127.0.0.1:{self.port}")
                         return
             except Exception:
                 time.sleep(0.3)
-        raise RuntimeError("server did not become ready in 15 s")
+        raise RuntimeError("сервер не запустился за 15 секунд")
 
     def start_tunnel(self):
         exe = cloudflared_path()
@@ -150,8 +157,8 @@ class Stack:
 
         threading.Thread(target=pump, daemon=True).start()
         if not found.wait(40):
-            raise RuntimeError("the tunnel did not report an address in 40 s (check your internet connection)")
-        say(f"  https address:  {self.url}")
+            raise RuntimeError("туннель не сообщил адрес за 40 секунд (проверьте интернет)")
+        say(f"  https-адрес:       {self.url}")
 
     def stop(self):
         for p in (self.tunnel, self.server):
@@ -166,37 +173,37 @@ class Stack:
 
 def start_stack(port, tunnel=True, url=None):
     stack = Stack(port)
-    say("Starting...")
+    say("Запуск...")
     stack.start_server()
     if tunnel:
         stack.start_tunnel()
         url = stack.url
     if not url:
         stack.stop()
-        raise RuntimeError("no public address: use the tunnel or pass --url https://your.domain")
+        raise RuntimeError("нет публичного адреса: используйте туннель или укажите --url https://ваш.домен")
     stack.url = url
     build_loader(url)
     say("")
-    say("READY.")
-    say(f"  Give users:     {ROOT / 'dist' / 'Loader.lua'}")
-    say("  Make keys:      menu option 2 (or: python tools/keygen.py gen --duration \"1mo\")")
-    say("  Keep this window open - closing it stops the server.")
+    say("ГОТОВО.")
+    say(f"  Раздавайте файл:   {ROOT / 'dist' / 'Loader.lua'}")
+    say("  Создать ключ:      пункт 2 меню (или: python tools/keygen.py gen --duration \"1mo\")")
+    say("  Не закрывайте это окно: при закрытии сервер остановится.")
     return stack
 
 
 def make_key(note=""):
-    say("Key duration. Leave a field empty for 0.")
+    say("Срок действия ключа. Пустое поле = 0.")
 
     def ask(label):
         raw = input(f"  {label}: ").strip()
         return int(raw) if raw else 0
 
     try:
-        args = duration_args(ask("Months"), ask("Years"), ask("Days"), ask("Hours"), ask("Minutes"), ask("Seconds"))
+        args = duration_args(ask("Месяцы"), ask("Годы"), ask("Дни"), ask("Часы"), ask("Минуты"), ask("Секунды"))
     except ValueError as e:
         say(f"  {e}")
         return None
-    mode = input("  Count the time from (1) now, or (2) the buyer's first activation? [1]: ").strip() or "1"
+    mode = input("  Считать срок: (1) с этого момента или (2) с первой активации покупателем? [1]: ").strip() or "1"
     cmd = [sys.executable, str(ROOT / "tools" / "keygen.py"), "gen", *args, "--mode", "activation" if mode == "2" else "absolute"]
     if note:
         cmd += ["--note", note]
@@ -213,7 +220,7 @@ def revoke(key_text):
     secret = keygen.load_secret()
     info = keygen.decode_key(secret, key_text)
     if not info["valid"]:
-        raise ValueError("that is not a valid key for your secret")
+        raise ValueError("это не действительный ключ для вашего секрета")
     LICENSE_DIR.mkdir(exist_ok=True)
     with (LICENSE_DIR / "revoked.txt").open("a") as f:
         f.write(info["nonce"] + "\n")
@@ -225,35 +232,38 @@ def menu(args):
     try:
         while True:
             say("")
-            say("=== MM2 Hub control ===" + ("   [server running]" if stack else ""))
-            say(" 1) Start server + HTTPS tunnel and build Loader.lua")
-            say(" 2) Create a licence key")
-            say(" 3) Show issued keys")
-            say(" 4) Revoke a key")
-            say(" 5) Build the simple offline-key version (no server needed)")
-            say(" 6) Quit")
-            choice = input("Choose: ").strip()
+            say("=== Панель управления MM2 Hub ===" + ("   [сервер работает]" if stack else ""))
+            say(" 1) Запустить сервер + HTTPS-туннель и собрать Loader.lua")
+            say(" 2) Создать ключ лицензии")
+            say(" 3) Показать выданные ключи")
+            say(" 4) Отозвать ключ")
+            say(" 5) Собрать простую версию с проверкой ключа внутри (сервер не нужен)")
+            say(" 6) Выход")
+            try:
+                choice = input("Выберите пункт: ").strip()
+            except EOFError:  # input stream closed: leave instead of looping forever
+                return
             try:
                 if choice == "1":
                     if stack:
-                        say("Already running.")
+                        say("Уже запущено.")
                     else:
                         stack = start_stack(args.port)
                 elif choice == "2":
                     make_key()
                 elif choice == "3":
                     log = LICENSE_DIR / "issued.csv"
-                    say(log.read_text() if log.exists() else "No keys issued yet.")
+                    say(log.read_text(encoding="utf-8") if log.exists() else "Ключи ещё не выдавались.")
                 elif choice == "4":
-                    say("revoked key id: " + revoke(input("Paste the key: ").strip()))
+                    say("ключ отозван, его номер: " + revoke(input("Вставьте ключ: ").strip()))
                 elif choice == "5":
                     ensure_secret()
                     p = build.build(False, (LICENSE_DIR / "secret.hex").read_text().strip(), True)
-                    say(f"Built {p}. Keys are checked inside the script (see docs/LICENSE.md for the limits).")
+                    say(f"Собрано: {p}. Ключ проверяется внутри скрипта (ограничения: docs/LICENSE.md).")
                 elif choice == "6":
                     return
             except Exception as e:  # keep the menu alive on any error
-                say(f"  Error: {e}")
+                say(f"  Ошибка: {e}")
     finally:
         if stack:
             stack.stop()
@@ -264,7 +274,7 @@ def main():
     ap.add_argument("command", nargs="?", default="menu", choices=["menu", "serve"])
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--no-tunnel", action="store_true")
-    ap.add_argument("--url", help="public https address when you do not use the free tunnel")
+    ap.add_argument("--url", help="публичный https-адрес, если вы не используете бесплатный туннель")
     args = ap.parse_args()
     if args.command == "menu":
         return menu(args)
@@ -273,7 +283,7 @@ def main():
         while True:
             time.sleep(1)
             if stack.server.poll() is not None:
-                raise RuntimeError("server stopped unexpectedly")
+                raise RuntimeError("сервер неожиданно остановился")
     except KeyboardInterrupt:
         pass
     finally:

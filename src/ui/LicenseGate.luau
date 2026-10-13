@@ -8,6 +8,7 @@ local License = import("core/License")
 local Env = import("core/Env")
 local Logger = import("core/Logger")
 local Maid = import("core/Maid")
+local Ru = import("core/LicenseText")
 
 local Gate = {}
 
@@ -43,12 +44,12 @@ function Gate.show(onActivated)
 	pcall(function()
 		game:GetService("TweenService"):Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end)
-	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 20), Size = UDim2.new(1, -48, 0, 26), Text = "MM2 Hub", Font = Enum.Font.GothamBold, TextSize = 22, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = Enum.TextXAlignment.Left }, card)
-	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 50), Size = UDim2.new(1, -48, 0, 34), Text = "Enter your licence key to continue.", Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = Color3.fromRGB(174, 174, 178), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, card)
-	local box = make("TextBox", { Position = UDim2.fromOffset(24, 96), Size = UDim2.new(1, -48, 0, 42), BackgroundColor3 = Color3.fromRGB(58, 58, 60), BorderSizePixel = 0, Text = "", PlaceholderText = "MM2H-XXXXX-XXXXX-...", PlaceholderColor3 = Color3.fromRGB(140, 140, 145), TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.GothamMedium, TextSize = 14, ClearTextOnFocus = false }, card)
+	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 20), Size = UDim2.new(1, -48, 0, 26), Text = Ru.UI.title, Font = Enum.Font.GothamBold, TextSize = 22, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = Enum.TextXAlignment.Left }, card)
+	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 50), Size = UDim2.new(1, -48, 0, 34), Text = Ru.UI.prompt, Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = Color3.fromRGB(174, 174, 178), TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, card)
+	local box = make("TextBox", { Position = UDim2.fromOffset(24, 96), Size = UDim2.new(1, -48, 0, 42), BackgroundColor3 = Color3.fromRGB(58, 58, 60), BorderSizePixel = 0, Text = "", PlaceholderText = Ru.UI.placeholder, PlaceholderColor3 = Color3.fromRGB(140, 140, 145), TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.GothamMedium, TextSize = 14, ClearTextOnFocus = false }, card)
 	corner(box, 12)
 	local status = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(24, 146), Size = UDim2.new(1, -48, 0, 20), Text = "", Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Color3.fromRGB(255, 69, 58), TextXAlignment = Enum.TextXAlignment.Left }, card)
-	local button = make("TextButton", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -22), Size = UDim2.new(1, -48, 0, 44), BackgroundColor3 = Color3.fromRGB(10, 132, 255), BorderSizePixel = 0, Text = "Activate", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = Color3.fromRGB(255, 255, 255), AutoButtonColor = false }, card)
+	local button = make("TextButton", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -22), Size = UDim2.new(1, -48, 0, 44), BackgroundColor3 = Color3.fromRGB(10, 132, 255), BorderSizePixel = 0, Text = Ru.UI.button, Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = Color3.fromRGB(255, 255, 255), AutoButtonColor = false }, card)
 	corner(button, 14)
 
 	local busy = false
@@ -60,7 +61,7 @@ function Gate.show(onActivated)
 		local ok, res = License.activate(box.Text)
 		if ok and not (type(res) == "table" and res.needsActivation) then
 			status.TextColor3 = Color3.fromRGB(48, 209, 88)
-			status.Text = "Valid. Time left: " .. License.formatRemaining(res.remaining)
+			status.Text = Ru.UI.valid .. Ru.remaining(res.remaining)
 			task.delay(0.6, function()
 				maid:Clean()
 				onActivated(res)
@@ -68,7 +69,7 @@ function Gate.show(onActivated)
 			return
 		end
 		status.TextColor3 = Color3.fromRGB(255, 69, 58)
-		status.Text = tostring(ok and "activation failed" or res)
+		status.Text = Ru.ru(ok and Ru.UI.failed or res)
 		Logger.warn("License", "activation rejected: %s", tostring(ok and "activation failed" or res))
 		busy = false
 	end
