@@ -10,6 +10,9 @@ or images of other hubs are used (all icons, models and sounds are drawn/built o
 - Training features (targets, dummy, drone impacts, hitbox lab, Select Aim) operate on **local test objects** only.
 - Ghost (local invisibility) is a visual effect on your own screen; Roblox does not replicate it.
 
+## One-click setup on your PC (Windows)
+Double-click `START_WINDOWS.bat` (needs Python 3): a menu builds the hub, starts the licence server with a free HTTPS tunnel, builds `dist/Loader.lua` for it and creates time-limited keys. A ready-made prompt for an AI assistant in Visual Studio / VS Code is in [docs/SETUP_PROMPT.md](docs/SETUP_PROMPT.md).
+
 ## Build and use
 ```bash
 python3 tools/build.py                 # dist/MM2Hub.lua  - one self-contained script, run it in your executor
