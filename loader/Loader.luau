@@ -32,9 +32,14 @@ local function post(deps, path, body)
 	if not ok then
 		return nil, "could not reach the licence server"
 	end
-	if type(res) ~= "table" or type(res.Body) ~= "string" then
+	-- executors differ: Body/body, StatusCode/status_code/Status; take whichever is a string
+	local body = type(res) == "table" and (res.Body or res.body or res.Response or res.response) or (type(res) == "string" and res or nil)
+	if type(body) ~= "string" or body == "" then
+		local code = type(res) == "table" and (res.StatusCode or res.status_code or res.Status or res.status) or "?"
+		log(deps, "http: no body (status %s, success %s)", tostring(code), tostring(type(res) == "table" and (res.Success or res.success)))
 		return nil, "empty response from the licence server"
 	end
+	res = { Body = body }
 	local data = Json.decode(res.Body)
 	if type(data) ~= "table" then
 		return nil, "licence server sent an unreadable response"
