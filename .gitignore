@@ -1,0 +1,4 @@
+.license/
+dist/
+__pycache__/
+*.pyc
