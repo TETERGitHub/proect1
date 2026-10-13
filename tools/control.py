@@ -143,9 +143,9 @@ class Stack:
     def start_tunnel(self):
         exe = cloudflared_path()
         self.tunnel = subprocess.Popen(
-            [str(exe), "tunnel", "--url", f"http://127.0.0.1:{self.port}", "--no-autoupdate"],
+            [str(exe), "tunnel", "--url", f"http://127.0.0.1:{self.port}", "--no-autoupdate", "--protocol", "http2"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-        )
+        )  # http2 вместо QUIC: у многих провайдеров UDP заблокирован, и туннель отвечает ошибкой 1033
         found = threading.Event()
 
         def pump():
