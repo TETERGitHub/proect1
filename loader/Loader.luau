@@ -7,7 +7,7 @@
 -- All environment access is injected (deps) so the whole flow is unit-tested without a network.
 -- deps = { request(tbl)->{Success,StatusCode,Body}, loadstring(src)->fn|nil,err, readKey()->text|nil,
 --          writeKey(text), prompt(onSubmit, lastError), uid, notify(title,text), clock()->seconds,
---          spawn(fn), wait(seconds), serverUrl, heartbeat(seconds) }
+--          spawn(fn), wait(seconds), serverUrl, heartbeat(seconds), log(text)? }
 
 local import = ...
 local Json = import("core/Json")
@@ -15,6 +15,12 @@ local Codec = import("core/Codec")
 local PayloadCipher = import("core/PayloadCipher")
 
 local Loader = {}
+
+local function log(deps, text, ...)
+	if deps.log then
+		pcall(deps.log, string.format(text, ...))
+	end
+end
 
 local function post(deps, path, body)
 	local ok, res = pcall(deps.request, {
@@ -40,26 +46,35 @@ end
 function Loader.activate(deps, keyText)
 	local canonical = PayloadCipher.canonicalKey(keyText)
 	if not canonical then
+		log(deps, "step 1/5 FAILED: that does not look like a key")
 		return nil, "that does not look like a key"
 	end
+	log(deps, "step 1/5 key format ok, contacting %s", tostring(deps.serverUrl))
 	local data, err = post(deps, "/v1/activate", { key = canonical, uid = deps.uid })
 	if not data then
+		log(deps, "step 2/5 FAILED: %s", tostring(err))
 		return nil, err
 	end
 	if not data.ok then
+		log(deps, "step 2/5 server refused the key: %s", tostring(data.error))
 		return nil, tostring(data.error or "key rejected")
 	end
+	log(deps, "step 2/5 server accepted the key (payload %d chars base64)", #tostring(data.payload))
 	local nonce = Codec.b64decode(tostring(data.nonce))
 	local cipher = Codec.b64decode(tostring(data.payload))
 	if not nonce or not cipher or #nonce ~= 12 or type(data.tag) ~= "string" then
 		return nil, "malformed payload from the licence server"
 	end
+	log(deps, "step 3/5 decrypting %d bytes (can take a few seconds on phones)", #cipher)
 	local source, derr = PayloadCipher.decrypt(canonical, nonce, cipher, data.tag)
 	if not source then
+		log(deps, "step 3/5 FAILED: %s", tostring(derr))
 		return nil, derr
 	end
+	log(deps, "step 4/5 compiling %d bytes of hub code", #source)
 	local fn, lerr = deps.loadstring(source)
 	if not fn then
+		log(deps, "step 4/5 FAILED: %s", tostring(lerr))
 		return nil, "hub code failed to compile: " .. tostring(lerr)
 	end
 	return { canonical = canonical, fn = fn, expires = data.expires, serverNow = data.now, startedAt = deps.clock() }
@@ -85,8 +100,10 @@ function Loader.run(deps)
 	local function start(session)
 		local ok, hub = pcall(session.fn)
 		if not ok then
+			log(deps, "step 5/5 FAILED: %s", tostring(hub))
 			return false, "hub failed to start: " .. tostring(hub)
 		end
+		log(deps, "step 5/5 hub started")
 		handle.hub = hub
 		handle.running = true
 		handle.session = session

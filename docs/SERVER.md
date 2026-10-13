@@ -41,3 +41,45 @@ Does **not** make it unbreakable:
 Tested: the Python server logic and HTTP layer (`python3 -m unittest discover -s server/tests`, 12 tests) and the Luau loader flow against Python-encrypted vectors (`tests/t_license.luau`). **Not tested against a real executor or a live deployment.**
 
 Executors must provide an HTTP request function (`request`/`http_request`/`syn.request`/…) and `loadstring`; the loader tells the user when they are missing.
+
+## Permanent hosting (a VPS or any always-on Linux machine)
+
+The quick tunnel is for testing: its address changes on every start. For a fixed address:
+
+1. Rent a small VPS (1 vCPU / 512 MB is plenty) and point a domain or sub-domain at its IP.
+2. On the VPS: `git clone -b claude/youthful-cray-l6ypwp https://github.com/TETERGitHub/proect1.git && cd proect1`
+3. `python3 tools/keygen.py init` (or copy your existing `.license/secret.hex` so the keys you already issued keep working), then `python3 tools/build.py`.
+4. Run the server as a service (`/etc/systemd/system/mm2hub.service`):
+   ```
+   [Unit]
+   Description=MM2 Hub licence server
+   After=network.target
+   [Service]
+   WorkingDirectory=/home/YOURUSER/proect1
+   ExecStart=/usr/bin/python3 server/app.py --host 127.0.0.1 --port 8787
+   Restart=always
+   User=YOURUSER
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   `sudo systemctl enable --now mm2hub`
+5. HTTPS with Caddy (obtains certificates automatically). `/etc/caddy/Caddyfile`:
+   ```
+   licence.your-domain.example {
+       reverse_proxy 127.0.0.1:8787
+   }
+   ```
+   `sudo systemctl reload caddy`
+6. On any machine with the project: `python3 tools/build.py --loader --server-url https://licence.your-domain.example` and distribute `dist/Loader.lua` once; it stays valid as long as the address stays the same.
+7. Keep `.license/` backed up (secret, issued keys, activation state) and out of git.
+
+## First run in an executor - checklist
+
+1. Run `Loader.lua` in the executor. Open its console (F9 / the executor's output window): the loader prints `[MM2Hub] step 1/5 ... step 5/5 hub started`.
+2. Paste the test key into the window that appears and press Activate.
+3. If it stops, the last `step N/5 FAILED` line says where:
+   - step 2: the server could not be reached or refused the key (check the tunnel is up, the key is not expired, the key is not bound to another account);
+   - step 3: authentication failed (the hub bundle on the server was rebuilt after the key was activated, or the data was altered) or decrypting was too slow;
+   - step 4: the executor's `loadstring` rejected the code;
+   - step 5: the hub raised an error while starting; open the hub's Diagnostics page or export the report.
+4. Report the console lines (never the key itself) when asking for help.

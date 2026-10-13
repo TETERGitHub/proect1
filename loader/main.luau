@@ -138,6 +138,9 @@ return Loader.run({
 	clock = os.clock,
 	spawn = task.spawn,
 	wait = task.wait,
+	log = function(text)
+		print("[MM2Hub] " .. text)
+	end,
 	serverUrl = SERVER_URL,
 	heartbeat = 300,
 })

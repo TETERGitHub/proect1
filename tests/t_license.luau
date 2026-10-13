@@ -309,3 +309,26 @@ T.test("temporary network loss does not unload", "pings fail, hub keeps running 
 	local h = Loader.run(flaky)
 	T.truthy(h.running); T.eq(flaky.hubObj.unloadCalls, 0)
 end)
+
+T.suite("Loader diagnostics")
+T.test("loader reports each stage and the exact failing step", "log lines name the step; no secrets in the log", function()
+	local d = makeDeps({ stored = K_ABS_46D, pingReply = function() return { ok = true } end })
+	local lines = {}
+	d.log = function(t) table.insert(lines, t) end
+	Loader.run(d)
+	local text = table.concat(lines, "\n")
+	for _, step in ipairs({ "step 1/5", "step 2/5", "step 3/5", "step 4/5", "step 5/5 hub started" }) do T.truthy(string.find(text, step, 1, true), step) end
+	T.falsy(string.find(text, K_ABS_46D, 1, true), "the key must never be logged")
+	local bad = makeDeps({ stored = K_ABS_46D, reply = { ok = false, error = "key expired" } })
+	local l2 = {}; bad.log = function(t) table.insert(l2, t) end
+	Loader.run(bad)
+	T.truthy(string.find(table.concat(l2, "\n"), "step 2/5 server refused the key: key expired", 1, true))
+	local off = makeDeps({ stored = K_ABS_46D, throw = true })
+	local l3 = {}; off.log = function(t) table.insert(l3, t) end
+	Loader.run(off)
+	T.truthy(string.find(table.concat(l3, "\n"), "step 2/5 FAILED: could not reach", 1, true))
+	local broken = makeDeps({ stored = K_ABS_46D, compileError = true })
+	local l4 = {}; broken.log = function(t) table.insert(l4, t) end
+	Loader.run(broken)
+	T.truthy(string.find(table.concat(l4, "\n"), "step 4/5 FAILED", 1, true))
+end)
