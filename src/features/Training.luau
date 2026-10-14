@@ -15,6 +15,7 @@ local TL = import("features/TrainingLogic")
 local HB = import("features/HitboxMath")
 local Geo = import("features/Geometry")
 local Sounds = import("features/Sounds")
+local KillEvents = import("features/KillEvents")
 local Logger = import("core/Logger")
 local Maid = import("core/Maid")
 
@@ -299,6 +300,8 @@ function Training.shoot(o, d)
 	best.respawnAt = os.clock() + 0.35
 	Sounds.play("hit")
 	Sounds.play("kill")
+	-- a destroyed training target is a confirmed kill of the local sandbox (role: sheriff, source: training)
+	KillEvents.report("sheriff", "target" .. tostring(best.index) .. ":" .. tostring(os.clock()), "training")
 	Training.Event:Fire("hit", best.index)
 	return true
 end

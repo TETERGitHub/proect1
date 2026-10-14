@@ -17,6 +17,7 @@ local categories = {
 	K = "Extra tools",
 	L = "Local training range",
 	M = "Defence",
+	N = "Customisation",
 }
 
 local list = {}
@@ -207,5 +208,17 @@ F("train.reset", "L", "Reset dummy", "Сброс стенда", "implemented", "
 F("def.antifling", "M", "Anti-fling guard", "Анти-флинг", "implemented", "s:antifling.enabled", "Cancels abnormal speed and spin of your own character.", nil)
 F("def.noCollide", "M", "Ghost collisions", "Коллизии-призраки", "env", "s:antifling.noCollide", "Other players' bodies stop colliding with you on your screen only.", "Relies on the client simulating your character; a game that re-enables collisions each frame can undo it.")
 F("def.guardlogic", "M", "Fling detection logic", "Логика обнаружения флинга", "tested", "f:features/AntiFlingLogic:evaluate", "Pure speed/spin classifier (falling is never treated as a fling).")
+
+-- N. Customisation (local only: gun, knife, character, kill sounds) ------------------------------
+local NOTE_TOOL = "Needs your gun/knife to be a Tool with a Handle named as set on the page; a game that rebuilds its tools differently needs the tool name adjusted. Unverified in a real client."
+F("cust.gun", "N", "Custom gun", "Свой пистолет", "env", "f:features/CustomLogic:apply", "Eight original gun models, style categories, colours, material, glow, preview and presets; applied to your own gun tool only.", NOTE_TOOL)
+F("cust.knife", "N", "Custom knife", "Свой нож", "env", "f:features/CustomLogic:apply", "Eight original knife models with their own colours, effects, preview and presets, independent of the gun.", NOTE_TOOL)
+F("cust.char", "N", "Custom character", "Свой персонаж", "env", "f:features/CustomLogic:apply", "Eight blocky costumes and twelve head/back/aura accessories drawn over your own avatar on your screen; safe mannequin preview.", "Costumes are static Part models welded to your root part: they do not animate with your limbs. Unverified in a real client.")
+F("cust.preview", "N", "Model preview", "Предпросмотр модели", "implemented", "f:features/Cosmetics:buildPreview", "ViewportFrame preview with drag-rotate, zoom, reset and auto-rotate; it never touches your real items.")
+F("cust.presets", "N", "Per-page presets", "Пресеты по страницам", "tested", "f:features/CustomLogic:savePreset", "Save, load, duplicate and delete named looks; each page keeps its own list and every entry is validated on load.")
+F("cust.validate", "N", "Look validation", "Проверка параметров вида", "tested", "f:features/CustomLogic:normalize", "Unknown models, odd colours and materials are dropped or clamped; only plain data is stored, never code.")
+F("kill.murderer", "N", "Murderer kill sound", "Звук убийства: Murderer", "env", "f:features/KillSounds:playEvent", "Own list, selection, volume, switch, preview, Apply and Reset for the murderer role.", "A kill is confirmed on your client (another player's death soon after your own knife use, nearby); a client cannot prove who killed whom. Sounds are only those you add.")
+F("kill.sheriff", "N", "Sheriff kill sound", "Звук убийства: Sheriff", "env", "f:features/KillSounds:playEvent", "Own list, selection, volume, switch, preview, Apply and Reset for the sheriff role; never shares a setting with the murderer sound.", "A kill is confirmed on your client (another player's death soon after your own gun use); a client cannot prove who killed whom. Sounds are only those you add.")
+F("kill.events", "N", "Confirmed-kill events", "Подтверждённые убийства", "tested", "f:features/KillEvents:report", "MurdererKillConfirmed / SheriffKillConfirmed with per-victim dedupe; shots and swings alone never fire them.")
 
 return { categories = categories, list = list }

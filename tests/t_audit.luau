@@ -417,7 +417,7 @@ T.test("every visible setting has a control on some page", "no schema entry exis
 		local shown = named[key] or named[def.label] or named[I18n.tr(def.label)]
 		-- state.* are saved window geometry; music.playlist has its own editor (Add/Remove/Move) and music.index is the play cursor
 		local special = string.find(key, "^state%.") or key == "music.playlist" or key == "music.index"
-		if not special and not shown then table.insert(missing, key) end
+		if not special and not shown and not def.hidden then table.insert(missing, key) end
 	end
 	h.unload(); Mock.uninstall()
 	T.eq(table.concat(missing, ", "), "")
@@ -476,7 +476,7 @@ T.test("every setting survives valid, extreme and invalid values", "no exception
 			bad = { "red", { r = "x", g = 1, b = 1 }, { r = 1 } }
 		elseif def.type == "string" or def.type == "key" then
 			good = { def.type == "key" and "None" or "" }
-			bad = { 5, {}, string.rep("a", 400) }
+			bad = { 5, {}, string.rep("a", (def.maxLen or 64) + 1) }
 		else
 			good = { {} }
 			bad = { "x", { 5 }, 5 }

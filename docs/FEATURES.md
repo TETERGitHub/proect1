@@ -1,6 +1,6 @@
 # Feature catalogue
 
-Generated from `src/data/Features.luau` by `python3 tools/gen_docs.py` - **131 features**: 57 `tested`, 59 `implemented`, 13 `env`, 2 `partial`.
+Generated from `src/data/Features.luau` by `python3 tools/gen_docs.py` - **140 features**: 60 `tested`, 60 `implemented`, 18 `env`, 2 `partial`.
 
 Status meaning:
 
@@ -207,7 +207,21 @@ Status meaning:
 | 2 | Ghost collisions | Коллизии-призраки | env | `setting: antifling.noCollide` | Relies on the client simulating your character; a game that re-enables collisions each frame can undo it. |
 | 3 | Fling detection logic | Логика обнаружения флинга | tested | `features/AntiFlingLogic:evaluate` |  |
 
-## Settings schema (193 keys)
+## N. Customisation
+
+| # | Feature | RU | Status | Implementation | Notes |
+|---|---|---|---|---|---|
+| 1 | Custom gun | Свой пистолет | env | `features/CustomLogic:apply` | Needs your gun/knife to be a Tool with a Handle named as set on the page; a game that rebuilds its tools differently needs the tool name adjusted. Unverified in a real client. |
+| 2 | Custom knife | Свой нож | env | `features/CustomLogic:apply` | Needs your gun/knife to be a Tool with a Handle named as set on the page; a game that rebuilds its tools differently needs the tool name adjusted. Unverified in a real client. |
+| 3 | Custom character | Свой персонаж | env | `features/CustomLogic:apply` | Costumes are static Part models welded to your root part: they do not animate with your limbs. Unverified in a real client. |
+| 4 | Model preview | Предпросмотр модели | implemented | `features/Cosmetics:buildPreview` |  |
+| 5 | Per-page presets | Пресеты по страницам | tested | `features/CustomLogic:savePreset` |  |
+| 6 | Look validation | Проверка параметров вида | tested | `features/CustomLogic:normalize` |  |
+| 7 | Murderer kill sound | Звук убийства: Murderer | env | `features/KillSounds:playEvent` | A kill is confirmed on your client (another player's death soon after your own knife use, nearby); a client cannot prove who killed whom. Sounds are only those you add. |
+| 8 | Sheriff kill sound | Звук убийства: Sheriff | env | `features/KillSounds:playEvent` | A kill is confirmed on your client (another player's death soon after your own gun use); a client cannot prove who killed whom. Sounds are only those you add. |
+| 9 | Confirmed-kill events | Подтверждённые убийства | tested | `features/KillEvents:report` |  |
+
+## Settings schema (248 keys)
 
 | Key | Type | Default | Range / options | Module |
 |---|---|---|---|---|
@@ -236,8 +250,8 @@ Status meaning:
 | `ui.showFpsBadge` | bool | true |  | Interface |
 | `state.posX` | number | -1 | -1..8000 step 1 | State |
 | `state.posY` | number | -1 | -1..8000 step 1 | State |
-| `state.width` | number | 740 | 460..1600 step 1 | State |
-| `state.height` | number | 500 | 320..1200 step 1 | State |
+| `state.width` | number | 820 | 460..1600 step 1 | State |
+| `state.height` | number | 560 | 320..1200 step 1 | State |
 | `state.minimized` | bool | false |  | State |
 | `state.page` | string | dashboard |  | State |
 | `state.favorites` | strlist | {} |  | State |
@@ -404,3 +418,58 @@ Status meaning:
 | `sounds.uiClickSource` | string |  |  | Sounds |
 | `sounds.uiClickVolume` | number | 0.8 | 0..1 step 0.05 | Sounds |
 | `sounds.uiClickPitch` | number | 1 | 0.5..2 step 0.05 | Sounds |
+| `custom.gunEnabled` | bool | false |  | CustomGun |
+| `custom.gunStyle` | string | Custom |  | CustomGun |
+| `custom.gunPrimary` | color | rgb(150,154,162) |  | CustomGun |
+| `custom.gunSecondary` | color | rgb(112,70,40) |  | CustomGun |
+| `custom.gunGrip` | color | rgb(112,70,40) |  | CustomGun |
+| `custom.gunDetail` | color | rgb(196,154,72) |  | CustomGun |
+| `custom.gunGlow` | color | rgb(255,214,120) |  | CustomGun |
+| `custom.gunMaterial` | enum | Metal | SmoothPlastic, Plastic, Metal, DiamondPlate, Foil, Glass, Marble, Slate, Wood | CustomGun |
+| `custom.gunGlowAmount` | number | 0.2 | 0..1 step 0.05 | CustomGun |
+| `custom.gunDecor` | number | 0 | 0..0.6 step 0.05 | CustomGun |
+| `custom.gunEffects` | bool | true |  | CustomGun |
+| `custom.gunApplied` | string |  |  | CustomGun |
+| `custom.gunPresets` | string |  |  | CustomGun |
+| `custom.gunModel` | string | revolver |  | CustomGun |
+| `custom.knifeEnabled` | bool | false |  | CustomKnife |
+| `custom.knifeStyle` | string | Custom |  | CustomKnife |
+| `custom.knifePrimary` | color | rgb(196,202,212) |  | CustomKnife |
+| `custom.knifeSecondary` | color | rgb(120,126,138) |  | CustomKnife |
+| `custom.knifeGrip` | color | rgb(98,62,36) |  | CustomKnife |
+| `custom.knifeDetail` | color | rgb(196,154,72) |  | CustomKnife |
+| `custom.knifeGlow` | color | rgb(255,214,120) |  | CustomKnife |
+| `custom.knifeMaterial` | enum | Metal | SmoothPlastic, Plastic, Metal, DiamondPlate, Foil, Glass, Marble, Slate, Wood | CustomKnife |
+| `custom.knifeGlowAmount` | number | 0.2 | 0..1 step 0.05 | CustomKnife |
+| `custom.knifeDecor` | number | 0 | 0..0.6 step 0.05 | CustomKnife |
+| `custom.knifeEffects` | bool | true |  | CustomKnife |
+| `custom.knifeApplied` | string |  |  | CustomKnife |
+| `custom.knifePresets` | string |  |  | CustomKnife |
+| `custom.knifeModel` | string | classic |  | CustomKnife |
+| `custom.charEnabled` | bool | false |  | CustomChar |
+| `custom.charStyle` | string | Custom |  | CustomChar |
+| `custom.charPrimary` | color | rgb(255,255,255) |  | CustomChar |
+| `custom.charSecondary` | color | rgb(210,214,224) |  | CustomChar |
+| `custom.charGrip` | color | rgb(40,40,46) |  | CustomChar |
+| `custom.charDetail` | color | rgb(255,224,120) |  | CustomChar |
+| `custom.charGlow` | color | rgb(255,232,140) |  | CustomChar |
+| `custom.charMaterial` | enum | SmoothPlastic | SmoothPlastic, Plastic, Metal, DiamondPlate, Foil, Glass, Marble, Slate, Wood | CustomChar |
+| `custom.charGlowAmount` | number | 0.5 | 0..1 step 0.05 | CustomChar |
+| `custom.charDecor` | number | 0 | 0..0.6 step 0.05 | CustomChar |
+| `custom.charEffects` | bool | true |  | CustomChar |
+| `custom.charApplied` | string |  |  | CustomChar |
+| `custom.charPresets` | string |  |  | CustomChar |
+| `custom.charCostume` | string |  |  | CustomChar |
+| `custom.charHead` | string |  |  | CustomChar |
+| `custom.charBack` | string |  |  | CustomChar |
+| `custom.charAura` | string |  |  | CustomChar |
+| `ksound.murdererEnabled` | bool | false |  | MurdererKillSound |
+| `ksound.murdererPick` | string |  |  | MurdererKillSound |
+| `ksound.murdererSource` | string |  |  | MurdererKillSound |
+| `ksound.murdererVolume` | number | 0.8 | 0..1 step 0.05 | MurdererKillSound |
+| `ksound.murdererLibrary` | string |  |  | MurdererKillSound |
+| `ksound.sheriffEnabled` | bool | false |  | SheriffKillSound |
+| `ksound.sheriffPick` | string |  |  | SheriffKillSound |
+| `ksound.sheriffSource` | string |  |  | SheriffKillSound |
+| `ksound.sheriffVolume` | number | 0.8 | 0..1 step 0.05 | SheriffKillSound |
+| `ksound.sheriffLibrary` | string |  |  | SheriffKillSound |

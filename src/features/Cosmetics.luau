@@ -16,6 +16,8 @@ local Perf = import("core/Perf")
 local Services = import("core/Services")
 local Env = import("core/Env")
 local Logger = import("core/Logger")
+local Lib = import("data/ModelLib")
+local Custom = import("features/CustomLogic")
 
 local Cosmetics = {}
 
@@ -151,6 +153,166 @@ local function buildProc(kind, name)
 	return model
 end
 
+-- Custom looks (data/ModelLib) -----------------------------------------------------------------------------------------------
+-- A custom look is plain data (models + colours + material); these builders turn it into Parts. Every part is welded to a
+-- hidden root, has collisions/queries off and is massless, so a skin can never push, block or weigh down the real tool/avatar.
+
+local function instantiate(model, root, list)
+	for _, d in ipairs(list) do
+		local p = Instance.new(d.shape == "Wedge" and "WedgePart" or "Part")
+		p.Name = d.name
+		if d.shape == "Ball" then
+			p.Shape = Enum.PartType.Ball
+		elseif d.shape == "Cylinder" then
+			p.Shape = Enum.PartType.Cylinder
+		end
+		p.Size = Vector3.new(math.max(0.05, d.size[1]), math.max(0.05, d.size[2]), math.max(0.05, d.size[3]))
+		p.Color = Color3.fromRGB(d.color[1], d.color[2], d.color[3])
+		p.Material = Enum.Material[d.material] or Enum.Material.SmoothPlastic
+		p.Transparency = d.transparency or 0
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.CFrame = root.CFrame * CFrame.new(d.pos[1], d.pos[2], d.pos[3]) * CFrame.Angles(math.rad(d.rot[1]), math.rad(d.rot[2]), math.rad(d.rot[3]))
+		p.Parent = model
+	end
+end
+
+local function weldAll(model)
+	local root = model.PrimaryPart
+	for _, d in ipairs(model:GetChildren()) do
+		if d:IsA("BasePart") and d ~= root then
+			local w = Instance.new("WeldConstraint")
+			w.Part0, w.Part1 = root, d
+			w.Parent = d
+		end
+	end
+end
+
+local function effectsAllowed(look)
+	return look.effects and not Perf.isLow() and not Settings.get("ui.reduceEffects")
+end
+
+-- addEffects(model, kind, look): soft light (all kinds), a short trail (knife) or a slow sparkle (character). Capped and
+-- removed together with the skin; nothing here loops on its own.
+local function addEffects(model, kind, look, slotId)
+	if not effectsAllowed(look) or look.glowAmount <= 0.05 then
+		return
+	end
+	local root = model.PrimaryPart
+	local c = look.glow
+	local color = Color3.fromRGB(c[1], c[2], c[3])
+	local light = Instance.new("PointLight")
+	light.Name = "SkinLight"
+	light.Color = color
+	light.Brightness = 0.4 + look.glowAmount * 1.1
+	light.Range = kind == "char" and 9 or 6
+	light.Shadows = false
+	light.Parent = root
+	if kind == "knife" then
+		local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+		a0.Name, a1.Name = "TrailA", "TrailB"
+		a0.Position, a1.Position = Vector3.new(0, 0.28, -1.9), Vector3.new(0, -0.28, -1.9)
+		a0.Parent, a1.Parent = root, root
+		local trail = Instance.new("Trail")
+		trail.Name = "SkinTrail"
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Lifetime = 0.22
+		trail.MinLength = 0.1
+		trail.LightEmission = 0.8
+		trail.Color = ColorSequence.new(color)
+		trail.Transparency = NumberSequence.new(0.35, 1)
+		trail.Parent = root
+	elseif kind == "char" and slotId ~= "head" then
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "SkinSparkle"
+		emitter.Rate = 6
+		emitter.Lifetime = NumberRange.new(0.8, 1.4)
+		emitter.Speed = NumberRange.new(0.3, 1)
+		emitter.Size = NumberSequence.new(0.18, 0)
+		emitter.LightEmission = 1
+		emitter.Color = ColorSequence.new(color)
+		emitter.Transparency = NumberSequence.new(0.2, 1)
+		emitter.Parent = root
+	end
+end
+
+-- buildCustom(kind, id, look, slotId) -> Model (root at the origin, parts welded) | nil, err
+local function buildCustom(kind, id, look, slotId)
+	if not Lib.has(kind, id) then
+		return nil, "unknown model '" .. tostring(id) .. "'"
+	end
+	local model = Instance.new("Model")
+	model.Name = "Skin_" .. id
+	local root = newRoot(model)
+	instantiate(model, root, Lib.parts(kind, id, look))
+	weldAll(model)
+	addEffects(model, kind, look, slotId)
+	return model
+end
+
+-- (see buildPreviewChar below for the character rig)
+-- buildPreview(kind, id, look) -> Model for the preview window: anchored, no lights/particles/trails
+function Cosmetics.buildPreview(kind, id, look)
+	if not Lib.has(kind, id) then
+		return nil, "unknown model '" .. tostring(id) .. "'"
+	end
+	local model = Instance.new("Model")
+	model.Name = "Preview_" .. id
+	local root = newRoot(model)
+	instantiate(model, root, Lib.parts(kind, id, look))
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
+		end
+	end
+	return model
+end
+
+-- buildPreviewChar(sel, look) -> Model: a neutral mannequin (or the chosen costume) with the chosen accessories attached at
+-- the same anchor offsets the live builder uses. It is a separate model in the preview window and never touches your avatar.
+local PREVIEW_ANCHOR_Y = { head = 1.9, back = 0.6, aura = 0 }
+
+function Cosmetics.buildPreviewChar(sel, look)
+	local rig = Instance.new("Model")
+	rig.Name = "Preview_char"
+	local root = newRoot(rig)
+	local function piece(name, size, y, x)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = Color3.fromRGB(196, 198, 206)
+		p.Material = Enum.Material.SmoothPlastic
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+		p.CFrame = root.CFrame * CFrame.new(x or 0, y, 0)
+		p.Parent = rig
+	end
+	local costume = sel.costume and sel.costume ~= "" and sel.costume or nil
+	if costume then
+		local m = Cosmetics.buildPreview("char", costume, look)
+		if m then
+			m.Parent = rig
+		end
+	else
+		piece("Head", Vector3.new(1.1, 1.1, 1.1), 1.9)
+		piece("Torso", Vector3.new(2, 2, 1), 0.4)
+		piece("ArmL", Vector3.new(1, 2, 1), 0.4, 1.5)
+		piece("ArmR", Vector3.new(1, 2, 1), 0.4, -1.5)
+		piece("LegL", Vector3.new(0.95, 2.1, 1), -1.95, 0.5)
+		piece("LegR", Vector3.new(0.95, 2.1, 1), -1.95, -0.5)
+	end
+	for _, slot in ipairs({ "head", "back", "aura" }) do
+		local id = sel[slot]
+		if id and id ~= "" then
+			local m = Cosmetics.buildPreview("char", id, look)
+			if m then
+				m.Parent = rig
+				m:PivotTo(CFrame.new(0, PREVIEW_ANCHOR_Y[slot], 0))
+			end
+		end
+	end
+	return rig
+end
+
 -- Loading and sanitising ----------------------------------------------------------------------------------------------------
 
 local function sanitize(model)
@@ -209,6 +371,20 @@ local function template(kind, text)
 	if entry then
 		return entry.model, entry.err, entry.loading
 	end
+	if string.sub(text, 1, 7) == "custom:" then
+		local snap, serr = Custom.decodeSnapshot(kind, string.sub(text, 8))
+		local m, err
+		if snap and snap.sel.model then
+			m, err = buildCustom(kind, snap.sel.model, snap.look)
+		else
+			err = serr or "invalid custom look"
+		end
+		if m then
+			sanitize(m)
+		end
+		cache[key] = m and { model = m } or { err = err }
+		return m, err
+	end
 	local parsed, perr = Sources.parse(text, "model")
 	if not parsed then
 		cache[key] = { err = perr }
@@ -216,6 +392,10 @@ local function template(kind, text)
 	end
 	if parsed.type == "proc" then
 		local m, err = buildProc(kind, parsed.ref)
+		if m then
+			sanitize(m)
+			weldAll(m)
+		end
 		cache[key] = m and { model = m } or { err = err }
 		return m, err
 	end
@@ -323,14 +503,16 @@ end
 
 local function applyTools(slotName, slot)
 	local list = state.tools[slotName]
-	if not Settings.get(slot.enabled) then
+	-- an applied custom look (pages Custom gun / Custom knife) wins over the older single-source skin of the same slot
+	local custom = Custom.applied(slotName)
+	if not custom and not Settings.get(slot.enabled) then
 		if next(list) then
 			clearTools(slotName)
 		end
 		state.status[slotName] = "off"
 		return
 	end
-	local text = Settings.get(slot.source)
+	local text = custom and ("custom:" .. Custom.encodeSnapshot(custom)) or Settings.get(slot.source)
 	local tools = findTools(Settings.get(slot.tool))
 	-- drop records of tools that vanished or were re-created
 	for tool, rec in pairs(list) do
@@ -418,6 +600,107 @@ local function applyChar()
 	end
 end
 
+-- Custom character (pages Custom character): an optional costume over your avatar plus accessories in head/back/aura slots.
+-- Only your own client sees it. The costume hides your real avatar by setting local Transparency (restored on removal);
+-- nothing here touches collisions, size, speed or the humanoid.
+local function isSkin(inst, char)
+	local cur = inst
+	while cur and cur ~= char do
+		if cur.Name == "MM2HubSkin" then
+			return true
+		end
+		cur = cur.Parent
+	end
+	return false
+end
+
+local function clearCustomChar()
+	local rec = state.customRec
+	if not rec then
+		return
+	end
+	state.customRec = nil
+	for _, sk in ipairs(rec.skins) do
+		pcall(function()
+			sk:Destroy()
+		end)
+	end
+	for inst, old in pairs(rec.hidden) do
+		pcall(function()
+			inst.Transparency = old
+		end)
+	end
+end
+
+local function hideAvatar(char, rec)
+	for _, d in ipairs(char:GetDescendants()) do
+		if (d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture")) and not rec.hidden[d] and d.Name ~= "HumanoidRootPart" and not isSkin(d, char) then
+			rec.hidden[d] = d.Transparency
+			d.Transparency = 1
+		end
+	end
+end
+
+local ACCESSORY_ANCHOR = {
+	head = function(char) return char:FindFirstChild("Head") end,
+	back = function(char) return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") end,
+	aura = function(char) return char:FindFirstChild("HumanoidRootPart") end,
+	costume = function(char) return char:FindFirstChild("HumanoidRootPart") end,
+}
+
+local function applyCustomChar()
+	local snap = Custom.applied("char")
+	local char = Services.Players.LocalPlayer.Character
+	if not snap or not char then
+		if state.customRec then
+			clearCustomChar()
+		end
+		state.status.customChar = snap and "waiting for character" or "off"
+		return
+	end
+	local text = Custom.encodeSnapshot(snap)
+	local rec = state.customRec
+	if rec and rec.char == char and rec.text == text and rec.scale == Settings.get("cosmetics.charScale") then
+		if rec.costume then
+			hideAvatar(char, rec) -- the game may add new visible parts (tools, accessories)
+		end
+		return
+	end
+	clearCustomChar()
+	rec = { skins = {}, hidden = {}, char = char, text = text, scale = Settings.get("cosmetics.charScale"), costume = snap.sel.costume ~= "" }
+	local problems = {}
+	for _, slot in ipairs(Custom.CHAR_SLOTS) do
+		local id = snap.sel[slot]
+		if id and id ~= "" then
+			local anchor = ACCESSORY_ANCHOR[slot](char)
+			local model, err
+			if anchor then
+				model, err = buildCustom("char", id, snap.look, slot)
+			else
+				err = "no body part for the " .. slot .. " slot"
+			end
+			if model then
+				sanitize(model)
+				model.Name = "MM2HubSkin"
+				pcall(function()
+					model:ScaleTo(rec.scale)
+				end)
+				model:PivotTo(anchor.CFrame)
+				model.Parent = char
+				weldTo(anchor, model.PrimaryPart)
+				table.insert(rec.skins, model)
+			else
+				table.insert(problems, tostring(err))
+			end
+		end
+	end
+	state.customRec = rec
+	if rec.costume then
+		hideAvatar(char, rec)
+	end
+	state.status.customChar = #problems > 0 and ("error: " .. table.concat(problems, "; ")) or "applied"
+end
+
 local function applyBody()
 	local player = Services.Players.LocalPlayer
 	local char = player.Character
@@ -457,6 +740,7 @@ local function applyAll()
 		applyTools(name, slot)
 	end
 	applyChar()
+	applyCustomChar()
 	applyBody()
 end
 
@@ -471,8 +755,15 @@ function Cosmetics.reapply()
 		clearTools(name)
 	end
 	clearChar()
+	clearCustomChar()
 	for key, entry in pairs(cache) do
 		if entry.err then
+			cache[key] = nil
+		elseif string.find(key, "|custom:", 1, true) then
+			-- templates of old custom looks are not kept: the cache must not grow with every colour change
+			if entry.model then
+				entry.model:Destroy()
+			end
 			cache[key] = nil
 		end
 	end
@@ -483,13 +774,46 @@ function Cosmetics.status()
 	return state and table.clone(state.status) or {}
 end
 
+-- effectStats() -> { lights, trails, emitters } currently alive in applied skins (a test and diagnostics aid)
+function Cosmetics.effectStats()
+	local n = { lights = 0, trails = 0, emitters = 0 }
+	if not state then
+		return n
+	end
+	local function scan(model)
+		if not model then
+			return
+		end
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("PointLight") then
+				n.lights += 1
+			elseif d:IsA("Trail") then
+				n.trails += 1
+			elseif d:IsA("ParticleEmitter") then
+				n.emitters += 1
+			end
+		end
+	end
+	for _, list in pairs(state.tools) do
+		for _, rec in pairs(list) do
+			scan(rec.skin)
+		end
+	end
+	if state.customRec then
+		for _, sk in ipairs(state.customRec.skins) do
+			scan(sk)
+		end
+	end
+	return n
+end
+
 function Cosmetics.isRunning()
 	return state ~= nil
 end
 
 function Cosmetics.start(ctx)
 	assert(state == nil, "Cosmetics already started")
-	state = { tools = { gun = {}, knife = {} }, charRecord = nil, bodyOrig = {}, status = { gun = "off", knife = "off", char = "off" }, dirty = true }
+	state = { tools = { gun = {}, knife = {} }, charRecord = nil, customRec = nil, bodyOrig = {}, status = { gun = "off", knife = "off", char = "off", customChar = "off" }, dirty = true }
 	ctx.maid:Give(function()
 		if not state then
 			return
@@ -498,6 +822,7 @@ function Cosmetics.start(ctx)
 			clearTools(name)
 		end
 		clearChar()
+		clearCustomChar()
 		for part, orig in pairs(state.bodyOrig) do
 			pcall(function()
 				part.Color, part.Material = orig.color, orig.material
@@ -515,6 +840,31 @@ function Cosmetics.start(ctx)
 		ctx.maid:Give(Settings.observe(key, function()
 			if state then
 				state.dirty = true
+			end
+		end))
+	end
+	for _, cat in ipairs({ "custom" }) do
+		for _, key in ipairs(Settings.keys({ category = cat, includeHidden = true })) do
+			ctx.maid:Give(Settings.observe(key, function()
+				if state then
+					state.dirty = true
+				end
+			end))
+		end
+	end
+	for _, kind in ipairs(Custom.KINDS) do
+		for _, f in ipairs({ "applied", "enabled" }) do
+			ctx.maid:Give(Settings.observe(Custom.key(kind, f), function()
+				if state then
+					state.needsReset = true
+				end
+			end))
+		end
+	end
+	for _, key in ipairs({ "perf.lowProfile", "ui.reduceEffects" }) do
+		ctx.maid:Give(Settings.observe(key, function()
+			if state then
+				state.needsReset = true
 			end
 		end))
 	end

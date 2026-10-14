@@ -16,6 +16,7 @@ local suites = {
 	"tests/t_i18n",
 	"tests/t_audit",
 	"tests/t_visual",
+	"tests/t_custom",
 	"tests/t_roblox",
 }
 for _, name in ipairs(suites) do

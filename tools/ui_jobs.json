@@ -152,6 +152,26 @@
     900,
     520
    ]
+  },
+  {
+   "name": "page_customgun",
+   "page": "customgun"
+  },
+  {
+   "name": "page_customknife",
+   "page": "customknife"
+  },
+  {
+   "name": "page_customchar",
+   "page": "customchar"
+  },
+  {
+   "name": "page_killmurderer",
+   "page": "killmurderer"
+  },
+  {
+   "name": "page_killsheriff",
+   "page": "killsheriff"
   }
  ]
 }

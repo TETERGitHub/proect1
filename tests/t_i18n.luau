@@ -21,7 +21,7 @@ T.test("Russian is the default language", "schema default is ru", function()
 end)
 T.test("no visible text is left untranslated", "walking every page/button/popup/notification finds no English strings", function()
 	local misses = Probe.run()
-	T.eq(#misses, 0, "untranslated: " .. table.concat(misses, " | "):sub(1, 400))
+	T.eq(#misses, 0, "untranslated: " .. table.concat(misses, " | "))
 	return "0 untranslated texts after exercising all pages"
 end)
 T.test("translations keep placeholders intact", "every pattern template accepts as many values as it captures", function()

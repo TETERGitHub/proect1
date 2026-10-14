@@ -282,6 +282,7 @@ end
 function Pages.registerAll()
 	local Game = import("ui/PagesGame")
 	local System = import("ui/PagesSystem")
+	local Custom = import("ui/PagesCustom")
 	local list = {
 		{ "dashboard", "home", buildDashboard, "Session overview, quick actions and your favourite features." },
 		{ "ui", "sliders", buildInterface, "Theme, glass effects, motion, language and notifications." },
@@ -291,6 +292,11 @@ function Pages.registerAll()
 		{ "training", "bolt", Game.training, "A local practice range with targets, a dummy, a hitbox lab and the Select Aim selector." },
 		{ "defence", "shield", Game.defence, "Protect your own character from abnormal speed, spin and pushing." },
 		{ "cosmetics", "shirt", Game.cosmetics, "Skins for your gun, knife and character. You supply the models." },
+		{ "customgun", "gun", Custom.gun, "Your own sheriff gun: models, colours, materials, preview and presets." },
+		{ "customknife", "knife", Custom.knife, "Your own murderer knife: models, colours, materials, preview and presets." },
+		{ "customchar", "person", Custom.char, "Costumes and accessories on your own avatar, with a safe preview." },
+		{ "killmurderer", "knife", Custom.murderer, "The sound for a confirmed kill as murderer. Independent of the sheriff sound." },
+		{ "killsheriff", "gun", Custom.sheriff, "The sound for a confirmed kill as sheriff. Independent of the murderer sound." },
 		{ "music", "music", Game.music, "Your own playlist, played on your client." },
 		{ "sounds", "speaker", Game.sounds, "Custom sounds for your gun, knife, hits and the interface." },
 		{ "perf", "gauge", System.perf, "Frame rate, the low load profile and where the hub spends time." },

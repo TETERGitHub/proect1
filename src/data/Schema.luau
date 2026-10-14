@@ -81,8 +81,8 @@ add(with("ui", "Interface", {
 add(with("state", "State", {
 	num("state.posX", -1, -1, 8000, 1, "Window X", "Saved window position (-1 = centred).", { scope = "state", hidden = true }),
 	num("state.posY", -1, -1, 8000, 1, "Window Y", "Saved window position (-1 = centred).", { scope = "state", hidden = true }),
-	num("state.width", 740, 460, 1600, 1, "Window width", "Saved window width.", { scope = "state", hidden = true }),
-	num("state.height", 500, 320, 1200, 1, "Window height", "Saved window height.", { scope = "state", hidden = true }),
+	num("state.width", 820, 460, 1600, 1, "Window width", "Saved window width.", { scope = "state", hidden = true }),
+	num("state.height", 560, 320, 1200, 1, "Window height", "Saved window height.", { scope = "state", hidden = true }),
 	bool("state.minimized", false, "Minimised", "Saved minimised state.", { scope = "state", hidden = true }),
 	{ key = "state.page", type = "string", default = "dashboard", maxLen = 32, label = "Page", desc = "Last opened page.", scope = "state", hidden = true },
 	{ key = "state.favorites", type = "strlist", default = {}, maxItems = 24, label = "Favourites", desc = "Pinned feature ids.", scope = "state", hidden = true },
@@ -285,6 +285,63 @@ for _, slot in ipairs(SOUND_SLOTS) do
 		{ key = "sounds." .. id .. "Source", type = "string", default = "", maxLen = 120, label = label .. " source", desc = "asset:<id> or file:<name> (from MM2Hub/sounds)." },
 		num("sounds." .. id .. "Volume", 0.8, 0, 1, 0.05, label .. " volume", "Volume of this sound."),
 		num("sounds." .. id .. "Pitch", 1, 0.5, 2, 0.05, label .. " pitch", "Playback speed / pitch."),
+	}))
+end
+
+-- Customisation (gun / knife / character) ---------------------------------------------------------------------------------
+-- One block per kind. The plain keys are the DRAFT the page edits and the preview shows; `applied` is the snapshot the
+-- game-side builder reads (set by Apply, cleared by Reset). Nothing here changes damage, speed or any gameplay value.
+local MATERIALS = { "SmoothPlastic", "Plastic", "Metal", "DiamondPlate", "Foil", "Glass", "Marble", "Slate", "Wood" }
+local LOOK_DEFAULT = {
+	gun = { primary = { r = 150, g = 154, b = 162 }, secondary = { r = 112, g = 70, b = 40 }, grip = { r = 112, g = 70, b = 40 }, detail = { r = 196, g = 154, b = 72 }, glow = { r = 255, g = 214, b = 120 }, material = "Metal", glowAmount = 0.2 },
+	knife = { primary = { r = 196, g = 202, b = 212 }, secondary = { r = 120, g = 126, b = 138 }, grip = { r = 98, g = 62, b = 36 }, detail = { r = 196, g = 154, b = 72 }, glow = { r = 255, g = 214, b = 120 }, material = "Metal", glowAmount = 0.2 },
+	char = { primary = { r = 255, g = 255, b = 255 }, secondary = { r = 210, g = 214, b = 224 }, grip = { r = 40, g = 40, b = 46 }, detail = { r = 255, g = 224, b = 120 }, glow = { r = 255, g = 232, b = 140 }, material = "SmoothPlastic", glowAmount = 0.5 },
+}
+local CUSTOM_KINDS = {
+	{ "gun", "CustomGun", "Custom gun", "revolver", "gun" },
+	{ "knife", "CustomKnife", "Custom knife", "classic", "knife" },
+	{ "char", "CustomChar", "Custom character", "", "character" },
+}
+for _, k in ipairs(CUSTOM_KINDS) do
+	local kind, module, label, model, noun = k[1], k[2], k[3], k[4], k[5]
+	local d = LOOK_DEFAULT[kind]
+	local p = "custom." .. kind
+	local list = {
+		bool(p .. "Enabled", false, label .. " shown", "Shows the applied look on your own " .. noun .. ". Visible only to you.", { master = true }),
+		{ key = p .. "Style", type = "string", default = "Custom", maxLen = 16, label = "Style category", desc = "Last chosen style category.", hidden = true },
+		color(p .. "Primary", d.primary, "Main colour", "Main colour of the " .. noun .. "."),
+		color(p .. "Secondary", d.secondary, "Secondary colour", "Second colour of the " .. noun .. "."),
+		color(p .. "Grip", d.grip, "Grip colour", "Handle, grip or trim colour."),
+		color(p .. "Detail", d.detail, "Detail colour", "Small decorative parts."),
+		color(p .. "Glow", d.glow, "Glow colour", "Colour of the glowing accents."),
+		enum(p .. "Material", d.material, MATERIALS, "Material", "Surface material of the main parts."),
+		num(p .. "GlowAmount", d.glowAmount, 0, 1, 0.05, "Glow intensity", "0 turns glowing parts into plain plastic."),
+		num(p .. "Decor", 0, 0, 0.6, 0.05, "Decor transparency", "Applies only to decorative glass parts, never to the main body."),
+		bool(p .. "Effects", true, "Effects", "Soft light and a short trail or sparkle. Off = no lights, no particles."),
+		{ key = p .. "Applied", type = "string", default = "", maxLen = 900, label = "Applied look", desc = "Snapshot of the applied look.", hidden = true },
+		{ key = p .. "Presets", type = "string", default = "", maxLen = 9000, label = "Saved presets", desc = "Your saved presets.", hidden = true },
+	}
+	if kind == "char" then
+		for _, slot in ipairs({ "costume", "head", "back", "aura" }) do
+			table.insert(list, { key = p .. string.upper(string.sub(slot, 1, 1)) .. string.sub(slot, 2), type = "string", default = "", maxLen = 24, label = "Selected " .. slot, desc = "Chosen model for this slot (empty = none).", hidden = true })
+		end
+	else
+		table.insert(list, { key = p .. "Model", type = "string", default = model, maxLen = 24, label = "Selected model", desc = "Chosen model id.", hidden = true })
+	end
+	add(with("custom", module, list))
+end
+
+-- Kill sounds (two independent settings) -----------------------------------------------------------------------------------
+-- Murderer and Sheriff never share a key. `pick` is what the list has selected (and what Preview plays); `source` is
+-- what is applied and played on a confirmed kill.
+for _, role in ipairs({ { "murderer", "MurdererKillSound", "Murderer kill sound" }, { "sheriff", "SheriffKillSound", "Sheriff kill sound" } }) do
+	local p = "ksound." .. role[1]
+	add(with("ksound", role[2], {
+		bool(p .. "Enabled", false, role[3], "Plays your applied sound when a " .. role[1] .. " kill is confirmed. Local only.", { master = true }),
+		{ key = p .. "Pick", type = "string", default = "", maxLen = 120, label = role[3] .. " selection", desc = "Selected sound (source text).", hidden = true },
+		{ key = p .. "Source", type = "string", default = "", maxLen = 120, label = role[3] .. " applied", desc = "Applied sound source.", hidden = true },
+		num(p .. "Volume", 0.8, 0, 1, 0.05, role[3] .. " volume", "Volume of this sound only."),
+		{ key = p .. "Library", type = "string", default = "", maxLen = 4000, label = role[3] .. " list", desc = "Sounds you added for this role.", hidden = true },
 	}))
 end
 

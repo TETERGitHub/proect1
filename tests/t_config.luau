@@ -153,7 +153,7 @@ T.test("corrupt state file ignored", "defaults used, no crash", function()
 	local files = { ["MM2Hub/state.json"] = "{garbage" }
 	T.fresh({ lookup = fakeLookup(files) })
 	local rep = Config.init()
-	T.eq(rep.active, "Default"); T.eq(Settings.get("state.width"), 740)
+	T.eq(rep.active, "Default"); T.eq(Settings.get("state.width"), 820)
 end)
 T.test("corrupt active profile reported", "init notes the failure", function()
 	local files = {}
