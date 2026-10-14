@@ -17,6 +17,7 @@ local Maid = import("core/Maid")
 local Services = import("core/Services")
 local ColorUtil = import("core/ColorUtil")
 local I18n = import("core/I18n")
+local Notify = import("core/Notify")
 
 local F = {}
 
@@ -666,7 +667,11 @@ function Page:row(opts)
 			end
 		end
 		self.maid:Give(star.Activated:Connect(function()
-			Recents.toggleFavorite(feat.id)
+			local ok, err = Recents.toggleFavorite(feat.id)
+			if not ok then
+				-- the only failure users can hit is the limit; a silent star is indistinguishable from a broken one
+				Notify.push({ title = I18n.tr("Favourites"), text = I18n.tr("Favourite limit reached. Press the star of another feature to remove it first."), level = "warn" })
+			end
 			paint()
 		end))
 		self.maid:Give(Settings.observe("state.favorites", paint, true))

@@ -7,7 +7,9 @@
 -- All environment access is injected (deps) so the whole flow is unit-tested without a network.
 -- deps = { request(tbl)->{Success,StatusCode,Body}, loadstring(src)->fn|nil,err, readKey()->text|nil,
 --          writeKey(text), prompt(onSubmit, lastError), uid, notify(title,text), clock()->seconds,
---          spawn(fn), wait(seconds), serverUrl, heartbeat(seconds), log(text)? }
+--          spawn(fn), wait(seconds), serverUrl, heartbeat(seconds), log(text)?, maxPingFailures(number)? }
+-- maxPingFailures: optional; stop the hub after that many consecutive failed pings (default: tolerate, the local
+-- term check still applies).
 
 local import = ...
 local Json = import("core/Json")
@@ -168,6 +170,10 @@ function Loader.run(deps)
 				handle.pingFailures += 1
 				handle.lastError = err
 				log(deps, "ping failed (%d in a row): %s", handle.pingFailures, tostring(err))
+				if type(deps.maxPingFailures) == "number" and handle.pingFailures >= deps.maxPingFailures then
+					stop("Licence server unreachable for too long.")
+					break
+				end
 			end
 		end
 	end

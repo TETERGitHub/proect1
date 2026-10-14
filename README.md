@@ -18,6 +18,8 @@ Double-click `START_WINDOWS.bat` (needs Python 3): a menu builds the hub, starts
 python3 tools/build.py                 # dist/MM2Hub.lua  - one self-contained script, run it in your executor
 python3 tools/run_tests.py             # builds the test bundle, runs it with the Luau CLI, writes docs/TESTING.md
 python3 tools/gen_docs.py              # regenerates docs/FEATURES.md from the live registry
+python3 tools/audit_registry.py        # regenerates docs/AUDIT.md (runs tests/audit_dump.luau: presses every button on the mock)
+python3 -m unittest discover -s server/tests   # server, module-loader, build-reproducibility and loader<->server integration tests
 python3 tools/count.py                 # line counts
 python3 -m unittest discover -s server/tests    # licence-server tests
 ```
@@ -33,7 +35,7 @@ Tools needed: the standalone [Luau](https://github.com/luau-lang/luau) CLI (`lua
 | Licence keys, loader, server | `tools/keygen.py`, `loader/`, `server/`, [docs/LICENSE.md](docs/LICENSE.md), [docs/SERVER.md](docs/SERVER.md) |
 
 Documents: [FEATURES.md](docs/FEATURES.md) (119+ catalogued features with honest status), [TESTING.md](docs/TESTING.md)
-(generated from real test runs), [RESEARCH.md](docs/RESEARCH.md) (competitor research and its gaps), [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+(generated from real test runs), [RESEARCH.md](docs/RESEARCH.md) (competitor research and its gaps), [ARCHITECTURE.md](docs/ARCHITECTURE.md), [PROTOCOL.md](docs/PROTOCOL.md) (key format, wire protocol, cipher, loader state machine, known weaknesses), [AUDIT.md](docs/AUDIT.md) (generated file / feature / settings / button registry plus audit notes).
 
 ## Verification status - read this
 - **Run and passing**: the logic layer and the Roblox-facing modules against a **mock** Roblox layer (`tests/mock_roblox.luau`),

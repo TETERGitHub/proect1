@@ -293,6 +293,20 @@ T.test("consecutive ping failures are counted and reset on success", "handle.pin
 	local h2 = Loader.run(d2)
 	T.eq(h2.pingFailures, 0)
 end)
+T.test("maxPingFailures is an opt-in limit on offline time", "default tolerates, a limit stops the hub after N failures", function()
+	local function offline(limit)
+		local d = deps({ stored = KEY, maxWaits = 10 })
+		local orig = d.request
+		d.request = function(req) if string.find(req.Url, "ping") then error("offline") end return orig(req) end
+		d.maxPingFailures = limit
+		local h = Loader.run(d)
+		return h, d
+	end
+	local h1 = offline(nil)
+	T.truthy(h1.running)
+	local h2, d2 = offline(3)
+	T.falsy(h2.running); T.eq(h2.pingFailures, 3); T.eq(d2.lastHub.n, 1)
+end)
 T.test("double submit starts the hub once", "second activation while running or in flight is ignored", function()
 	local d = deps({})
 	local h = Loader.run(d)
@@ -407,4 +421,88 @@ T.test("every visible setting has a control on some page", "no schema entry exis
 	end
 	h.unload(); Mock.uninstall()
 	T.eq(table.concat(missing, ", "), "")
+end)
+
+T.test("a refused favourite tells the user why", "star at the limit raises a warning instead of doing nothing", function()
+	T.fresh(); Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local Recents = import("core/Recents")
+	local Notify = import("core/Notify")
+	local limit = Settings.schema("state.favorites").maxItems
+	local ids = {}
+	for _, f in ipairs(import("core/Registry").all()) do if #ids < limit then table.insert(ids, f.id) end end
+	for _, id in ipairs(ids) do Recents.toggleFavorite(id) end
+	T.eq(#Recents.favorites(), limit)
+	Window.navigate("camera"); for _ = 1, 4 do Perf.frame(1 / 30) end
+	local gui = game.__services.CoreGui.MM2Hub
+	local before = #Notify.history()
+	local pressed = 0
+	for _, d in ipairs(gui:GetDescendants()) do
+		if d:IsA("TextButton") and d.Parent and d.Parent.Name ~= "Frame" and Settings.has(d.Parent.Name) and not Recents.isFavorite(import("core/Registry").forSetting(d.Parent.Name) and import("core/Registry").forSetting(d.Parent.Name).id or "") then
+			d.Activated:Fire({}, 1); pressed += 1
+			if pressed >= 1 then break end
+		end
+	end
+	T.truthy(pressed >= 1, "found a star for a feature that is not a favourite yet")
+	T.eq(#Recents.favorites(), limit)
+	T.truthy(#Notify.history() > before, "a warning was raised")
+	h.unload(); Mock.uninstall()
+end)
+
+T.suite("Settings contract (audit)")
+local Logger = import("core/Logger")
+T.test("every setting survives valid, extreme and invalid values", "no exception, bad values rejected without change, no module fails, no logged error", function()
+	T.fresh(); Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	for _ = 1, 3 do Perf.frame(1 / 30) end
+	local errorsBefore = Logger.count("error")
+	local problems = {}
+	local function note(key, what) table.insert(problems, key .. ": " .. what) end
+	for _, key in ipairs(Settings.keys({ includeHidden = true })) do
+		local def = Settings.schema(key)
+		local original = Settings.get(key)
+		local good, bad = {}, {}
+		if def.type == "number" then
+			good = { def.min, def.max, (def.min + def.max) / 2 }
+			bad = { "x", 0 / 0, {}, true }
+		elseif def.type == "bool" then
+			good = { not original }
+			bad = { "yes", 1, {} }
+		elseif def.type == "enum" then
+			good = def.options
+			bad = { "__bogus__", 5, {} }
+		elseif def.type == "color" then
+			good = { { r = 0, g = 0, b = 0 }, { r = 255, g = 255, b = 255 } }
+			bad = { "red", { r = "x", g = 1, b = 1 }, { r = 1 } }
+		elseif def.type == "string" or def.type == "key" then
+			good = { def.type == "key" and "None" or "" }
+			bad = { 5, {}, string.rep("a", 400) }
+		else
+			good = { {} }
+			bad = { "x", { 5 }, 5 }
+		end
+		for _, v in ipairs(good) do
+			local ok, res = pcall(Settings.set, key, v, "audit")
+			if not ok then note(key, "set threw " .. tostring(res)) end
+			Perf.frame(1 / 30); Perf.frame(1 / 30)
+		end
+		for _, v in ipairs(bad) do
+			local before = Settings.get(key)
+			local ok, accepted = pcall(Settings.set, key, v, "audit")
+			if not ok then note(key, "invalid value threw " .. tostring(accepted))
+			elseif accepted == true and def.type ~= "number" then note(key, "invalid value " .. tostring(v) .. " was accepted")
+			elseif accepted ~= true and not Settings.deepEqual(before, Settings.get(key)) then note(key, "rejected value changed the setting") end
+		end
+		Settings.set(key, original, "audit")
+		Perf.frame(1 / 30)
+	end
+	for _, row in ipairs(Core.status()) do
+		if row.state == "failed" then note("module " .. row.name, "failed: " .. tostring(row.err)) end
+	end
+	if Logger.count("error") ~= errorsBefore then
+		for _, e in ipairs(Logger.entries and Logger.entries({ level = "error" }) or {}) do note("log", e.tag .. ": " .. e.message) end
+		note("log", (Logger.count("error") - errorsBefore) .. " new error entries")
+	end
+	h.unload(); Mock.uninstall()
+	T.eq(table.concat(problems, "\n"), "")
 end)
