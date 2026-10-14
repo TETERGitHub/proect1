@@ -1050,6 +1050,12 @@ local exact = {
 	["Mode select"] = "Выбор режима",
 	["VK message"] = "Сообщение ВКонтакте",
 	["Silence the game's own sounds on your client, learn their names and play your own round-end song."] = "Заглушайте собственные звуки игры на своей стороне, узнавайте их названия и включайте свою песню в конце раунда.",
+	["Audio check"] = "Проверка звука",
+	["Check audio"] = "Проверить звук",
+	["Checking..."] = "Проверяю...",
+	["No check run yet. Press \"Check audio\" or \"Play preview\"."] = "Проверка ещё не запускалась. Нажмите «Проверить звук» или «Прослушать».",
+	["No check run yet. Press \"Check audio\"."] = "Проверка ещё не запускалась. Нажмите «Проверить звук».",
+	["The engine plays this sound."] = "Движок воспроизводит этот звук.",
 }
 
 local patterns = {

@@ -281,36 +281,57 @@ T.test("the library is per role and validated", "add/remove/pick are separate fo
 	Settings.set("ksound.sheriffLibrary", "not json")
 	T.eq(#KillSounds.userLibrary("sheriff"), 0)
 end)
-T.test("a confirmed kill plays only the matching role's sound", "own switch, own volume, once per episode; Reset touches one role", function()
+-- plays(role): how many times the role's persistent voice was started (counted on its Played event)
+local playCounts = {}
+local function watchVoice(role)
+	local snd = sounds(role)[1]
+	if snd and not playCounts[snd] then
+		playCounts[snd] = 0
+		snd.Played:Connect(function() playCounts[snd] += 1 end)
+	end
+	return snd
+end
+local function plays(role)
+	local snd = sounds(role)[1]
+	return snd and playCounts[snd] or 0
+end
+T.test("a confirmed kill plays only the matching role's voice", "own switch, own volume, once per episode; Reset touches one role", function()
 	local h, game = boot()
 	KillSounds.addSound("murderer", "M", "asset:111"); KillSounds.addSound("sheriff", "S", "asset:222")
 	KillSounds.pick("murderer", "asset:111"); KillSounds.pick("sheriff", "asset:222")
 	T.eq((KillSounds.apply("murderer")), true); T.eq((KillSounds.apply("sheriff")), true)
 	Settings.set("ksound.murdererVolume", 0.3); Settings.set("ksound.sheriffVolume", 0.9)
+	T.eq(#sounds("sheriff"), 1, "the voice is created and pre-loaded when the sound is applied"); T.eq(#sounds("murderer"), 1)
+	watchVoice("sheriff"); watchVoice("murderer")
 	local v = {}
 	T.truthy(KillEvents.report("sheriff", v, "world"))
-	T.eq(#sounds("sheriff"), 1); T.eq(#sounds("murderer"), 0)
+	T.eq(plays("sheriff"), 1); T.eq(plays("murderer"), 0)
 	T.eq(sounds("sheriff")[1].Volume, 0.9)
 	KillEvents.report("sheriff", v, "world")
-	T.eq(#sounds("sheriff"), 1, "the same death does not play twice")
+	T.eq(plays("sheriff"), 1, "the same death does not play twice")
 	KillEvents.report("murderer", {}, "world")
-	T.eq(#sounds("murderer"), 1); T.eq(sounds("murderer")[1].Volume, 0.3)
-	-- switching one role off silences only that role
+	T.eq(plays("murderer"), 1); T.eq(sounds("murderer")[1].Volume, 0.3)
+	KillEvents.report("sheriff", {}, "world")
+	T.eq(plays("sheriff"), 2); T.eq(#sounds("sheriff"), 1, "the voice is restarted, not duplicated")
+	-- switching one role off silences only that role (and removes its voice)
 	Settings.set("ksound.murdererEnabled", false)
 	KillEvents.report("murderer", {}, "world"); KillEvents.report("sheriff", {}, "world")
-	T.eq(#sounds("murderer"), 1); T.eq(#sounds("sheriff"), 2)
+	T.eq(#sounds("murderer"), 0); T.eq(plays("sheriff"), 3)
 	-- reset one role, the other keeps everything
 	Settings.set("ksound.murdererEnabled", true)
 	KillSounds.reset("murderer")
 	T.eq(Settings.get("ksound.murdererSource"), ""); T.eq(Settings.get("ksound.murdererVolume"), 0.8)
 	T.eq(Settings.get("ksound.sheriffSource"), "asset:222"); T.eq(Settings.get("ksound.sheriffVolume"), 0.9); T.eq(Settings.get("ksound.sheriffEnabled"), true)
+	T.eq(#sounds("sheriff"), 1, "the other role keeps its voice")
 	T.eq(#KillSounds.userLibrary("murderer"), 1, "Reset keeps the list")
 	-- using a tool without a kill never plays anything
-	local n = #sounds("sheriff")
+	local n = plays("sheriff")
 	local tool = addTool(game, "Gun")
 	tool.Activated:Fire(); frames(10)
-	T.eq(#sounds("sheriff"), n, "shooting alone is not a kill")
-	done(h)
+	T.eq(plays("sheriff"), n, "shooting alone is not a kill")
+	-- volume changes reach the voice at once
+	Settings.set("ksound.sheriffVolume", 0.2); T.eq(sounds("sheriff")[1].Volume, 0.2)
+	h.unload(); T.eq(#sounds("sheriff"), 0, "unload removed the voices"); Mock.uninstall()
 end)
 T.test("previews are separate, stoppable and clean up", "one preview per role, replaced not stacked, stopped by an event and by unload", function()
 	local h = boot()
@@ -592,4 +613,73 @@ T.test("a round-end sound starts your song and is silenced", "needs a song sourc
 	Settings.set("gameaudio.songEnabled", false); T.eq(win.Volume, 0.8)
 	T.falsy((GameAudio.songPlay()) == false and false)
 	done(h)
+end)
+
+T.suite("Audio probe")
+local Probe = import("features/AudioProbe")
+-- run a probe against a Sound whose engine-side properties the test decides (the mock has no audio engine)
+local function probe(spec, props)
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local files = spec.files or {}
+	T.fresh({ lookup = fakeFiles(files) }); Env.setLookup(fakeFiles(files)); Pack._reset()
+	local c = Services.SoundService.ChildAdded:Connect(function(s)
+		for k, v in pairs(props or {}) do s[k] = v end
+	end)
+	local report
+	Probe.run(spec, function(r) report = r end)
+	c:Disconnect()
+	local left = #Services.SoundService:GetChildren()
+	Mock.uninstall()
+	return report, left
+end
+T.test("a working sound passes every stage", "all stages ok, the probe sound is removed afterwards", function()
+	local r, left = probe({ url = "rbxassetid://1", volume = 0.8 }, { IsLoaded = true, TimeLength = 1.2, PlaybackLoudness = 40 })
+	T.truthy(r.ok, tostring(r.verdict)); T.eq(r.failed, nil); T.eq(left, 0)
+	local names = {}
+	for _, s in ipairs(r.stages) do names[s.name] = s.ok end
+	T.truthy(names.sound and names.fetch and names.loaded and names.volume and names.playing and names.signal)
+	T.truthy(string.find(r.verdict, "measures a signal", 1, true)); T.truthy(r.loudness > 0); T.eq(r.length, 1.2)
+end)
+T.test("each failure names its stage", "not loaded, zero length, zero volume, silent file, bad source, missing file, no getcustomasset", function()
+	local r = probe({ url = "rbxassetid://1" }, { IsLoaded = false, TimeLength = 0 })
+	T.falsy(r.ok); T.eq(r.failed, "loaded"); T.truthy(string.find(r.verdict, "did not load", 1, true))
+	r = probe({ url = "rbxassetid://1" }, { IsLoaded = true, TimeLength = 0 })
+	T.eq(r.failed, "loaded")
+	r = probe({ url = "rbxassetid://1", volume = 0 }, { IsLoaded = true, TimeLength = 1, PlaybackLoudness = 0 })
+	T.eq(r.failed, "volume"); T.truthy(string.find(r.verdict, "volume", 1, true))
+	r = probe({ url = "rbxassetid://1" }, { IsLoaded = true, TimeLength = 1, PlaybackLoudness = 0 })
+	T.eq(r.failed, "signal"); T.truthy(string.find(r.verdict, "no loudness", 1, true))
+	r = probe({ source = "proc:neon" })
+	T.eq(r.failed, "source")
+	r = probe({ source = "file:missing.mp3" }, { IsLoaded = true })
+	T.eq(r.failed, "file"); T.truthy(string.find(r.verdict, "not in MM2Hub/sounds", 1, true))
+	r = probe({ source = "asset:123", files = nil }, nil)
+	T.truthy(r ~= nil)
+	-- no file API at all: a bundled sound cannot be installed, and the report says so
+	Mock.uninstall(); Mock.install(); Services.clear(); T.fresh(); Pack._reset()
+	local rep; Probe.run({ source = "file:neverlose.mp3" }, function(x) rep = x end)
+	T.eq(rep.failed, "file"); T.truthy(string.find(rep.verdict, "could not be written", 1, true))
+	Mock.uninstall()
+end)
+T.test("files and bundled sounds resolve to a URL before playing", "file in MM2Hub/sounds, bundled sound installed on demand, music folder", function()
+	local files = { ["MM2Hub/sounds/mine.mp3"] = "xx", ["MM2Hub/music/song.mp3"] = "yy" }
+	local r = probe({ source = "file:mine.mp3", files = files }, { IsLoaded = true, TimeLength = 1, PlaybackLoudness = 5 })
+	T.truthy(r.ok, tostring(r.verdict))
+	local url; for _, s in ipairs(r.stages) do if s.name == "url" then url = s.detail end end
+	T.truthy(string.find(url, "MM2Hub/sounds/mine.mp3", 1, true))
+	r = probe({ source = "file:song.mp3", folder = "music", files = files }, { IsLoaded = true, TimeLength = 1, PlaybackLoudness = 5 })
+	T.truthy(r.ok, tostring(r.verdict))
+	local f2 = {}
+	r = probe({ source = "file:neverlose.mp3", files = f2 }, { IsLoaded = true, TimeLength = 0.5, PlaybackLoudness = 9 })
+	T.truthy(r.ok, tostring(r.verdict)); T.truthy(f2["MM2Hub/sounds/neverlose.mp3"] ~= nil, "the bundled file was written")
+end)
+T.test("a kept sound survives the probe and the report is readable", "keep = true, format lines", function()
+	Mock.uninstall(); Mock.install(); Services.clear(); T.fresh()
+	local c = Services.SoundService.ChildAdded:Connect(function(s) s.IsLoaded = true; s.TimeLength = 1; s.PlaybackLoudness = 3 end)
+	local rep; Probe.run({ url = "rbxassetid://1", keep = true }, function(x) rep = x end)
+	c:Disconnect()
+	T.truthy(rep.sound ~= nil); T.eq(#Services.SoundService:GetChildren(), 1)
+	local text = Probe.format(rep)
+	T.truthy(string.find(text, "✓ sound", 1, true) and string.find(text, "✓ signal", 1, true))
+	rep.sound:Destroy(); Mock.uninstall()
 end)

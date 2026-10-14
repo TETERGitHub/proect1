@@ -22,6 +22,7 @@ local KillEvents = import("features/KillEvents")
 local Lib = import("data/ModelLib")
 local Meshes = import("features/MeshModels")
 local Maid = import("core/Maid")
+local Probe = import("features/AudioProbe")
 
 local notify, visible, auto, section, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.dataList, Kit.infoLine
 
@@ -655,6 +656,18 @@ local ROLE_TEXT = {
 	},
 }
 
+-- reportBox(page, title) -> setText(text): a wrapped, selectable-looking text area for the last audio check
+local function reportBox(page, title)
+	page:section(title)
+	local card = F.surface(page.content, "card", { name = "AudioReport", props = { LayoutOrder = page:nextOrder(), AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0) } })
+	F.padding(card, 14, 10, 14, 10)
+	local label = F.label(card, "No check run yet. Press \"Check audio\" or \"Play preview\".", { size = 11.5, token = "textDim", wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
+	label.AutomaticSize = Enum.AutomaticSize.Y
+	return function(text)
+		label.Text = text
+	end
+end
+
 local function buildKill(role)
 	return function(page)
 		local text = ROLE_TEXT[role]
@@ -688,6 +701,7 @@ local function buildKill(role)
 		end)
 		page.maid:Give(h.Cancel)
 
+		local setReport = reportBox(page, "Audio check")
 		-- list
 		page:section("Your sounds")
 		local list
@@ -718,7 +732,8 @@ local function buildKill(role)
 			buttons = {
 				{ icon = "play", tip = "Play preview", fn = function(item)
 					KillSounds.pick(role, item.source)
-					local ok, err = KillSounds.preview(role, function(done, msg)
+					local ok, err = KillSounds.preview(role, function(done, msg, len, report)
+						setReport(Probe.format(report))
 						if not done then
 							notify(text.title, msg, "warn")
 						end
@@ -772,7 +787,8 @@ local function buildKill(role)
 		page:section("Actions")
 		local _, acts = buttonStrip(page, {
 			{ text = "Play preview", name = "PlayPreview", style = "tinted", width = 120, fn = function()
-				local ok, err = KillSounds.preview(role, function(done, msg, len)
+				local ok, err = KillSounds.preview(role, function(done, msg, len, report)
+					setReport(Probe.format(report))
 					if not done then
 						notify(text.title, msg, "warn")
 					end
@@ -781,6 +797,13 @@ local function buildKill(role)
 				if not ok then
 					notify(text.title, tostring(err), "warn")
 				end
+			end },
+			{ text = "Check audio", name = "CheckAudio", style = "tinted", width = 120, fn = function()
+				setReport("Checking...")
+				KillSounds.check(role, function(mine, control)
+					setReport(Probe.format(mine) .. "\n\n" .. Probe.format(control))
+					notify(text.title, mine.ok and "The engine plays this sound." or tostring(mine.verdict), mine.ok and "success" or "warn")
+				end)
 			end },
 			{ text = "Stop preview", name = "StopPreview", style = "tinted", width = 120, fn = function()
 				KillSounds.stopPreview(role)

@@ -16,6 +16,7 @@ local Services = import("core/Services")
 local Logger = import("core/Logger")
 local KillEvents = import("features/KillEvents")
 local Pack = import("features/SoundPack")
+local Probe = import("features/AudioProbe")
 
 local KS = {}
 
@@ -26,6 +27,8 @@ local ROLE_OK = { murderer = true, sheriff = true }
 local state = nil
 local previews = { murderer = nil, sheriff = nil } -- role -> { sound, token }
 local durations = {} -- source -> seconds (only when a sound really loaded)
+local voices = {} -- role -> { sound, source, ready }
+KS.lastReport = { murderer = nil, sheriff = nil } -- the most recent audio check per role
 local token = 0
 
 local function key(role, field)
@@ -226,7 +229,8 @@ function KS.duration(source)
 end
 
 -- preview(role, cb) -> true | false, err. Plays the SELECTED entry (or the applied one if nothing is selected) at this role's
--- volume. A previous preview of the same role is stopped first. cb(ok, message, seconds?) is called when loading finished.
+-- volume. A previous preview of the same role is stopped first. The whole audio path is verified (see features/AudioProbe):
+-- cb(ok, message, seconds, report) is called when the check finished, with the stage that failed if it did not play.
 function KS.preview(role, cb)
 	checkRole(role)
 	local source = Settings.get(key(role, "pick"))
@@ -236,90 +240,161 @@ function KS.preview(role, cb)
 	if source == "" then
 		return false, "select a sound first"
 	end
-	local id, err = resolve(source)
-	if not id then
-		return false, err or "cannot resolve the sound"
+	if not Sources.parse(source, "audio") then
+		return false, "this source is not valid"
 	end
 	KS.stopPreview(role)
+	token += 1
+	local mine = token
+	previews[role] = { sound = nil, token = mine }
+	Probe.run({ source = source, volume = Settings.get(key(role, "volume")), keep = true, label = role .. " preview: " .. source }, function(report)
+		local p = previews[role]
+		if not p or p.token ~= mine then
+			-- stopped or replaced while the check ran
+			if report.sound then
+				destroySound(report.sound)
+			end
+			return
+		end
+		KS.lastReport[role] = report
+		if report.sound then
+			report.sound.Name = "MM2Hub_KillPreview_" .. role
+			p.sound = report.sound
+			report.sound.Ended:Once(function()
+				if previews[role] and previews[role].token == mine then
+					previews[role] = nil
+				end
+				destroySound(report.sound)
+			end)
+		else
+			previews[role] = nil
+		end
+		if report.length and report.length > 0 then
+			durations[source] = report.length
+		end
+		if cb then
+			cb(report.ok, report.verdict, report.length, report)
+		end
+	end)
+	return true
+end
+
+-- check(role, cb): runs the audio check on the applied sound (or the selection) and on the client control sound; cb(report, controlReport)
+function KS.check(role, cb)
+	checkRole(role)
+	local source = Settings.get(key(role, "source"))
+	if source == "" then
+		source = Settings.get(key(role, "pick"))
+	end
+	local mine, control
+	local function done()
+		if mine and control and cb then
+			cb(mine, control)
+		end
+	end
+	if source == "" then
+		mine = { ok = false, failed = "source", stages = { { name = "source", ok = false, detail = "nothing selected or applied" } }, verdict = "select a sound first", label = role }
+	else
+		Probe.run({ source = source, volume = Settings.get(key(role, "volume")), label = role .. ": " .. source }, function(r)
+			mine = r
+			KS.lastReport[role] = r
+			done()
+		end)
+	end
+	Probe.control(function(r)
+		control = r
+		done()
+	end)
+	done()
+	return true
+end
+
+-- Kill-event voices: one persistent Sound per role, created and pre-loaded when the sound is applied, so the first kill is not
+-- late or silent because the asset was still loading. A confirmed kill restarts the voice (never overlapping itself).
+local function dropVoice(role)
+	local v = voices[role]
+	if v then
+		voices[role] = nil
+		destroySound(v.sound)
+	end
+end
+
+local function ensureVoice(role)
+	local source = Settings.get(key(role, "source"))
+	local v = voices[role]
+	if v and v.source == source then
+		return v
+	end
+	dropVoice(role)
+	if source == "" then
+		return nil
+	end
+	local id, err = resolve(source)
+	if not id then
+		Logger.warn("KillSounds", "%s: %s", role, tostring(err))
+		return nil, err
+	end
 	local ok, snd = pcall(function()
 		local s = Instance.new("Sound")
-		s.Name = "MM2Hub_KillPreview_" .. role
+		s.Name = "MM2Hub_KillSound_" .. role
 		s.SoundId = id
 		s.Volume = Settings.get(key(role, "volume"))
 		s.Parent = Services.SoundService
 		return s
 	end)
 	if not ok then
-		return false, "could not create the sound: " .. tostring(snd)
+		return nil, tostring(snd)
 	end
-	token += 1
-	local mine = token
-	previews[role] = { sound = snd, token = mine }
+	v = { sound = snd, source = source, ready = false }
+	voices[role] = v
 	task.spawn(function()
-		-- wait until the audio is available; a refused/unknown asset is reported instead of failing silently
-		local loaded = pcall(function()
+		pcall(function()
 			game:GetService("ContentProvider"):PreloadAsync({ snd })
 		end)
-		local p = previews[role]
-		if not p or p.token ~= mine then
-			return -- stopped or replaced meanwhile
-		end
-		if snd.IsLoaded == false then
-			previews[role] = nil
-			destroySound(snd)
-			Logger.warn("KillSounds", "%s preview: '%s' did not load", role, source)
-			if cb then
-				cb(false, "the sound did not load (wrong id, no permission or file missing)")
+		if voices[role] == v then
+			v.ready = snd.IsLoaded ~= false
+			if not v.ready then
+				Logger.warn("KillSounds", "%s: '%s' did not load; use the audio check on the page", role, source)
 			end
-			return
-		end
-		local len = tonumber(snd.TimeLength)
-		if len and len > 0 then
-			durations[source] = len
-		end
-		snd.Ended:Once(function()
-			if previews[role] and previews[role].token == mine then
-				previews[role] = nil
-			end
-			destroySound(snd)
-		end)
-		snd:Play()
-		if cb then
-			cb(true, "playing", durations[source])
 		end
 	end)
-	return true
+	return v
 end
 
--- playEvent(role) -> true when a sound was started. Honors this role's own switch and volume only.
+-- playEvent(role) -> true when the voice was started. Honors this role's own switch and volume only.
 function KS.playEvent(role)
 	checkRole(role)
 	if not Settings.get(key(role, "enabled")) then
 		return false
 	end
-	local source = Settings.get(key(role, "source"))
-	if source == "" then
+	if Settings.get(key(role, "source")) == "" then
 		return false
 	end
-	local id, err = resolve(source)
-	if not id then
+	local v, err = ensureVoice(role)
+	if not v then
 		Logger.warn("KillSounds", "%s: %s", role, tostring(err))
 		return false
 	end
 	KS.stopPreview(role) -- a real event never overlaps this role's preview
 	local ok = pcall(function()
-		local s = Instance.new("Sound")
-		s.Name = "MM2Hub_KillSound_" .. role
-		s.SoundId = id
-		s.Volume = Settings.get(key(role, "volume"))
-		s.Parent = Services.SoundService
-		s.Ended:Once(function()
-			s:Destroy()
-		end)
-		Services.Debris:AddItem(s, 15)
-		s:Play()
+		v.sound.Volume = Settings.get(key(role, "volume"))
+		v.sound:Stop()
+		v.sound.TimePosition = 0
+		v.sound:Play()
 	end)
 	return ok
+end
+
+-- voiceStatus(role) -> "none" | "loading" | "ready" | "failed"
+function KS.voiceStatus(role)
+	local v = voices[role]
+	if not v then
+		return "none"
+	end
+	if v.ready then
+		return "ready"
+	end
+	return v.sound.IsLoaded == false and "loading" or "failed"
 end
 
 function KS.start(ctx)
@@ -330,9 +405,33 @@ function KS.start(ctx)
 			state.played += 1
 		end
 	end))
+	for _, role in ipairs(KS.ROLES) do
+		-- warm the voice when the applied sound changes; follow volume changes; drop it when the role is switched off
+		for _, f in ipairs({ "source", "enabled" }) do
+			ctx.maid:Give(Settings.observe(key(role, f), function()
+				if not state then
+					return
+				end
+				if Settings.get(key(role, "enabled")) and Settings.get(key(role, "source")) ~= "" then
+					ensureVoice(role)
+				else
+					dropVoice(role)
+				end
+			end))
+		end
+		ctx.maid:Give(Settings.observe(key(role, "volume"), function(v)
+			if voices[role] then
+				voices[role].sound.Volume = v
+			end
+		end))
+		if Settings.get(key(role, "enabled")) and Settings.get(key(role, "source")) ~= "" then
+			ensureVoice(role)
+		end
+	end
 	ctx.maid:Give(function()
 		for _, role in ipairs(KS.ROLES) do
 			KS.stopPreview(role)
+			dropVoice(role)
 		end
 		state = nil
 	end)

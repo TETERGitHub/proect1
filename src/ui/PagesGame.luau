@@ -16,6 +16,7 @@ local Sounds = import("features/Sounds")
 local Tools = import("features/Tools")
 local GameAudio = import("features/GameAudio")
 local I18n = import("core/I18n")
+local Probe = import("features/AudioProbe")
 
 local notify, visible, auto, section, resetButton, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.resetButton, Kit.dataList, Kit.infoLine
 
@@ -29,6 +30,44 @@ local function buttonRow(page, buttons, height)
 		btn.LayoutOrder = i
 	end
 	return card
+end
+
+-- audioCheck(page, spec): "Check audio" button plus a report area. spec() -> { source, volume, folder, label } or nil + message.
+-- Runs the staged check (features/AudioProbe) on that sound and on a control sound that ships with the Roblox client.
+local function audioCheck(page, specFn)
+	page:section("Audio check")
+	local card = F.surface(page.content, "card", { name = "AudioReport", props = { LayoutOrder = page:nextOrder(), AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0) } })
+	F.padding(card, 14, 10, 14, 10)
+	local label = F.label(card, "No check run yet. Press \"Check audio\".", { size = 11.5, token = "textDim", wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
+	label.AutomaticSize = Enum.AutomaticSize.Y
+	local btn
+	btn = F.button(page.content, "Check audio", function()
+		local spec, msg = specFn()
+		label.Text = "Checking..."
+		F.setButtonLoading(btn, true, "Checking...")
+		local mine, control
+		local function done()
+			if control and (mine or not spec) then
+				F.setButtonLoading(btn, false)
+				local text = (mine and (Probe.format(mine) .. "\n\n") or (tostring(msg) .. "\n\n")) .. Probe.format(control)
+				label.Text = text
+				if mine then
+					notify("Audio", mine.ok and "The engine plays this sound." or tostring(mine.verdict), mine.ok and "success" or "warn")
+				end
+			end
+		end
+		if spec then
+			Probe.run(spec, function(r)
+				mine = r
+				done()
+			end)
+		end
+		Probe.control(function(r)
+			control = r
+			done()
+		end)
+	end, "tinted", UDim2.fromOffset(160, 34), page.maid)
+	btn.LayoutOrder = page:nextOrder()
 end
 
 -- Training -----------------------------------------------------------------------------------------------------------
@@ -405,6 +444,15 @@ function G.music(page)
 	end))
 	render()
 	section(page, "Playback", { "music.volume", "music.loop", "music.shuffle", "music.speed", "music.autoplay" })
+	audioCheck(page, function()
+		local np = Music.nowPlaying()
+		local list = Music.tracks()
+		local t = (np and list[np.index]) or list[1]
+		if not t or t.invalid then
+			return nil, "The playlist has no track to check."
+		end
+		return { source = t.source.type .. ":" .. t.source.ref, folder = "music", volume = Settings.get("music.volume"), label = "track '" .. tostring(t.title) .. "'" }
+	end)
 end
 
 -- Sounds ---------------------------------------------------------------------------------------------------------------------------------
@@ -512,6 +560,13 @@ function G.gameaudio(page)
 		end, style = "filled" },
 		{ text = "Stop song", fn = function() GameAudio.songStop(); fnSong() end },
 	})
+	audioCheck(page, function()
+		local src = Settings.get("gameaudio.songSource")
+		if src == "" then
+			return nil, "No round-end song source is set."
+		end
+		return { source = src, volume = Settings.get("gameaudio.songVolume"), label = "round-end song" }
+	end)
 	resetButton(page, "GameAudio")
 end
 
