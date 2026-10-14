@@ -6,17 +6,18 @@
 -- Everything read from index.json is validated (ids, file names, sizes, triangle budget); a model that fails to load is reported and
 -- every temporary object it created is destroyed. EXECUTOR-DEPENDENT: local files need getcustomasset, and setting MeshId on a
 -- MeshPart needs an executor identity that allows it; neither is verified here.
--- Depends on: Env, Json, Logger.
+-- Depends on: Env, Json, Logger, Rig.
 
 local import = ...
 local Env = import("core/Env")
 local Json = import("core/Json")
 local Logger = import("core/Logger")
+local Rig = import("data/Rig")
 
 local M = {}
 
 M.INDEX = Env.ROOT .. "/models/index.json"
-M.LIMITS = { parts = 8, trisPart = 60000, trisTotal = 120000, extent = 40, minExtent = 0.05 }
+M.LIMITS = { parts = 48, trisPart = 60000, trisTotal = 120000, extent = 40, minExtent = 0.05 }
 
 local entries = nil -- ordered, validated entries
 local byKey = {}
@@ -75,6 +76,13 @@ function M.validate(raw)
 		end
 		total += tris
 		local part = { center = center, size = size, tris = tris }
+		if p.bone ~= nil then
+			-- costume piece split per R15 body part by tools/convert_mesh.py: it follows that limb's animation
+			if type(p.bone) ~= "string" or not Rig.bone(p.bone) then
+				return nil, id .. ": part " .. i .. " has an unknown bone '" .. tostring(p.bone) .. "'"
+			end
+			part.bone = p.bone
+		end
 		if p.assetId ~= nil then
 			if not string.match(tostring(p.assetId), "^%d+$") or #tostring(p.assetId) > 20 then
 				return nil, id .. ": part " .. i .. " has a bad assetId"
@@ -221,6 +229,9 @@ function M.build(kind, id)
 			return nil, "this executor cannot create a MeshPart with a custom MeshId: " .. tostring(part)
 		end
 		part.Name = "Mesh" .. i
+		if p.bone then
+			part:SetAttribute("bone", p.bone)
+		end
 		part.Size = Vector3.new(p.size[1], p.size[2], p.size[3])
 		part.CFrame = root.CFrame * CFrame.new(p.center[1] - e.hold[1], p.center[2] - e.hold[2], p.center[3] - e.hold[3])
 		part.Parent = model

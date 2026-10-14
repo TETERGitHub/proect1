@@ -33,6 +33,23 @@ class Mesh:
         self.pos = np.zeros((0, 3)); self.uv = np.zeros((0, 2)); self.nrm = np.zeros((0, 3)); self.faces = np.zeros((0, 3), dtype=np.int64)
         self.image = None
         self.color = (255, 255, 255)
+        self.bone = None
+
+
+# Roblox R15 body parts: a costume whose objects are named after them (Blender object = glTF node name, e.g. "LeftUpperArm" or
+# "RightHand_Bat") is kept split per part, so every piece follows its own limb in the hub.
+R15 = ["Head", "UpperTorso", "LowerTorso", "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
+       "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"]
+
+
+def bone_of(name):
+    """R15 part a node name belongs to (longest prefix match, case-insensitive), or None."""
+    n = (name or "").lower()
+    best = None
+    for b in R15:
+        if n.startswith(b.lower()) and (best is None or len(b) > len(best)):
+            best = b
+    return best
 
 
 # ---------------------------------------------------------------------------------------------------------- glTF
@@ -121,16 +138,18 @@ def node_matrix(node):
     return M
 
 
-def meshes_from_gltf(path):
+def meshes_from_gltf(path, by_bone=False):
     gltf, buffers = read_gltf(path)
     base = pathlib.Path(path).parent
     mats = gltf.get("materials", [])
-    out = {}  # material index -> Mesh
+    out = {}  # (bone, material index) -> Mesh
     images = {}
 
-    def material_mesh(mi):
-        if mi not in out:
-            m = Mesh("mat%d" % (mi if mi is not None else 0))
+    def material_mesh(mi, bone=None):
+        key = (bone, mi)
+        if key not in out:
+            m = Mesh("mat%d" % (mi if mi is not None else 0) if bone is None else "%s_mat%d" % (bone, mi if mi is not None else 0))
+            m.bone = bone
             if mi is not None and mi < len(mats):
                 pbr = mats[mi].get("pbrMetallicRoughness", {})
                 f = pbr.get("baseColorFactor", [1, 1, 1, 1])
@@ -142,12 +161,13 @@ def meshes_from_gltf(path):
                         if src not in images:
                             images[src] = load_image(gltf, buffers, base, src)
                         m.image = images[src]
-            out[mi] = m
-        return out[mi]
+            out[key] = m
+        return out[key]
 
-    def visit(ni, parent):
+    def visit(ni, parent, pbone=None):
         node = gltf["nodes"][ni]
         M = parent @ node_matrix(node)
+        bone = (bone_of(node.get("name")) or pbone) if by_bone else None
         if "mesh" in node:
             for prim in gltf["meshes"][node["mesh"]]["primitives"]:
                 if prim.get("mode", 4) != 4:
@@ -164,12 +184,12 @@ def meshes_from_gltf(path):
                 else:
                     nn = nrm @ np.linalg.inv(M[:3, :3]).T
                     nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
-                m = material_mesh(prim.get("material"))
+                m = material_mesh(prim.get("material"), bone)
                 off = len(m.pos)
                 m.pos = np.vstack([m.pos, P]); m.nrm = np.vstack([m.nrm, nn]); m.uv = np.vstack([m.uv, uv[:, :2]])
                 m.faces = np.vstack([m.faces, idx.reshape(-1, 3) + off])
         for c in node.get("children", []):
-            visit(c, M)
+            visit(c, M, bone)
 
     scene = gltf["scenes"][gltf.get("scene", 0)] if gltf.get("scenes") else {"nodes": list(range(len(gltf["nodes"])))}
     for n in scene["nodes"]:
@@ -269,6 +289,7 @@ def decimate(m, target):
         uv[i:i + 512], nr[i:i + 512] = m.uv[j], m.nrm[j]
     out = Mesh(m.name)
     out.pos, out.uv, out.nrm, out.faces, out.image, out.color = pts, uv, nr, faces.astype(np.int64), m.image, m.color
+    out.bone = m.bone
     return out
 
 
@@ -368,7 +389,8 @@ def main():
     if not src.exists():
         raise SystemExit("no such file: %s" % src)
     ext = src.suffix.lower()
-    meshes = meshes_from_gltf(src) if ext in (".glb", ".gltf") else meshes_from_obj(src) if ext == ".obj" else None
+    by_bone = a.kind == "char" and a.group == "costume"
+    meshes = meshes_from_gltf(src, by_bone) if ext in (".glb", ".gltf") else meshes_from_obj(src) if ext == ".obj" else None
     if meshes is None:
         raise SystemExit("unsupported format %s (use .glb, .gltf or .obj; for .fbx / .blend export glTF or OBJ from Blender first)" % ext)
     meshes = [m for m in meshes if len(m.faces)]
@@ -382,7 +404,8 @@ def main():
     budget = a.max_tris
     out_meshes = []
     for m in meshes:
-        share = max(500, int(budget * len(m.faces) / total_in)) if len(meshes) > 1 else budget
+        floor = min(500, budget // len(meshes))  # a small part keeps some detail, but many parts must still fit the budget
+        share = max(floor, int(budget * len(m.faces) / total_in)) if len(meshes) > 1 else budget
         out_meshes.append(decimate(m, share))
     outdir = pathlib.Path(a.out)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -396,7 +419,10 @@ def main():
         tex = texture_for(m, a.max_texture)
         tex.save(outdir / (base + ".png"))
         texes.append(tex)
-        parts.append({"mesh": base + ".obj", "texture": base + ".png", "center": [round(float(c), 4) for c in centre], "size": [round(max(float(s), 0.05), 4) for s in psize], "tris": int(len(m.faces))})
+        part = {"mesh": base + ".obj", "texture": base + ".png", "center": [round(float(c), 4) for c in centre], "size": [round(max(float(s), 0.05), 4) for s in psize], "tris": int(len(m.faces))}
+        if m.bone:
+            part["bone"] = m.bone
+        parts.append(part)
     entry = {
         "id": a.id, "name": a.name or a.id, "kind": a.kind, "parts": parts, "size": [round(float(s), 3) for s in size],
         "tris": int(sum(p["tris"] for p in parts)), "credit": a.credit,

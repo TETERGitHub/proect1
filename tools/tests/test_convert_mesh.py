@@ -99,6 +99,33 @@ class ConvertMesh(unittest.TestCase):
         e2 = json.loads((self.tmp / "plain" / "index.json").read_text())["models"][0]
         self.assertEqual(e2["hold"], [0, 0, 0], "without --as-is the model is held at its centre")
 
+    def test_costume_is_split_per_body_part(self):
+        # the same two boxes as two objects named like Blender exports them for an R15 costume
+        raw = self.glb.read_bytes()
+        jlen = struct.unpack("<I", raw[12:16])[0]
+        g = json.loads(raw[20:20 + jlen])
+        bin_chunk = raw[20 + jlen:]
+        prims = g["meshes"][0]["primitives"]
+        for p in prims:
+            p["material"] = 1  # one material: the split must come from the names, not the materials
+        g["meshes"] = [{"primitives": [prims[0]]}, {"primitives": [prims[1]]}]
+        g["nodes"] = [{"name": "Costume", "children": [1, 2]}, {"name": "UpperTorso", "mesh": 0}, {"name": "RightHand_Bat", "mesh": 1}]
+        js = json.dumps(g).encode()
+        while len(js) % 4:
+            js += b" "
+        body = struct.pack("<II", len(js), 0x4E4F534A) + js + bin_chunk
+        src = self.tmp / "costume.glb"
+        src.write_bytes(b"glTF" + struct.pack("<II", 2, 12 + len(body)) + body)
+        out = self.tmp / "cos"
+        r = run(str(src), "--id", "c", "--kind", "char", "--group", "costume", "--as-is", "--out", str(out), "--no-preview")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        e = json.loads((out / "index.json").read_text())["models"][0]
+        self.assertEqual(sorted(p.get("bone") for p in e["parts"]), ["RightHand", "UpperTorso"])
+        r = run(str(src), "--id", "w", "--kind", "gun", "--out", str(self.tmp / "gun"), "--no-preview")
+        e = json.loads((self.tmp / "gun" / "index.json").read_text())["models"][0]
+        self.assertEqual(len(e["parts"]), 1, "weapons are split per material only")
+        self.assertNotIn("bone", e["parts"][0])
+
     def test_forward_axis_changes_direction(self):
         a, b = self.tmp / "a", self.tmp / "b"
         run(str(self.glb), "--id", "m", "--kind", "gun", "--forward", "+z", "--out", str(a), "--no-preview")

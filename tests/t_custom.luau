@@ -491,6 +491,35 @@ T.test("index entries are validated", "bad ids, kinds, file names, sizes and bud
 	T.falsy((bad(function(e) e.parts = {} end))); T.falsy((bad(function(e) e.parts[1].assetId = "abc"; e.parts[1].mesh = nil end)))
 	T.falsy((bad(function(e) e.kind = "char"; e.group = "accessory"; e.slot = "feet" end)))
 	T.truthy(bad(function(e) e.parts[1] = { assetId = "123456", textureId = "654321", center = { 0, 0, 0 }, size = { 1, 1, 1 }, tris = 10 } end))
+	-- costume pieces split per R15 body part
+	T.truthy(bad(function(e) e.kind = "char"; e.group = "costume"; e.parts[1].bone = "LeftUpperArm" end))
+	T.falsy((bad(function(e) e.kind = "char"; e.group = "costume"; e.parts[1].bone = "Tail" end)))
+end)
+T.test("weapon meshes are welded and costume pieces carry their bone", "imported tool parts do not fall away; bone becomes an attribute", function()
+	local files = {}
+	T.fresh({ lookup = fakeFiles(files) })
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); Mock.install(); Services.clear(); Env.setLookup(fakeFiles(files))
+	local cos = Json.decode(Json.encode(goodGun)); cos.id = "tung"; cos.kind = "char"; cos.group = "costume"
+	cos.parts[1].bone = "UpperTorso"; cos.parts[2].bone = "RightHand"
+	Env.write(Meshes.INDEX, indexWith({ goodGun, cos })); Meshes.reload()
+	local gun = Meshes.build("gun", "awp")
+	T.truthy(gun ~= nil)
+	for _, d in ipairs(gun:GetChildren()) do
+		if d.ClassName == "MeshPart" then
+			T.truthy(d:FindFirstChildOfClass("WeldConstraint") ~= nil, d.Name .. " is welded to the root")
+		end
+	end
+	gun:Destroy()
+	local c = Meshes.build("char", "tung")
+	T.truthy(c ~= nil)
+	local bones = {}
+	for _, d in ipairs(c:GetChildren()) do
+		if d.ClassName == "MeshPart" then table.insert(bones, d:GetAttribute("bone")) end
+	end
+	table.sort(bones)
+	T.eq(table.concat(bones, ","), "RightHand,UpperTorso")
+	c:Destroy()
 end)
 T.test("a broken or missing index never throws", "no file, garbage, wrong shape, duplicate ids", function()
 	T.fresh()
