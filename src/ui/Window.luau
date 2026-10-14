@@ -475,7 +475,7 @@ local function buildSearchPage()
 			local results = Search.query(text, { onlyActive = filter.mode == "active", onlyFavorites = filter.mode == "favorites", category = filter.category, limit = 40 })
 			for i, item in ipairs(results) do
 				local catName = item.categoryName or item.category
-				addRow(i, (I18n.get() == "ru" and item.ru and item.ru ~= "") and item.ru or item.title, item.desc, catName, function()
+				addRow(i, (I18n.get() == "ru" and item.ru and item.ru ~= "") and item.ru or I18n.tr(item.title), item.desc, catName, function()
 					local id, key = pageForItem(item)
 					if item.kind == "feature" then
 						Recents.touch(item.id)

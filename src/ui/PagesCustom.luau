@@ -762,7 +762,7 @@ local function buildKill(role)
 				end
 				table.insert(items, {
 					index = i, source = e.source, raw = true, rawValue = true, builtin = e.builtin,
-					title = (e.builtin and I18n.get() == "ru" and e.ru) or e.name,
+					title = (e.builtin and I18n.get() == "ru" and e.ru) or (e.builtin and I18n.tr(e.name)) or e.name,
 					sub = I18n.tr(e.category) .. "  ·  " .. (e.builtin and I18n.tr("bundled") or e.source) .. (d and string.format("  ·  %.1f s", d) or ""),
 					value = table.concat(marks, " · "), valueToken = e.source == applied and "good" or "accent",
 				})

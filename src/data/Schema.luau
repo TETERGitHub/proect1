@@ -68,7 +68,7 @@ add(with("ui", "Interface", {
 	bool("ui.lockPosition", false, "Lock window", "Prevents moving and resizing the window."),
 	bool("ui.showTooltips", true, "Tooltips", "Shows descriptions when hovering a control."),
 	bool("ui.decor", true, "Decorative effects", "Animated accent line and soft gradient. Disabled automatically in low profile."),
-	enum("ui.language", "ru", { "en", "ru" }, "Language", "Interface language."),
+	enum("ui.language", "ru", { "ru", "en", "uk", "es", "pt", "fr" }, "Language", "Interface language.", { labels = { ru = "Русский", en = "English", uk = "Українська", es = "Español", pt = "Português", fr = "Français" } }),
 	enum("ui.font", "Auto", { "Auto", "Gotham", "Montserrat", "BuilderSans", "Arial", "SourceSans" }, "Font", "Auto: Montserrat for Russian and other non-English text (the default Gotham font has no Cyrillic letters in Roblox), the theme font for English. Pick another one if letters look uneven."),
 	bool("ui.notifications", true, "Notifications", "Show toast notifications."),
 	num("ui.notifyDuration", 4, 2, 12, 1, "Notification time", "Seconds before a toast disappears."),

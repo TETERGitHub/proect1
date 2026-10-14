@@ -96,7 +96,8 @@ function Theme.fontFamily()
 	if FONT_FAMILIES[choice] then
 		return choice
 	end
-	return Settings.get("ui.language") == "en" and "Theme" or "Montserrat"
+	local lang = Settings.get("ui.language")
+	return (lang == "ru" or lang == "uk") and "Montserrat" or "Theme" -- Cyrillic needs Montserrat; Latin accents work in Gotham
 end
 
 function Theme.font(bold)

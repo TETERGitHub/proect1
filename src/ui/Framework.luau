@@ -1301,7 +1301,7 @@ function Page:enum(opts)
 		local buttons = {}
 		for i, o in ipairs(options) do
 			local b = Instance.new("TextButton")
-			b.Text = I18n.tr(o)
+			b.Text = (def.labels and def.labels[o]) or I18n.tr(o)
 			b.AutoButtonColor = false
 			b.BackgroundTransparency = 1
 			b.BorderSizePixel = 0
@@ -1364,7 +1364,7 @@ function Page:enum(opts)
 	chev.Rotation = 270
 	Motion.pressable(btn, self.maid, 0.03)
 	bindSetting(self, opts.key, function(v)
-		text.Text = I18n.tr(tostring(v))
+		text.Text = (def.labels and def.labels[v]) or I18n.tr(tostring(v))
 	end)
 	self.maid:Give(btn.Activated:Connect(function()
 		click()
@@ -1387,7 +1387,7 @@ function Page:enum(opts)
 			Theme.bind(item, "BackgroundColor3", "highlight")
 			F.corner(item, "small")
 			local sel = Settings.get(opts.key) == o
-			local l = F.label(item, I18n.tr(tostring(o)), { size = 13, bold = sel, token = sel and "accent" or "text", dim = UDim2.new(1, -34, 1, 0) })
+			local l = F.label(item, (def.labels and def.labels[o]) or I18n.tr(tostring(o)), { size = 13, bold = sel, token = sel and "accent" or "text", dim = UDim2.new(1, -34, 1, 0) })
 			l.Position = UDim2.fromOffset(10, 0)
 			if sel then
 				local ck = Icons.draw(item, "check", 14, "accent")

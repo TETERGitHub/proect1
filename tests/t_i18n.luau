@@ -24,6 +24,19 @@ T.test("no visible text is left untranslated", "walking every page/button/popup/
 	T.eq(#misses, 0, "untranslated: " .. table.concat(misses, " | "))
 	return "0 untranslated texts after exercising all pages"
 end)
+for _, lang in ipairs({ "uk", "es", "pt", "fr" }) do
+	T.test("no visible text is left untranslated (" .. lang .. ")", "every page/button/popup walked in " .. I18n.NAMES[lang], function()
+		local misses = Probe.run(lang)
+		T.eq(#misses, 0, "untranslated: " .. table.concat(misses, " | "))
+		return "0 untranslated texts"
+	end)
+end
+T.test("languages list and upper-case for accents", "menu order, native names, Ukrainian and Latin accents", function()
+	T.eq(table.concat(I18n.languages(), ","), "ru,en,uk,es,pt,fr")
+	T.eq(I18n.upper("configuración"), "CONFIGURACIÓN"); T.eq(I18n.upper("їжак і ґанок"), "ЇЖАК І ҐАНОК"); T.eq(I18n.upper("ça"), "ÇA")
+	T.truthy(I18n.set("es")); T.eq(I18n.t("nav.crosshair") ~= "Crosshair", true)
+	I18n.set("en")
+end)
 T.test("translations keep placeholders intact", "every pattern template accepts as many values as it captures", function()
 	for _, rule in ipairs(Texts.patterns) do
 		local _, captures = string.gsub(rule[1], "%(", "")

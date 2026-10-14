@@ -41,13 +41,14 @@ local function clickAll(root)
 end
 
 -- run(): returns the sorted list of untranslated visible texts
-function Probe.run()
+function Probe.run(lang)
+	lang = lang or "ru"
 	T.fresh()
 	Mock.uninstall()
 	local game = Mock.install()
 	Services.clear()
 	local h = Hub.run({ skipLicense = true })
-	I18n.set("ru"); I18n.clearMisses()
+	I18n.set(lang); I18n.clearMisses()
 	Window.relocalize()
 	-- restarting the window module (a Diagnostics button) replaces the ScreenGui, so it is looked up fresh each time
 	local function GUI() return game.__services.CoreGui:FindFirstChild("MM2Hub") end
