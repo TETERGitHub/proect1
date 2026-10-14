@@ -1226,7 +1226,8 @@
   "UI framework with 6 themes, draggable/resizable window, search, favorites, recents.": "Інтерфейс з 6 темами, вікно можна рухати й змінювати, пошук, обране, нещодавні.",
   "Visuals: custom crosshair, camera controls, local lighting/colour filters.": "Візуал: власний приціл, керування камерою, локальне освітлення та фільтри.",
   "Local training range: target practice and physics stand (own objects only).": "Локальний полігон: мішені та фізичний стенд (лише власні об'єкти).",
-  "Tools: session timer, stopwatch, countdown timers, notes.": "Інструменти: таймер сесії, секундомір, зворотні таймери, нотатки."
+  "Tools: session timer, stopwatch, countdown timers, notes.": "Інструменти: таймер сесії, секундомір, зворотні таймери, нотатки.",
+  "done": "готово"
  },
  "patterns": [
   [

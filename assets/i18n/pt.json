@@ -1226,7 +1226,8 @@
   "UI framework with 6 themes, draggable/resizable window, search, favorites, recents.": "Interface com 6 temas, janela móvel e redimensionável, busca, favoritos, recentes.",
   "Visuals: custom crosshair, camera controls, local lighting/colour filters.": "Visual: mira própria, câmera, iluminação e filtros locais.",
   "Local training range: target practice and physics stand (own objects only).": "Campo de treino local: alvos e bancada de física (só objetos próprios).",
-  "Tools: session timer, stopwatch, countdown timers, notes.": "Ferramentas: tempo de sessão, cronômetro, timers, notas."
+  "Tools: session timer, stopwatch, countdown timers, notes.": "Ferramentas: tempo de sessão, cronômetro, timers, notas.",
+  "done": "pronto"
  },
  "patterns": [
   [

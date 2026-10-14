@@ -1069,6 +1069,11 @@ local exact = {
 	["attached to the root (static): the model has no bone information or the rig has no Motor6D rest pose"] = "привязано к корню (статично): у модели нет данных о костях или у рига нет позы покоя Motor6D",
 	["imported mesh"] = "импортированный меш",
 	-- Aura page and hit sounds
+	["done"] = "готово",
+	["Applied. Visible only to you."] = "Применено. Видно только вам.",
+	["Dynamic spread is on but the crosshair itself is off."] = "Динамический разброс включён, но сам прицел выключен.",
+	["Switches this sound off and clears its selection and volume. Your list and the other role are not touched."] = "Выключает этот звук и сбрасывает выбор и громкость. Ваш список и другая роль не меняются.",
+	["The applied look is removed and this page returns to its defaults. Saved presets and the other pages are not touched."] = "Применённый вид снимается, страница возвращается к значениям по умолчанию. Сохранённые пресеты и другие страницы не меняются.",
 	["Auto"] = "Авто",
 	["Font"] = "Шрифт",
 	["Auto: Montserrat for Russian and other non-English text (the default Gotham font has no Cyrillic letters in Roblox), the theme font for English. Pick another one if letters look uneven."] = "Авто: Montserrat для русского и других языков (у стандартного шрифта Gotham в Roblox нет русских букв), шрифт темы для английского. Выберите другой, если буквы выглядят неровно.",
@@ -1171,6 +1176,8 @@ local patterns = {
 	{ "^Delete '(.-)'%? This cannot be undone%.$", "Удалить «%s»? Это нельзя отменить." },
 	{ "^(.-) restarted$", "%s перезапущен" },
 	{ "^(.-) failed: (.+)$", "%s: ошибка: %s" },
+	{ "^Reset (.+)$", "Сбросить: %s" },
+	{ "^Default_(%d+)$", "Default_%s" },
 }
 
 local keep = {
@@ -1198,6 +1205,18 @@ local keep = {
 	["Delta"] = true,
 	["Lua"] = true,
 	["Luau"] = true,
+	["English"] = true,
+	["Русский"] = true,
+	["Українська"] = true,
+	["Español"] = true,
+	["Português"] = true,
+	["Français"] = true,
+	["Deutsch"] = true,
+	["Gotham"] = true,
+	["Montserrat"] = true,
+	["BuilderSans"] = true,
+	["Arial"] = true,
+	["SourceSans"] = true,
 }
 
 return { exact = exact, patterns = patterns, keep = keep }

@@ -1162,6 +1162,7 @@ local exact = {
 	["collidable"] = "collisionnable",
 	["crown"] = "couronne",
 	["debug"] = "debug",
+	["done"] = "terminé",
 	["dummy flung"] = "mannequin projeté",
 	["empty source"] = "source vide",
 	["error"] = "erreur",
