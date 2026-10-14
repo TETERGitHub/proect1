@@ -84,6 +84,8 @@ def tri_list(parts, cam, light):
 
 
 def render(parts, size=520, az=35, el=20, title=None, bg=(38, 40, 48), floor=False):
+    if isinstance(parts, dict):  # a mesh model: {"groups": [...]}
+        return raster(mesh_tris(parts["groups"]), size, az, el, title, bg)
     return raster(tri_list(parts, None, None), size, az, el, title, bg)
 
 
@@ -111,7 +113,9 @@ def raster(tris, size=520, az=35, el=20, title=None, bg=(38, 40, 48)):
     nrm = np.zeros((W, W, 3))
     emit = np.zeros((W, W))
     late = []
-    for t, pid, base, neon, metal, alpha in tris:
+    for item in tris:
+        t, pid, base, neon, metal, alpha = item[:6]
+        vn = item[6] if len(item) > 6 else None
         v0, v1, v2 = t
         n = np.cross(v1 - v0, v2 - v0)
         ln = np.linalg.norm(n)
@@ -144,8 +148,23 @@ def raster(tris, size=520, az=35, el=20, title=None, bg=(38, 40, 48)):
         z = l0 * d[0] + l1 * d[1] + l2 * d[2]
         lam = max(0.0, float(np.dot(n, key)))
         lam2 = max(0.0, float(np.dot(n, fill)))
+        pix_n = None
+        if vn is not None:
+            pn = l0[..., None] * vn[0] + l1[..., None] * vn[1] + l2[..., None] * vn[2]
+            pn /= np.maximum(np.linalg.norm(pn, axis=2, keepdims=True), 1e-9)
+            sgn = 1.0 if np.dot(n, cam) >= 0 else -1.0
+            pn = pn * (1.0 if np.dot(vn[0], cam) >= 0 or True else 1.0)
+            pix_n = pn
+            lam_a = np.clip(pn @ key, 0, 1)
+            lam2_a = np.clip(pn @ fill, 0, 1)
         if neon:
             c = np.clip(base * 0.8 + 70, 0, 255)
+        elif pix_n is not None:
+            c = base[None, None, :] * (0.5 + 0.55 * lam_a[..., None] + 0.22 * lam2_a[..., None]) + 14
+            if metal:
+                h = key + cam; h /= np.linalg.norm(h)
+                c = c + 255 * (np.clip(pix_n @ h, 0, 1) ** 18)[..., None] * 0.45
+            c = np.clip(c, 0, 255)
         else:
             c = base * (0.5 + 0.55 * lam + 0.22 * lam2) + 14
             if metal:
@@ -153,14 +172,14 @@ def raster(tris, size=520, az=35, el=20, title=None, bg=(38, 40, 48)):
                 c = c + 255 * (max(0.0, float(np.dot(n, h))) ** 18) * 0.45
             c = np.clip(c, 0, 255)
         if alpha < 0.99:
-            late.append((z, m, x0, y0, c, alpha, pid, n))
+            late.append((z, m, x0, y0, c if np.ndim(c) == 1 else c.mean(axis=(0, 1)), alpha, pid, n))
             continue
         sub = zbuf[y0:y1 + 1, x0:x1 + 1]
         win = m & (z < sub)
         sub[win] = z[win]
-        col[y0:y1 + 1, x0:x1 + 1][win] = c
+        col[y0:y1 + 1, x0:x1 + 1][win] = c[win] if np.ndim(c) == 3 else c
         ids[y0:y1 + 1, x0:x1 + 1][win] = pid
-        nrm[y0:y1 + 1, x0:x1 + 1][win] = n
+        nrm[y0:y1 + 1, x0:x1 + 1][win] = pix_n[win] if pix_n is not None else n
         emit[y0:y1 + 1, x0:x1 + 1][win] = 1.0 if neon else 0.0
     covered = ids >= 0
     # outlines: where the part id or the surface direction changes
@@ -202,12 +221,36 @@ def raster(tris, size=520, az=35, el=20, title=None, bg=(38, 40, 48)):
     return out
 
 
-def run_luau(kind, luau):
+def mesh_tris(groups):
+    """groups from tests/mesh_snapshot -> tri tuples with per-vertex normals (smooth shading)."""
+    tris = []
+    for pid, g in enumerate(groups):
+        V, N, F = [], [], []
+        for line in g["obj"].splitlines():
+            if line.startswith("v "):
+                V.append([float(x) for x in line.split()[1:4]])
+            elif line.startswith("vn "):
+                N.append([float(x) for x in line.split()[1:4]])
+            elif line.startswith("f "):
+                F.append([int(t.split("/")[0]) - 1 for t in line.split()[1:4]])
+        V = np.array(V) + np.array(g["center"]); N = np.array(N)
+        base = np.array(g["color"], dtype=float)
+        neon = bool(g.get("neon"))
+        metal = g["material"] in ("Metal", "Foil", "DiamondPlate")
+        alpha = 1.0 - float(g.get("transparency", 0))
+        if g["material"] == "Glass":
+            alpha = min(alpha, 0.55)
+        for f in F:
+            tris.append((V[f], pid, base, neon, metal, alpha, N[f]))
+    return tris
+
+
+def run_luau(kind, luau, mesh=False):
     from importlib import util
     sys.path.insert(0, str(ROOT / "tools"))
     import build
     p = build.build(True)
-    text = p.read_text(encoding="utf-8").replace('return __import("tests/runner")', 'MODEL_KIND = "%s"\nreturn __import("tests/model_snapshot")' % kind)
+    text = p.read_text(encoding="utf-8").replace('return __import("tests/runner")', 'MODEL_KIND = "%s"\nreturn __import("tests/%s")' % (kind, "mesh_snapshot" if mesh else "model_snapshot"))
     out = ROOT / "dist" / "model_snapshot.lua"
     out.write_text(text, encoding="utf-8")
     r = subprocess.run([luau, str(out)], capture_output=True, text=True)
@@ -216,7 +259,7 @@ def run_luau(kind, luau):
         sys.exit(1)
     models = []
     for line in r.stdout.splitlines():
-        if line.startswith("@@MODEL "):
+        if line.startswith("@@MODEL ") or line.startswith("@@MESH "):
             _, rest = line.split(" ", 1)
             name, js = rest.split(" ", 1)
             models.append((name, json.loads(js)))
@@ -238,18 +281,19 @@ def main():
     ap.add_argument("--el2", type=float, default=0)
     ap.add_argument("--pair", action="store_true", help="one sheet: every model as 3/4 view + side view, side by side")
     ap.add_argument("--views", action="store_true", help="one sheet per model: 3/4, side, front and top views")
+    ap.add_argument("--mesh", action="store_true", help="render the smooth OBJ meshes (data/Mesher) instead of the Part primitives")
     ap.add_argument("--only", default="", help="comma separated model ids")
     ap.add_argument("--size", type=int, default=520)
     a = ap.parse_args()
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    models = run_luau(a.kind, a.luau)
+    models = run_luau(a.kind, a.luau, a.mesh)
     if a.only:
         keep = set(a.only.split(","))
         models = [m for m in models if m[0] in keep]
     if a.pair:
         rows = []
         for name, data in models:
-            parts = data["parts"]
+            parts = data if "groups" in data else data["parts"]
             rows.append([render(parts, a.size, az, el, "%s" % name if i == 0 else None) for i, (az, el) in enumerate(((a.az1, a.el1), (a.az2, a.el2)))])
         sheet = Image.new("RGB", (2 * a.size, len(rows) * a.size))
         for r, pair in enumerate(rows):
@@ -260,7 +304,7 @@ def main():
         return
     if a.views:
         for name, data in models:
-            parts = data["parts"]
+            parts = data if "groups" in data else data["parts"]
             shots = [render(parts, a.size, az, el, "%s  az=%d el=%d" % (name, az, el)) for az, el in ((35, 14), (90, 0), (0, 0), (35, 80))]
             sheet = Image.new("RGB", (2 * a.size, 2 * a.size))
             for i, im in enumerate(shots):
@@ -270,7 +314,8 @@ def main():
         return
     imgs = []
     for name, data in models:
-        img = render(data["parts"], a.size, a.az, a.el, "%s  (%d parts)" % (name, len(data["parts"])))
+        payload = data if "groups" in data else data["parts"]
+        img = render(payload, a.size, a.az, a.el, "%s  (%d %s)" % (name, len(data["groups"]) if "groups" in data else len(data["parts"]), "groups" if "groups" in data else "parts"))
         img.save(out / (name.replace("/", "_") + ".png"))
         imgs.append(img)
     if imgs:

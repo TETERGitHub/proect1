@@ -23,6 +23,7 @@ local Lib = import("data/ModelLib")
 local Meshes = import("features/MeshModels")
 local Maid = import("core/Maid")
 local Probe = import("features/AudioProbe")
+local MeshCache = import("features/MeshCache")
 
 local notify, visible, auto, section, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.dataList, Kit.infoLine
 
@@ -120,6 +121,21 @@ local function previewCard(page, kind)
 	end
 
 	local obj = { view = view }
+	-- meshStatus() -> text about how the previewed model is drawn (smooth mesh or the simple Part fallback and why)
+	function obj.meshStatus()
+		local m = view.model
+		if not m then
+			return "no model"
+		end
+		local meshed = m:GetAttribute("mesh")
+		if meshed == true then
+			return "smooth meshes"
+		end
+		return "simple parts: " .. tostring(m:GetAttribute("meshNote") or "no mesh information")
+	end
+	page.maid:Give(MeshCache.Ready:Connect(function()
+		view.dirty = true
+	end))
 	function obj.rebuild()
 		rebuild()
 	end
@@ -512,6 +528,9 @@ local function buildCustom(kind, label, intro)
 				end })
 			end },
 		})
+		local fnModel = infoLine(page, "Model drawn as", function()
+			return preview.meshStatus()
+		end)
 		local fnStatus = infoLine(page, "Status", function()
 			local st = Cosmetics.status()[STATUS_KEY[kind]] or "off"
 			if Settings.get(Custom.key(kind, "enabled")) and st == "off" then
@@ -522,10 +541,12 @@ local function buildCustom(kind, label, intro)
 		local h = Perf.every("ui.custom.status." .. kind, 2, function()
 			if visible(page.id) then
 				fnStatus()
+				fnModel()
 			end
 		end)
 		page.maid:Give(h.Cancel)
 		fnStatus()
+		fnModel()
 
 		-- style categories
 		page:section("Style")
@@ -612,6 +633,7 @@ local function buildCustom(kind, label, intro)
 		auto(page, Custom.key(kind, "glowAmount"))
 		auto(page, Custom.key(kind, "decor"))
 		auto(page, Custom.key(kind, "effects"))
+		auto(page, "custom.useMeshes")
 		fitSection(page, kind)
 		-- models made elsewhere (for example in Blender and uploaded to Roblox): the older single-source skin of the Cosmetics page
 		page:section("Your own model (Blender / Studio)")

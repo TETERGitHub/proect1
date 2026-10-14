@@ -136,6 +136,7 @@ K.crystal = { id = "crystal", name = "Crystal", category = "Crystal", hold = { 0
 	for _, part in ipairs(b.parts) do
 		if part.poly == "Blade" then part.decor = true end
 	end
+	b.shapes[#b.shapes].decor = true
 	b:box("Core", "glow", 0.07, 0.07, 1.8, 0, 0, -1.0)
 	-- crystal shards growing out of the blade at different angles
 	local shards = { { -0.5, 0.22, 24, 0.5 }, { -0.95, 0.26, -18, 0.55 }, { -1.4, 0.24, 30, 0.42 }, { -0.7, -0.22, 160, 0.42 }, { -1.2, -0.2, 200, 0.4 } }

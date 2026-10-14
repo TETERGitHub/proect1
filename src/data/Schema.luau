@@ -330,6 +330,9 @@ for _, k in ipairs(CUSTOM_KINDS) do
 	end
 	add(with("custom", module, list))
 end
+add(with("custom", "CustomMeshes", {
+	bool("custom.useMeshes", true, "Smooth meshes", "Draws the built-in models as smooth meshes (written to MM2Hub/meshcache/ and loaded with getcustomasset). When the executor cannot, the page says why and the simple Part version is used instead."),
+}))
 
 -- Kill sounds (two independent settings) -----------------------------------------------------------------------------------
 -- Murderer and Sheriff never share a key. `pick` is what the list has selected (and what Preview plays); `source` is

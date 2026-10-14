@@ -38,7 +38,7 @@ local Builder = {}
 Builder.__index = Builder
 
 function Kit.new()
-	return setmetatable({ parts = {} }, Builder)
+	return setmetatable({ parts = {}, shapes = {} }, Builder)
 end
 
 local function add(b, name, shape, role, sx, sy, sz, x, y, z, rx, ry, rz)
@@ -186,8 +186,16 @@ local function triangulate(pts)
 	return out
 end
 
+Kit.triangulate = triangulate
+
 -- poly(name, role, thick, x, pts, material?) -> number of triangles. All parts share role and material ("mat" = the user's material).
 function Builder:poly(name, role, thick, x, pts, material)
+	local copy = {}
+	for i, p in ipairs(pts) do
+		copy[i] = { p[1], p[2] }
+	end
+	-- the outline is kept so the smooth-mesh builder (data/Mesher) can extrude it with rounded edges instead of using the wedge pairs
+	table.insert(self.shapes, { kind = "poly", name = name, role = role, thick = thick, x = x, pts = copy, m = material or "SmoothPlastic" })
 	local tris = triangulate(pts)
 	for i, t in ipairs(tris) do
 		local before = #self.parts
@@ -240,41 +248,51 @@ end
 --   { name, shape ("Block"|"Ball"|"Cylinder"|"Wedge"), size = {x,y,z}, pos = {x,y,z}, rot = {x,y,z} (deg), color = {r,g,b},
 --     material (string), transparency (0..0.6), neon (bool) }
 -- Glow parts become Neon only while look.glowAmount > 0.05; otherwise a dimmed plastic so the shape still reads.
+-- partLook(role, material, decor, look) -> color {r,g,b}, material string, transparency, neon (what one part with this role looks like)
+-- Glow parts become Neon only while look.glowAmount > 0.05; otherwise a dimmed plastic so the shape still reads.
+function Kit.partLook(role, pmat, decor, look)
+	look = look or Kit.defaultLook()
+	local glowAmount = look.glowAmount or 0
+	local color, material, transparency, neon = nil, pmat, 0, false
+	if role == "glow" then
+		local c = look.glow or { 60, 200, 255 }
+		if glowAmount > 0.05 then
+			color, material, neon = { clamp255(c[1]), clamp255(c[2]), clamp255(c[3]) }, "Neon", true
+		else
+			color, material = scaleColor(c, 0.45), "SmoothPlastic"
+		end
+	elseif role == "primary" or role == "secondary" or role == "grip" or role == "detail" then
+		local c = look[role] or Kit.FIXED.steel
+		color = { clamp255(c[1]), clamp255(c[2]), clamp255(c[3]) }
+		if pmat == "mat" then
+			material = look.material or "SmoothPlastic"
+		end
+	else
+		local c = Kit.FIXED[role] or Kit.FIXED.steel
+		color = { c[1], c[2], c[3] }
+	end
+	if material == "mat" then
+		material = "SmoothPlastic"
+	end
+	if decor then
+		transparency = math.clamp(look.decor or 0, 0, 0.6)
+	end
+	return color, material, transparency, neon
+end
+
+-- resolve(model, look, opts) -> list of plain parts:
+--   { name, shape ("Block"|"Ball"|"Cylinder"|"Wedge"), size = {x,y,z}, pos = {x,y,z}, rot = {x,y,z} (deg), color = {r,g,b},
+--     material (string), transparency (0..0.6), neon (bool), role, poly (outline name for wedge pairs) }
 function Kit.resolve(model, look, opts)
 	look = look or Kit.defaultLook()
 	local flip = opts and opts.wedgeFlip or false
 	local out = {}
-	local glowAmount = look.glowAmount or 0
 	for _, p in ipairs(model.parts) do
-		local color, material, transparency, neon = nil, p.m, 0, false
-		local role = p.role
-		if role == "glow" then
-			local c = look.glow or { 60, 200, 255 }
-			if glowAmount > 0.05 then
-				color, material, neon = { clamp255(c[1]), clamp255(c[2]), clamp255(c[3]) }, "Neon", true
-			else
-				color, material = scaleColor(c, 0.45), "SmoothPlastic"
-			end
-		elseif role == "primary" or role == "secondary" or role == "grip" or role == "detail" then
-			local c = look[role] or Kit.FIXED.steel
-			color = { clamp255(c[1]), clamp255(c[2]), clamp255(c[3]) }
-			if p.m == "mat" then
-				material = look.material or "SmoothPlastic"
-			end
-		else
-			local c = Kit.FIXED[role] or Kit.FIXED.steel
-			color = { c[1], c[2], c[3] }
-		end
-		if material == "mat" then
-			material = "SmoothPlastic"
-		end
-		if p.decor then
-			transparency = math.clamp(look.decor or 0, 0, 0.6)
-		end
+		local color, material, transparency, neon = Kit.partLook(p.role, p.m, p.decor, look)
 		out[#out + 1] = {
 			name = p.n, shape = p.s, size = { p.sz[1], p.sz[2], p.sz[3] }, pos = { p.p[1], p.p[2], p.p[3] },
 			rot = { p.r[1], p.r[2], p.r[3] }, color = color, material = material, transparency = transparency, neon = neon,
-			flip = (p.s == "Wedge" and flip) or nil,
+			flip = (p.s == "Wedge" and flip) or nil, role = p.role, poly = p.poly,
 		}
 	end
 	return out

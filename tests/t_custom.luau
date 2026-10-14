@@ -683,3 +683,180 @@ T.test("a kept sound survives the probe and the report is readable", "keep = tru
 	T.truthy(string.find(text, "✓ sound", 1, true) and string.find(text, "✓ signal", 1, true))
 	rep.sound:Destroy(); Mock.uninstall()
 end)
+
+T.suite("Smooth meshes")
+local Mesher = import("data/Mesher")
+local Kit = import("data/ModelKit")
+local MeshCache = import("features/MeshCache")
+T.test("every model meshes cleanly", "valid indices, unit normals, no NaN, sane triangle counts, bounds match the parts", function()
+	local totalTris, models = 0, 0
+	for _, kind in ipairs(Lib.kinds()) do
+		for _, id in ipairs(Lib.ids(kind)) do
+			local model = Lib.model(kind, id)
+			local groups = Mesher.build(model)
+			T.truthy(#groups >= 1 and #groups <= 14, id .. " groups " .. #groups)
+			local keys, tris = {}, 0
+			for _, g in ipairs(groups) do
+				T.falsy(keys[g.key], id .. " duplicate group " .. g.key); keys[g.key] = true
+				local m = g.mesh
+				T.truthy(#m.v == #m.n and #m.f > 0, id)
+				for i, p in ipairs(m.v) do
+					for k = 1, 3 do T.truthy(p[k] == p[k] and math.abs(p[k]) < 30, id .. " vertex") end
+					local n = m.n[i]
+					local len = math.sqrt(n[1] ^ 2 + n[2] ^ 2 + n[3] ^ 2)
+					T.truthy(math.abs(len - 1) < 1e-3, id .. " normal length " .. len)
+				end
+				for _, f in ipairs(m.f) do
+					T.truthy(f[1] ~= f[2] and f[2] ~= f[3] and f[1] ~= f[3], id .. " degenerate face")
+					for k = 1, 3 do T.truthy(f[k] >= 1 and f[k] <= #m.v, id .. " index") end
+				end
+				tris += #m.f
+			end
+			T.truthy(tris >= 30 and tris <= 14000, id .. " has " .. tris .. " triangles")
+			totalTris += tris; models += 1
+			-- the mesh must cover the same space as the Part version (rounding and outlines shrink it a little, never grow it much)
+			local lo, hi = Kit.bounds(Lib.parts(kind, id))
+			local mlo, mhi = { 1e9, 1e9, 1e9 }, { -1e9, -1e9, -1e9 }
+			for _, g in ipairs(groups) do
+				for _, p in ipairs(g.mesh.v) do
+					for k = 1, 3 do mlo[k] = math.min(mlo[k], p[k]); mhi[k] = math.max(mhi[k], p[k]) end
+				end
+			end
+			for k = 1, 3 do
+				T.truthy(mlo[k] >= lo[k] - 0.15 and mhi[k] <= hi[k] + 0.15, string.format("%s axis %d mesh [%.2f, %.2f] vs parts [%.2f, %.2f]", id, k, mlo[k], mhi[k], lo[k], hi[k]))
+			end
+		end
+	end
+	return models .. " models, " .. totalTris .. " triangles"
+end)
+T.test("meshed solids face outward", "a rounded box, a cylinder, a ball and an extruded outline are closed and outward", function()
+	local function outward(model)
+		local bad, total = 0, 0
+		for _, g in ipairs(Mesher.build(model)) do
+			local m = g.mesh
+			for _, f in ipairs(m.f) do
+				local a, b, c = m.v[f[1]], m.v[f[2]], m.v[f[3]]
+				local nx = (b[2] - a[2]) * (c[3] - a[3]) - (b[3] - a[3]) * (c[2] - a[2])
+				local ny = (b[3] - a[3]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[3] - a[3])
+				local nz = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1])
+				local cx, cy, cz = (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3, (a[3] + b[3] + c[3]) / 3
+				total += 1
+				if nx * cx + ny * cy + nz * cz <= 0 then bad += 1 end
+			end
+		end
+		return bad, total
+	end
+	local b = Kit.new(); b:box("b", "primary", 1, 2, 3); b:cylX("c", "steel", 2, 1, 0, 0, 0); b:ball("s", "glow", 1.5, 0, 0, 0)
+	local bad, total = outward(b)
+	T.eq(bad, 0, bad .. " of " .. total .. " faces point inward")
+	local o = Kit.new(); o:poly("p", "primary", 0.4, 0, { { -1, -0.5 }, { 1, -0.5 }, { 1, 0.5 }, { 0, 0.9 }, { -1, 0.5 } })
+	bad, total = outward(o)
+	T.eq(bad, 0, bad .. " of " .. total .. " outline faces point inward")
+	T.truthy(total > 40)
+end)
+T.test("an OBJ carries every vertex, normal and face once", "text format, 1-based valid indices, bbox-centred", function()
+	local b = Kit.new(); b:box("b", "primary", 1, 2, 3, 5, 5, 5)
+	local g = Mesher.build(b)[1]
+	local obj, center, size = Mesher.toObj(g.mesh)
+	local nv, nn, nf = 0, 0, 0
+	for line in string.gmatch(obj, "[^\n]+") do
+		if string.sub(line, 1, 2) == "v " then nv += 1 elseif string.sub(line, 1, 3) == "vn " then nn += 1
+		elseif string.sub(line, 1, 2) == "f " then
+			nf += 1
+			for a in string.gmatch(line, "(%d+)/%d+/%d+") do T.truthy(tonumber(a) >= 1 and tonumber(a) <= #g.mesh.v) end
+		end
+	end
+	T.eq(nv, #g.mesh.v); T.eq(nn, #g.mesh.n); T.eq(nf, #g.mesh.f)
+	T.truthy(math.abs(center[1] - 5) < 1e-6 and math.abs(size[1] - 1) < 1e-3 and math.abs(size[3] - 3) < 1e-3)
+end)
+T.test("recolouring never changes the meshes", "groups are by role, colour comes from the look", function()
+	local a = Mesher.build(Lib.model("gun", "revolver"))
+	local look = Lib.styleLook("gun", "revolver"); look.primary = { 1, 2, 3 }; look.glowAmount = 0
+	local c1 = Kit.partLook("primary", "mat", false, Lib.styleLook("gun", "revolver"))
+	local c2 = Kit.partLook("primary", "mat", false, look)
+	T.truthy(c1[1] ~= c2[1])
+	local _, m1, _, n1 = Kit.partLook("glow", "SmoothPlastic", false, Lib.styleLook("gun", "revolver"))
+	local _, m2, _, n2 = Kit.partLook("glow", "SmoothPlastic", false, look)
+	T.eq(m1, "Neon"); T.truthy(n1); T.eq(m2, "SmoothPlastic"); T.falsy(n2)
+	T.eq(#a, #Mesher.build(Lib.model("gun", "revolver")))
+end)
+local function meshWorld(files, opts)
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall()
+	if opts and opts.noFiles then T.fresh() else T.fresh({ lookup = fakeFiles(files) }) end
+	local game = Mock.install(); Services.clear()
+	if not (opts and opts.noFiles) then Env.setLookup(fakeFiles(files)) end
+	MeshCache.reset()
+	if opts and opts.loadCheck then MeshCache._setLoadCheck(opts.loadCheck) end
+	return game
+end
+T.test("meshes are written once and verified before use", "files, status ready, second request does not rewrite", function()
+	local files = {}
+	meshWorld(files)
+	T.eq((MeshCache.status("gun", "pistol")), "none")
+	MeshCache.request("gun", "pistol")
+	T.eq((MeshCache.status("gun", "pistol")), "ready")
+	local groups = MeshCache.groups("gun", "pistol")
+	T.truthy(#groups >= 3)
+	local n = 0
+	for path, text in pairs(files) do
+		if string.find(path, "MM2Hub/meshcache/gun_pistol_v", 1, true) then n += 1; T.truthy(#text > 500) end
+	end
+	T.eq(n, #groups)
+	local writes = 0
+	local orig = files
+	MeshCache.reset(); MeshCache.request("gun", "pistol")
+	T.eq((MeshCache.status("gun", "pistol")), "ready")
+	Mock.uninstall()
+end)
+T.test("an executor that cannot load the mesh falls back and says why", "load failure, no file API, no getcustomasset, setting off", function()
+	local files = {}
+	meshWorld(files, { loadCheck = function() return false, "the engine did not load the mesh" end })
+	MeshCache.request("gun", "pistol")
+	local st, why = MeshCache.status("gun", "pistol")
+	T.eq(st, "failed"); T.truthy(string.find(why, "did not load", 1, true))
+	Mock.uninstall()
+	meshWorld({}, { noFiles = true })
+	MeshCache.request("gun", "pistol")
+	st, why = MeshCache.status("gun", "pistol")
+	T.eq(st, "failed"); T.truthy(string.find(why, "file API", 1, true), tostring(why))
+	Mock.uninstall()
+	T.fresh({ lookup = function(name) if name == "writefile" or name == "readfile" or name == "isfile" then return function() return nil end end return nil end })
+	Mock.install(); Services.clear(); MeshCache.reset()
+	MeshCache.request("knife", "classic")
+	st, why = MeshCache.status("knife", "classic")
+	T.eq(st, "failed"); T.truthy(string.find(why, "getcustomasset", 1, true), tostring(why))
+	Mock.uninstall()
+end)
+T.test("a ready mesh model is what the tool skin uses", "MeshParts coloured by role, Part fallback while preparing or when switched off", function()
+	local files = {}
+	local game = meshWorld(files)
+	local h = Hub.run({ skipLicense = true })
+	local tool = addTool(game, "Gun")
+	Settings.set("custom.gunModel", "pistol"); Custom.apply("gun"); frames(80)
+	local skin = tool:FindFirstChild("MM2HubSkin")
+	T.truthy(skin ~= nil)
+	T.eq(skin:GetAttribute("mesh"), true, "the skin was rebuilt as meshes once they were ready")
+	local meshParts, plain = 0, 0
+	for _, d in ipairs(skin:GetChildren()) do
+		if d.ClassName == "MeshPart" then meshParts += 1; T.truthy(string.find(d.MeshId, "meshcache", 1, true)) elseif d.ClassName == "Part" and d.Name ~= "Root" then plain += 1 end
+	end
+	T.truthy(meshParts >= 3); T.eq(plain, 0)
+	T.truthy(string.find(Cosmetics.status().gunMesh, "smooth meshes", 1, true), tostring(Cosmetics.status().gunMesh))
+	-- switched off: the simple version is built and the status says so
+	Settings.set("custom.useMeshes", false); frames(80)
+	skin = tool:FindFirstChild("MM2HubSkin")
+	T.eq(skin:GetAttribute("mesh"), false); T.truthy(string.find(Cosmetics.status().gunMesh, "simple parts", 1, true))
+	done(h)
+end)
+T.test("a failed mesh load leaves a working Part skin and an explanation", "fallback with a readable reason", function()
+	local files = {}
+	local game = meshWorld(files, { loadCheck = function() return false, "executor refused the OBJ" end })
+	local h = Hub.run({ skipLicense = true })
+	local tool = addTool(game, "Gun")
+	Custom.apply("gun"); frames(80)
+	local skin = tool:FindFirstChild("MM2HubSkin")
+	T.truthy(skin ~= nil); T.eq(skin:GetAttribute("mesh"), false)
+	T.truthy(string.find(Cosmetics.status().gunMesh, "executor refused the OBJ", 1, true), tostring(Cosmetics.status().gunMesh))
+	done(h)
+end)

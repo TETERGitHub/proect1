@@ -19,6 +19,8 @@ local Logger = import("core/Logger")
 local Lib = import("data/ModelLib")
 local Custom = import("features/CustomLogic")
 local Meshes = import("features/MeshModels")
+local MeshCache = import("features/MeshCache")
+local Kit = import("data/ModelKit")
 
 local Cosmetics = {}
 
@@ -237,6 +239,47 @@ local function addEffects(model, kind, look, slotId)
 	end
 end
 
+-- buildSmooth(kind, id, look) -> Model | nil, reason. The smooth-mesh version of a built-in model (features/MeshCache); nil unless the meshes are ready.
+local function buildSmooth(kind, id, look)
+	if not MeshCache.enabled() then
+		return nil, "smooth meshes are switched off"
+	end
+	local st, detail = MeshCache.status(kind, id)
+	if st == "none" then
+		MeshCache.request(kind, id)
+		return nil, "meshes are being prepared"
+	elseif st == "loading" then
+		return nil, "meshes are being prepared"
+	elseif st == "failed" then
+		return nil, detail
+	end
+	local groups = MeshCache.groups(kind, id)
+	local model = Instance.new("Model")
+	model.Name = "Skin_" .. id
+	local root = newRoot(model)
+	for i, g in ipairs(groups) do
+		local color, material, transparency = Kit.partLook(g.role, g.material, g.decor, look)
+		local ok, part = pcall(function()
+			local mp = Instance.new("MeshPart")
+			mp.MeshId = g.url
+			return mp
+		end)
+		if not ok then
+			model:Destroy()
+			return nil, "MeshPart could not be created: " .. tostring(part)
+		end
+		part.Name = "Mesh" .. i
+		part.Size = Vector3.new(g.size[1], g.size[2], g.size[3])
+		part.CFrame = root.CFrame * CFrame.new(g.center[1], g.center[2], g.center[3])
+		part.Color = Color3.fromRGB(color[1], color[2], color[3])
+		part.Material = Enum.Material[material] or Enum.Material.SmoothPlastic
+		part.Transparency = transparency or 0
+		part.Parent = model
+	end
+	weldAll(model)
+	return model
+end
+
 -- buildCustom(kind, id, look, slotId) -> Model (root at the origin, parts welded) | nil, err
 local function buildCustom(kind, id, look, slotId)
 	local imported = string.match(tostring(id), "^import:([%w_]+)$")
@@ -251,11 +294,18 @@ local function buildCustom(kind, id, look, slotId)
 	if not Lib.has(kind, id) then
 		return nil, "unknown model '" .. tostring(id) .. "'"
 	end
-	local model = Instance.new("Model")
-	model.Name = "Skin_" .. id
-	local root = newRoot(model)
-	instantiate(model, root, Lib.parts(kind, id, look))
-	weldAll(model)
+	local model, why = buildSmooth(kind, id, look)
+	if model then
+		model:SetAttribute("mesh", true)
+	else
+		model = Instance.new("Model")
+		model.Name = "Skin_" .. id
+		local root = newRoot(model)
+		instantiate(model, root, Lib.parts(kind, id, look))
+		weldAll(model)
+		model:SetAttribute("mesh", false)
+		model:SetAttribute("meshNote", tostring(why))
+	end
 	addEffects(model, kind, look, slotId)
 	return model
 end
@@ -278,10 +328,18 @@ function Cosmetics.buildPreview(kind, id, look)
 	if not Lib.has(kind, id) then
 		return nil, "unknown model '" .. tostring(id) .. "'"
 	end
-	local model = Instance.new("Model")
-	model.Name = "Preview_" .. id
-	local root = newRoot(model)
-	instantiate(model, root, Lib.parts(kind, id, look))
+	local model, why = buildSmooth(kind, id, look)
+	if model then
+		model.Name = "Preview_" .. id
+		model:SetAttribute("mesh", true)
+	else
+		model = Instance.new("Model")
+		model.Name = "Preview_" .. id
+		local root = newRoot(model)
+		instantiate(model, root, Lib.parts(kind, id, look))
+		model:SetAttribute("mesh", false)
+		model:SetAttribute("meshNote", tostring(why))
+	end
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
@@ -459,6 +517,9 @@ local function placeSkin(kind, text, anchorPart, scale, offset, rotY, parent)
 	end
 	local skin = tpl:Clone()
 	skin.Name = "MM2HubSkin"
+	for _, attr in ipairs({ "mesh", "meshNote" }) do
+		skin:SetAttribute(attr, tpl:GetAttribute(attr)) -- how the template was built (smooth meshes or simple parts, and why)
+	end
 	pcall(function()
 		skin:ScaleTo(scale)
 	end)
@@ -559,6 +620,8 @@ local function applyTools(slotName, slot)
 					hideOriginals(tool, rec)
 					list[tool] = rec
 					state.status[slotName] = "applied"
+					local meshed = skin:GetAttribute("mesh")
+					state.status[slotName .. "Mesh"] = meshed == true and "smooth meshes" or (meshed == false and ("simple parts: " .. tostring(skin:GetAttribute("meshNote"))) or "")
 				elseif pending then
 					state.status[slotName] = "loading model..."
 				else
@@ -721,6 +784,11 @@ local function applyCustomChar()
 		hideAvatar(char, rec)
 	end
 	state.status.customChar = #problems > 0 and ("error: " .. table.concat(problems, "; ")) or "applied"
+	local meshN, partN = 0, 0
+	for _, sk in ipairs(rec.skins) do
+		if sk:GetAttribute("mesh") == true then meshN += 1 else partN += 1 end
+	end
+	state.status.customCharMesh = meshN > 0 and partN == 0 and "smooth meshes" or (partN > 0 and "simple parts (meshes unavailable, see the model status above)" or "")
 end
 
 local function applyBody()
@@ -856,6 +924,7 @@ function Cosmetics.start(ctx)
 			end
 		end
 		table.clear(cache)
+		MeshCache.reset()
 		state = nil
 	end)
 	for _, key in ipairs(Settings.keys({ category = "cosmetics" })) do
@@ -902,6 +971,16 @@ function Cosmetics.start(ctx)
 			end
 		end))
 	end
+	ctx.maid:Give(MeshCache.Ready:Connect(function()
+		if state then
+			state.needsReset = true -- meshes became ready (or failed): rebuild the skins so they use them
+		end
+	end))
+	ctx.maid:Give(Settings.observe("custom.useMeshes", function()
+		if state then
+			state.needsReset = true
+		end
+	end))
 	local h = Perf.every("cosmetics.scan", 2, function()
 		if not state then
 			return

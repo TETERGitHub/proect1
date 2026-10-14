@@ -1056,9 +1056,19 @@ local exact = {
 	["No check run yet. Press \"Check audio\" or \"Play preview\"."] = "Проверка ещё не запускалась. Нажмите «Проверить звук» или «Прослушать».",
 	["No check run yet. Press \"Check audio\"."] = "Проверка ещё не запускалась. Нажмите «Проверить звук».",
 	["The engine plays this sound."] = "Движок воспроизводит этот звук.",
+	["Draws the built-in models as smooth meshes (written to MM2Hub/meshcache/ and loaded with getcustomasset). When the executor cannot, the page says why and the simple Part version is used instead."] = "Рисует встроенные модели гладкими мешами (записываются в MM2Hub/meshcache/ и загружаются через getcustomasset). Если инжектор не умеет, страница сообщит почему, и вместо этого используется простая версия из деталей.",
+	["Smooth meshes"] = "Гладкие меши",
+	["Model drawn as"] = "Модель нарисована как",
+	["smooth meshes"] = "гладкие меши",
+	["simple parts: meshes are being prepared"] = "простые детали: меши готовятся",
+	["simple parts: no mesh information"] = "простые детали: нет сведений о мешах",
+	["simple parts: this executor has no file API (writefile/readfile/isfile), so meshes cannot be written"] = "простые детали: у этого инжектора нет файлового API (writefile/readfile/isfile), поэтому меши записать нельзя",
+	["simple parts: getcustomasset is not available in this executor"] = "простые детали: в этом инжекторе нет getcustomasset",
+	["simple parts: smooth meshes are switched off"] = "простые детали: гладкие меши выключены",
 }
 
 local patterns = {
+	{ "^simple parts: (.+)$", "простые детали: %s" },
 	{ "^(%d+) sound%(s%) heard%.$", "Услышано звуков: %s." },
 	{ "^'(.-)' added to (%a+)%.$", "«%s» добавлено в группу %s." },
 	{ "^(%d+) imported model%(s%) found%.$", "Найдено импортированных моделей: %s." },
