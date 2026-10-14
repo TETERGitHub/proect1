@@ -14,8 +14,8 @@ shapes and colours of the data in `src/data/Models*.luau`. They are NOT Roblox r
 
 | Page (nav group "Customize") | Models | Per-page settings | Module |
 |---|---|---|---|
-| Custom gun | 8 (Revolver, Compact, Tactical, Plasma, Raygun, Slim, Pump, Cannon) | colours (5), material, glow, decor transparency, effects, fit, presets | `ui/PagesCustom`, `features/CustomLogic`, `features/Cosmetics` |
-| Custom knife | 8 (Classic, Tanto, Karambit, Dagger, Kris, Crystal, Slim, Cleaver) | same, **separate** from the gun | same |
+| Custom gun | 9 placeholder shapes (Revolver, Compact, Tactical, Plasma, Raygun, Slim, Pump, Cannon, Sniper) + your imported meshes | colours (5), material, glow, decor transparency, effects, fit, presets | `ui/PagesCustom`, `features/CustomLogic`, `features/Cosmetics` |
+| Custom knife | 9 placeholder shapes (Classic, Tanto, Karambit, Dagger, Kris, Crystal, Slim, Cleaver, Katana) + your imported meshes | same, **separate** from the gun | same |
 | Custom character | 8 costumes + 12 accessories (head / back / aura) | same + slots | same |
 | Murderer kill sound | your own list | enabled, volume, selection, applied sound | `features/KillSounds`, `features/KillEvents` |
 | Sheriff kill sound | your own list | the same keys under another name | same |
@@ -51,6 +51,15 @@ studs). Clicking, swinging or shooting alone never plays anything; a death witho
 fires at most one event (per victim and role). The training range reports its own target kills as `sheriff` (source `training`); the "Test event" button
 sends a labelled `test` event through the same pipeline so the sound can be checked. If you are not the one who got the kill but used a tool at the right
 moment next to the victim, the sound can still play: it is a local effect, not evidence.
+
+## Real meshes, bundled sounds and game audio (added later)
+
+* **Imported meshes**: see `IMPORT_MODELS.md` (`tools/convert_mesh.py`, `features/MeshModels`). The primitive shapes are placeholders only.
+* **Bundled sounds**: eight files supplied by the owner (`assets/sounds`) are in both kill-sound lists; they are written to `MM2Hub/sounds/` on first use.
+* **Game audio** (page "Game audio", `features/GameAudio`): silence the game's own kill / gun shot / reload / knife sounds on your client (kill sounds
+  are silenced automatically while a custom kill sound is on), a **Learn** mode that lists the sounds that actually played, and your own round-end song.
+  Which sounds are affected is decided by keywords; the defaults are guesses and unverified. The hub does not fetch music (SoundCloud etc.): put an
+  mp3 you may use into `MM2Hub/sounds/`.
 
 ## What is NOT in here, and why
 

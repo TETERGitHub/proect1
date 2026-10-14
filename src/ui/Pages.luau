@@ -298,6 +298,7 @@ function Pages.registerAll()
 		{ "killmurderer", "knife", Custom.murderer, "The sound for a confirmed kill as murderer. Independent of the sheriff sound." },
 		{ "killsheriff", "gun", Custom.sheriff, "The sound for a confirmed kill as sheriff. Independent of the murderer sound." },
 		{ "music", "music", Game.music, "Your own playlist, played on your client." },
+		{ "gameaudio", "speaker", Game.gameaudio, "Silence the game's own sounds on your client, learn their names and play your own round-end song." },
 		{ "sounds", "speaker", Game.sounds, "Custom sounds for your gun, knife, hits and the interface." },
 		{ "perf", "gauge", System.perf, "Frame rate, the low load profile and where the hub spends time." },
 		{ "tools", "timer", System.tools, "Session timer, stopwatch, countdowns and notes." },

@@ -185,7 +185,7 @@ T.test("an applied gun look builds, welds, recolours and resets", "tool skin app
 	for _, d in ipairs(tool:FindFirstChild("MM2HubSkin"):GetDescendants()) do
 		local c = d.Color
 		local r = c and (c.r or c.R)
-		if d:IsA("BasePart") and d.Name == "Slide" and r and (r >= 200 or (r <= 1 and r > 0.9)) then red = true end
+		if d:IsA("BasePart") and string.find(d.Name, "^Slide") and r and (r >= 200 or (r <= 1 and r > 0.9)) then red = true end
 	end
 	T.truthy(red, "new colour is on the model")
 	Custom.reset("gun"); frames(60)
@@ -265,7 +265,7 @@ end)
 T.test("the library is per role and validated", "add/remove/pick are separate for Murderer and Sheriff", function()
 	T.fresh()
 	T.truthy(KillSounds.addSound("murderer", "Boom", "asset:111"))
-	T.eq(#KillSounds.library("sheriff"), 0)
+	T.eq(#KillSounds.userLibrary("sheriff"), 0)
 	T.falsy((KillSounds.addSound("murderer", "Boom", "asset:222")), "duplicate name")
 	T.falsy((KillSounds.addSound("murderer", "", "asset:1"))); T.falsy((KillSounds.addSound("murderer", "x", "proc:neon")))
 	T.falsy((KillSounds.addSound("murderer", "x", "file:../evil.mp3"))); T.falsy((KillSounds.addSound("murderer", "x", "garbage")))
@@ -274,10 +274,12 @@ T.test("the library is per role and validated", "add/remove/pick are separate fo
 	T.truthy(KillSounds.pick("murderer", "asset:111"))
 	T.eq(Settings.get("ksound.sheriffPick"), "")
 	for i = 1, KillSounds.MAX_ENTRIES do KillSounds.addSound("murderer", "S" .. i, "asset:" .. (1000 + i)) end
-	T.eq(#KillSounds.library("murderer"), KillSounds.MAX_ENTRIES)
-	T.truthy(KillSounds.removeSound("murderer", 1)); T.eq(Settings.get("ksound.murdererPick"), "")
+	T.eq(#KillSounds.userLibrary("murderer"), KillSounds.MAX_ENTRIES)
+	local firstUser = #KillSounds.library("murderer") - #KillSounds.userLibrary("murderer") + 1
+	T.truthy(KillSounds.removeSound("murderer", firstUser)); T.eq(Settings.get("ksound.murdererPick"), "")
+	T.falsy((KillSounds.removeSound("murderer", 1)), "a bundled sound cannot be removed")
 	Settings.set("ksound.sheriffLibrary", "not json")
-	T.eq(#KillSounds.library("sheriff"), 0)
+	T.eq(#KillSounds.userLibrary("sheriff"), 0)
 end)
 T.test("a confirmed kill plays only the matching role's sound", "own switch, own volume, once per episode; Reset touches one role", function()
 	local h, game = boot()
@@ -302,7 +304,7 @@ T.test("a confirmed kill plays only the matching role's sound", "own switch, own
 	KillSounds.reset("murderer")
 	T.eq(Settings.get("ksound.murdererSource"), ""); T.eq(Settings.get("ksound.murdererVolume"), 0.8)
 	T.eq(Settings.get("ksound.sheriffSource"), "asset:222"); T.eq(Settings.get("ksound.sheriffVolume"), 0.9); T.eq(Settings.get("ksound.sheriffEnabled"), true)
-	T.eq(#KillSounds.library("murderer"), 1, "Reset keeps the list")
+	T.eq(#KillSounds.userLibrary("murderer"), 1, "Reset keeps the list")
 	-- using a tool without a kill never plays anything
 	local n = #sounds("sheriff")
 	local tool = addTool(game, "Gun")
@@ -373,4 +375,221 @@ T.test("all five pages exist, build and keep one ticker each", "navigation, Appl
 	for _, d in ipairs(sh:GetDescendants()) do T.falsy(string.find(d.Name, "murderer", 1, true), "sheriff page references " .. d.Name) end
 	-- leaving the hub destroys the preview models
 	h.unload(); Mock.uninstall()
+end)
+
+T.suite("Bundled sounds")
+local Pack = import("features/SoundPack")
+local PackData = import("data/SoundPack")
+local Codec = import("core/Codec")
+local Env = import("core/Env")
+local function fakeFiles(files)
+	local api = {
+		writefile = function(p, t) files[p] = t end, readfile = function(p) return files[p] end, isfile = function(p) return files[p] ~= nil end,
+		makefolder = function() end, isfolder = function() return true end, getcustomasset = function(p) return "rbxasset://" .. p end,
+	}
+	return function(name) return api[name] end
+end
+T.test("the owner's sound files are intact", "base64 decodes to the recorded size, mp3 header, measured duration", function()
+	T.eq(#PackData, 8)
+	local seen = {}
+	for _, e in ipairs(PackData) do
+		T.falsy(seen[e.file], e.file); seen[e.file] = true
+		local raw = Codec.b64decode(e.data)
+		T.eq(#raw, e.bytes, e.file)
+		local b1, b2 = string.byte(raw, 1), string.byte(raw, 2)
+		T.truthy(string.sub(raw, 1, 3) == "ID3" or (b1 == 0xFF and b2 >= 0xE0), e.file .. " does not look like mp3")
+		T.truthy(e.duration > 0.05 and e.duration < 10, e.file .. " duration " .. tostring(e.duration))
+		T.truthy(string.match(e.file, "^[%w_]+%.mp3$"))
+	end
+end)
+T.test("bundled sounds are written once and reported when impossible", "install with a file API; clear error without one", function()
+	local files = {}
+	T.fresh({ lookup = fakeFiles(files) }); Pack._reset()
+	local n, problems = Pack.installAll()
+	T.eq(n, 8); T.eq(#problems, 0)
+	T.eq(#files["MM2Hub/sounds/neverlose.mp3"], PackData[7].bytes)
+	files["MM2Hub/sounds/neverlose.mp3"] = nil; Pack._reset()
+	T.truthy(Pack.ensure("neverlose.mp3")); T.truthy(files["MM2Hub/sounds/neverlose.mp3"] ~= nil)
+	T.falsy((Pack.ensure("nope.mp3")))
+	T.fresh(); Pack._reset()
+	local ok, err = Pack.ensure("neverlose.mp3")
+	T.falsy(ok); T.truthy(string.find(err, "file API", 1, true))
+end)
+T.test("both roles see the bundled list and keep separate selections", "same sounds, independent choice", function()
+	local files = {}
+	T.fresh({ lookup = fakeFiles(files) }); Pack._reset()
+	local m, s = KillSounds.library("murderer"), KillSounds.library("sheriff")
+	T.eq(#m, 8); T.eq(#s, 8); T.truthy(m[1].builtin and m[1].duration > 0)
+	T.truthy(KillSounds.pick("murderer", "file:glass_shatter.mp3"))
+	T.eq(Settings.get("ksound.sheriffPick"), "")
+	T.truthy(KillSounds.pick("sheriff", "file:neverlose.mp3"))
+	T.eq(Settings.get("ksound.murdererPick"), "file:glass_shatter.mp3")
+	T.truthy(KillSounds.apply("murderer"))
+	T.eq(Settings.get("ksound.sheriffSource"), "")
+	T.eq(KillSounds.duration("file:glass_shatter.mp3"), PackData[2].duration)
+end)
+T.test("a bundled sound plays through the confirmed-kill pipeline", "file is installed on demand, role volume applies", function()
+	local files = {}
+	local h, game
+	T.fresh({ lookup = fakeFiles(files) })
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); game = Mock.install(); Services.clear(); Env.setLookup(fakeFiles(files)); Pack._reset()
+	h = Hub.run({ skipLicense = true })
+	KillSounds.pick("sheriff", "file:helmet_hit.mp3"); KillSounds.apply("sheriff"); Settings.set("ksound.sheriffVolume", 0.4)
+	KillEvents.report("sheriff", {}, "world")
+	T.truthy(files["MM2Hub/sounds/helmet_hit.mp3"] ~= nil, "installed on first use")
+	local snd = sounds("sheriff")[1]
+	T.truthy(snd ~= nil); T.eq(snd.Volume, 0.4); T.truthy(string.find(snd.SoundId, "helmet_hit.mp3", 1, true))
+	done(h)
+end)
+
+T.suite("Imported meshes")
+local Meshes = import("features/MeshModels")
+local function indexWith(models) return Json.encode({ version = 1, models = models }) end
+local goodGun = { id = "awp", name = "AWP", kind = "gun", tris = 9000, credit = "test credit", parts = { { mesh = "awp_0.obj", texture = "awp_0.png", center = { 0, 0.2, 0 }, size = { 0.3, 0.5, 2.8 }, tris = 5000 }, { mesh = "awp_1.obj", texture = "awp_1.png", center = { 0, 0, 0.4 }, size = { 0.3, 0.4, 1 }, tris = 4000 } } }
+T.test("index entries are validated", "bad ids, kinds, file names, sizes and budgets are refused", function()
+	T.truthy(Meshes.validate(goodGun))
+	local function bad(mod)
+		local copy = Json.decode(Json.encode(goodGun)); mod(copy)
+		return Meshes.validate(copy)
+	end
+	T.falsy((bad(function(e) e.id = "../x" end))); T.falsy((bad(function(e) e.kind = "tank" end)))
+	T.falsy((bad(function(e) e.parts[1].mesh = "../evil.obj" end))); T.falsy((bad(function(e) e.parts[1].mesh = "x.lua" end)))
+	T.falsy((bad(function(e) e.parts[1].texture = "a/b.png" end))); T.falsy((bad(function(e) e.parts[1].size = { 0.3, 99, 1 } end)))
+	T.falsy((bad(function(e) e.parts[1].center = { 0, 0 } end))); T.falsy((bad(function(e) e.parts[1].tris = 999999 end)))
+	T.falsy((bad(function(e) e.parts = {} end))); T.falsy((bad(function(e) e.parts[1].assetId = "abc"; e.parts[1].mesh = nil end)))
+	T.falsy((bad(function(e) e.kind = "char"; e.group = "accessory"; e.slot = "feet" end)))
+	T.truthy(bad(function(e) e.parts[1] = { assetId = "123456", textureId = "654321", center = { 0, 0, 0 }, size = { 1, 1, 1 }, tris = 10 } end))
+end)
+T.test("a broken or missing index never throws", "no file, garbage, wrong shape, duplicate ids", function()
+	T.fresh()
+	local n = Meshes.reload(); T.eq(n, 0)
+	Env.write(Meshes.INDEX, "garbage {{{"); local n2, p2 = Meshes.reload(); T.eq(n2, 0); T.truthy(#p2 > 0)
+	Env.write(Meshes.INDEX, "{\"models\": 5}"); T.eq((Meshes.reload()), 0)
+	Env.write(Meshes.INDEX, indexWith({ goodGun, goodGun, { id = "bad id" } }))
+	local n3, p3 = Meshes.reload(); T.eq(n3, 1); T.eq(#p3, 2)
+	T.truthy(Meshes.has("gun", "awp")); T.falsy(Meshes.has("knife", "awp"))
+end)
+T.test("an imported mesh becomes a MeshPart model and can be applied to a tool", "build, select, Apply, skin on the tool, Reset", function()
+	local files = {}
+	T.fresh({ lookup = fakeFiles(files) })
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear(); Env.setLookup(fakeFiles(files))
+	Env.write(Meshes.INDEX, indexWith({ goodGun })); Meshes.reload()
+	local h = Hub.run({ skipLicense = true })
+	local model = Meshes.build("gun", "awp")
+	T.truthy(model ~= nil)
+	local meshParts = 0
+	for _, d in ipairs(model:GetChildren()) do if d.ClassName == "MeshPart" then meshParts += 1; T.truthy(string.find(d.MeshId, "awp_", 1, true)); T.truthy(string.find(d.TextureID, ".png", 1, true)) end end
+	T.eq(meshParts, 2)
+	model:Destroy()
+	T.eq((Custom.selectModel("gun", "import:nothing")), false)
+	T.truthy(Custom.selectModel("gun", "import:awp")); T.eq(Settings.get("custom.gunModel"), "import:awp")
+	local tool, handle = addTool(game, "Gun")
+	T.truthy(Custom.apply("gun")); frames(60)
+	T.eq(Cosmetics.status().gun, "applied")
+	local skin = tool:FindFirstChild("MM2HubSkin")
+	T.truthy(skin ~= nil)
+	T.eq(count(skin:GetChildren(), function(c) return c.ClassName == "MeshPart" end), 2)
+	Custom.reset("gun"); frames(60)
+	T.eq(tool:FindFirstChild("MM2HubSkin"), nil)
+	-- a vanished entry is refused when the snapshot is read again
+	Settings.set("custom.gunModel", "import:awp"); Custom.apply("gun")
+	Env.write(Meshes.INDEX, indexWith({})); Meshes.reload(); frames(60)
+	T.eq(Custom.applied("gun"), nil, "a look that points at a missing import is not trusted")
+	done(h)
+end)
+T.test("an executor without getcustomasset reports it and leaves nothing behind", "build fails cleanly", function()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); T.fresh(); Mock.install(); Services.clear()
+	Env.write(Meshes.INDEX, indexWith({ goodGun })); Meshes.reload()
+	local m, err = Meshes.build("gun", "awp")
+	T.eq(m, nil); T.truthy(string.find(err, "getcustomasset", 1, true), tostring(err))
+	Mock.uninstall()
+end)
+
+T.suite("Game audio")
+local GameAudio = import("features/GameAudio")
+local function sound(parent, name, vol)
+	local s = Mock.makeInstance("Sound"); s.Name = name; s.SoundId = "rbxassetid://5"; s.Volume = vol or 0.7; s.Parent = parent
+	return s
+end
+T.test("keywords decide the category", "name and path, fixed order, our own sounds ignored", function()
+	T.fresh()
+	T.eq(GameAudio.categoryOf("ReloadSound", "Character/Gun/ReloadSound"), "reload")
+	T.eq(GameAudio.categoryOf("Boom", "Character/Knife/Boom"), "knife", "the path counts")
+	T.eq(GameAudio.categoryOf("Victory", "SoundService/Victory"), "win")
+	T.eq(GameAudio.categoryOf("Ambient", "Workspace/Ambient"), nil)
+	T.truthy(GameAudio.addKeyword("shot", "Pew")); T.eq(GameAudio.categoryOf("pew", "Workspace/pew"), "shot")
+	T.truthy(GameAudio.addKeyword("shot", "pew")); T.eq(GameAudio.keywords("shot")[#GameAudio.keywords("shot")], "pew")
+	T.falsy((GameAudio.addKeyword("shot", "a,b"))); T.falsy((GameAudio.addKeyword("shot", ""))); T.falsy((GameAudio.addKeyword("nope", "x")))
+end)
+T.test("muting is reversible and local", "volume 0 while on, restored when off, game cannot raise it, our sounds untouched", function()
+	local h, game = boot()
+	local char = game.Players.LocalPlayer.Character
+	local reload = sound(char, "ReloadSound", 0.7)
+	local other = sound(char, "Footstep", 0.5)
+	local ours = sound(char, "MM2Hub_Reload", 0.9)
+	T.eq(reload.Volume, 0.7)
+	Settings.set("gameaudio.muteReload", true)
+	T.eq(reload.Volume, 0); T.eq(other.Volume, 0.5); T.eq(ours.Volume, 0.9)
+	reload.Volume = 0.8
+	T.eq(reload.Volume, 0, "the game cannot raise a muted sound")
+	local later = sound(char, "ReloadAgain", 0.6)
+	T.eq(later.Volume, 0, "a sound created later is muted at once")
+	T.eq(GameAudio.mutedCount(), 2)
+	Settings.set("gameaudio.muteReload", false)
+	T.eq(reload.Volume, 0.8, "restored to the last volume the game set"); T.eq(later.Volume, 0.6); T.eq(GameAudio.mutedCount(), 0)
+	Settings.set("gameaudio.muteReload", true)
+	h.unload()
+	T.eq(reload.Volume, 0.8, "unload restores"); Mock.uninstall()
+end)
+T.test("the game's kill sounds are silenced only while a custom one is on", "needs an applied, enabled kill sound; reset gives them back", function()
+	local h, game = boot()
+	local kill = sound(game.Players.LocalPlayer.Character, "KillSound", 0.6)
+	T.eq(kill.Volume, 0.6, "nothing custom yet")
+	KillSounds.addSound("sheriff", "S", "asset:222"); KillSounds.pick("sheriff", "asset:222"); KillSounds.apply("sheriff")
+	T.eq(kill.Volume, 0)
+	Settings.set("gameaudio.muteKill", false); T.eq(kill.Volume, 0.6)
+	Settings.set("gameaudio.muteKill", true); T.eq(kill.Volume, 0)
+	KillSounds.reset("sheriff"); T.eq(kill.Volume, 0.6)
+	done(h)
+end)
+T.test("learn mode lists what played", "names, paths, counts; nothing recorded after the session; ours ignored", function()
+	local h, game = boot()
+	local char = game.Players.LocalPlayer.Character
+	local a = sound(char, "BangSound"); local b = sound(game.__services.SoundService, "RoundMusic"); local ours = sound(char, "MM2Hub_x")
+	local result
+	T.truthy(GameAudio.learn(5, function(list) result = list end))
+	T.falsy((GameAudio.learn(5)), "one session at a time"); T.truthy(GameAudio.isLearning())
+	a:Play(); a:Play(); b:Play(); ours:Play()
+	task.flush()
+	T.truthy(result ~= nil); T.eq(#result, 2); T.eq(result[1].name, "BangSound"); T.eq(result[1].count, 2); T.truthy(string.find(result[1].path, "BangSound", 1, true))
+	T.falsy(GameAudio.isLearning())
+	a:Play(); T.eq(#result, 2); T.eq(result[1].count, 2)
+	done(h)
+end)
+T.test("a round-end sound starts your song and is silenced", "needs a song source; once per round", function()
+	local files = {}
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); T.fresh({ lookup = fakeFiles(files) })
+	local game = Mock.install(); Services.clear(); Env.setLookup(fakeFiles(files))
+	local h = Hub.run({ skipLicense = true })
+	local function songs()
+		local n = 0
+		for _, d in ipairs(Services.SoundService:GetChildren()) do if d.Name == "MM2Hub_RoundSong" then n += 1 end end
+		return n
+	end
+	local win = sound(game.__services.SoundService, "VictoryTheme", 0.8)
+	win:Play(); T.eq(songs(), 0, "switched off")
+	Settings.set("gameaudio.songEnabled", true); Settings.set("gameaudio.songSource", "file:otpusti.mp3"); Settings.set("gameaudio.songVolume", 0.5)
+	T.eq(win.Volume, 0, "the game's round-end sound is silenced")
+	win:Play(); T.eq(songs(), 1)
+	local song = Services.SoundService:FindFirstChild("MM2Hub_RoundSong")
+	T.eq(song.Volume, 0.5); T.truthy(string.find(song.SoundId, "otpusti.mp3", 1, true))
+	win:Play(); T.eq(songs(), 1, "no second song within the same round")
+	GameAudio.songStop(); T.eq(songs(), 0)
+	Settings.set("gameaudio.songEnabled", false); T.eq(win.Volume, 0.8)
+	T.falsy((GameAudio.songPlay()) == false and false)
+	done(h)
 end)

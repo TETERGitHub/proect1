@@ -14,6 +14,8 @@ local Cosmetics = import("features/Cosmetics")
 local Music = import("features/Music")
 local Sounds = import("features/Sounds")
 local Tools = import("features/Tools")
+local GameAudio = import("features/GameAudio")
+local I18n = import("core/I18n")
 
 local notify, visible, auto, section, resetButton, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.resetButton, Kit.dataList, Kit.infoLine
 
@@ -424,6 +426,93 @@ function G.sounds(page)
 		end })
 	end
 	resetButton(page, "Sounds")
+end
+
+-- Game audio -----------------------------------------------------------------------------------------------------------------------------
+
+function G.gameaudio(page)
+	page:note("Everything here changes only what YOU hear on your own client. The game's sounds are silenced by setting their volume to 0 (restored when you switch the option off or unload the hub). Which sounds belong to which group is decided by keywords in their name; the defaults are guesses, so use Learn to find the real names.", "textDim", 70)
+	section(page, "Silence the game's own sounds", { "gameaudio.muteKill", "gameaudio.muteShot", "gameaudio.muteReload", "gameaudio.muteKnife" })
+	local fnMuted = infoLine(page, "Sounds silenced right now", function()
+		return tostring(GameAudio.mutedCount())
+	end)
+	local h = Perf.every("ui.gameaudio", 2, function()
+		if visible("gameaudio") then
+			fnMuted()
+		end
+	end)
+	page.maid:Give(h.Cancel)
+	fnMuted()
+	page:note("Your own gun-shot and knife-swing sounds are set on the Sounds page; kill sounds on the Murderer / Sheriff sound pages.", "textDim", 34)
+
+	page:section("Learn the game's sounds")
+	page:note("Press Listen, then shoot, reload, swing the knife or finish a round. Every sound that starts playing is listed with its name and path. Add it to a group with the buttons on its row (gun = shot, knife, loop = reload, alert = kill, star = round end).", "textDim", 56)
+	local list
+	local listenBtn
+	local function show(results)
+		local items = {}
+		for _, e in ipairs(results) do
+			table.insert(items, { title = e.name, sub = e.path .. "  ·  " .. e.soundId, value = "x" .. e.count, raw = true, rawValue = true, keyword = string.lower(e.name) })
+		end
+		list.set(items)
+	end
+	local function addTo(cat)
+		return function(item)
+			local ok, err = GameAudio.addKeyword(cat, item.keyword)
+			notify("Game audio", ok and ("'" .. item.keyword .. "' added to " .. cat .. ".") or tostring(err), ok and "success" or "warn")
+		end
+	end
+	list = dataList(page, {
+		rowHeight = 48, maxRows = 30,
+		buttons = {
+			{ icon = "gun", tip = "Add to: gun shot", fn = addTo("shot") },
+			{ icon = "knife", tip = "Add to: knife", fn = addTo("knife") },
+			{ icon = "repeatIcon", tip = "Add to: reload", fn = addTo("reload") },
+			{ icon = "alert", tip = "Add to: kill", fn = addTo("kill") },
+			{ icon = "star", tip = "Add to: round end", fn = addTo("win") },
+		},
+	})
+	listenBtn = F.button(page.content, "Listen for 8 seconds", function()
+		local ok, err = GameAudio.learn(8, function(results)
+			F.setButtonLoading(listenBtn, false)
+			show(results)
+			notify("Game audio", #results > 0 and (#results .. " sound(s) heard.") or "No sound was heard. Do something that makes a noise while listening.", #results > 0 and "success" or "info")
+		end)
+		if ok then
+			F.setButtonLoading(listenBtn, true, "Listening...")
+		else
+			notify("Game audio", tostring(err), "warn")
+		end
+	end, "filled", UDim2.fromOffset(190, 34), page.maid)
+	listenBtn.LayoutOrder = page:nextOrder()
+	page.maid:Give(GameAudio.Learned:Connect(function(results)
+		show(results)
+	end))
+	section(page, "Keywords", { "gameaudio.kwShot", "gameaudio.kwKnife", "gameaudio.kwReload", "gameaudio.kwKill", "gameaudio.kwWin" })
+
+	page:section("Round-end song")
+	page:note("Plays your own song when a round-end sound of the game is detected (which needs the round-end keywords to match). The hub does not download music: put an .mp3 you may use into MM2Hub/sounds/ and enter file:<name.mp3>, or use an asset id.", "textDim", 60)
+	section(page, "Song", { "gameaudio.songEnabled", "gameaudio.songSource", "gameaudio.songVolume", "gameaudio.muteWin" })
+	local fnSong = infoLine(page, "Song", function()
+		return GameAudio.songPlaying() and "playing" or "stopped"
+	end)
+	local h2 = Perf.every("ui.gameaudio.song", 2, function()
+		if visible("gameaudio") then
+			fnSong()
+		end
+	end)
+	page.maid:Give(h2.Cancel)
+	buttonRow(page, {
+		{ text = "Play song", fn = function()
+			local ok, err = GameAudio.songPlay()
+			if not ok then
+				notify("Game audio", tostring(err), "warn")
+			end
+			fnSong()
+		end, style = "filled" },
+		{ text = "Stop song", fn = function() GameAudio.songStop(); fnSong() end },
+	})
+	resetButton(page, "GameAudio")
 end
 
 return G

@@ -20,6 +20,8 @@ local Custom = import("features/CustomLogic")
 local KillSounds = import("features/KillSounds")
 local KillEvents = import("features/KillEvents")
 local Lib = import("data/ModelLib")
+local Meshes = import("features/MeshModels")
+local Maid = import("core/Maid")
 
 local notify, visible, auto, section, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.dataList, Kit.infoLine
 
@@ -216,15 +218,19 @@ end
 -- Model cards ------------------------------------------------------------------------------------------------------------------
 
 local function isSelected(kind, id)
+	local info = Custom.modelInfo(kind, id)
+	if not info then
+		return false
+	end
 	if kind == "char" then
-		local info = Lib.info("char", id)
 		local slot = info.group == "costume" and "costume" or info.slot
 		return Settings.get(Custom.key("char", slot)) == id
 	end
 	return Settings.get(Custom.key(kind, "model")) == id
 end
 
--- modelGrid(page, kind, ids, preview): a grid of selectable cards (name, category, palette dots, selected state)
+-- modelGrid(page, kind, ids, preview) -> { set(ids), frame }: a grid of selectable cards (name, category, palette dots or poly count,
+-- selected state). Built-in shapes show their default palette; imported meshes show their triangle count (they keep their own textures).
 local function modelGrid(page, kind, ids, preview)
 	local grid = F.frame(page.content, { Name = "ModelGrid", LayoutOrder = page:nextOrder(), Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y })
 	local layout = Instance.new("UIGridLayout")
@@ -233,65 +239,9 @@ local function modelGrid(page, kind, ids, preview)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
 	local cards = {}
-	for i, id in ipairs(ids) do
-		local info = Lib.info(kind, id)
-		local b = Instance.new("TextButton")
-		b.Name = "Model_" .. id
-		b.Text = ""
-		b.AutoButtonColor = false
-		b.BorderSizePixel = 0
-		b.LayoutOrder = i
-		Theme.bind(b, "BackgroundColor3", function()
-			return Theme.color((Theme.surface("control")))
-		end)
-		Theme.bind(b, "BackgroundTransparency", function()
-			return select(2, Theme.surface("control"))
-		end)
-		F.corner(b, "card")
-		local ring = F.stroke(b, "stroke", 1, 0.5)
-		F.padding(b, 12, 10, 12, 10)
-		local title = F.label(b, info.name, { size = 13, bold = true, dim = UDim2.new(1, -24, 0, 18) })
-		local cat = F.label(b, I18n.tr(info.category) .. " · " .. info.partCount .. " " .. I18n.tr("parts"), { size = 11, token = "textDim", dim = UDim2.new(1, 0, 0, 14) })
-		cat.Position = UDim2.fromOffset(0, 20)
-		-- palette dots: the model's own default colours
-		local look = Lib.styleLook(kind, id)
-		local dots = F.frame(b, { Name = "Dots", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 14) })
-		F.list(dots, 5, true)
-		for k, f in ipairs({ "primary", "secondary", "detail", "glow" }) do
-			local d = Instance.new("Frame")
-			d.Name = "Dot_" .. f
-			d.LayoutOrder = k
-			d.Size = UDim2.fromOffset(14, 14)
-			d.BackgroundColor3 = rgbColor(look[f])
-			d.BorderSizePixel = 0
-			F.pillCorner(d)
-			F.stroke(d, "stroke", 1, 0.55)
-			d.Parent = dots
-		end
-		local check = Instance.new("Frame")
-		check.Name = "Check"
-		check.AnchorPoint = Vector2.new(1, 0)
-		check.Position = UDim2.new(1, 0, 0, 0)
-		check.Size = UDim2.fromOffset(18, 18)
-		check.BorderSizePixel = 0
-		Theme.bind(check, "BackgroundColor3", "accent")
-		F.pillCorner(check)
-		check.Visible = false
-		check.Parent = b
-		local Icons = import("ui/Icons")
-		local tick = Icons.draw(check, "check", 12, "text")
-		tick.AnchorPoint = Vector2.new(0.5, 0.5)
-		tick.Position = UDim2.fromScale(0.5, 0.5)
-		page.maid:Give(b.Activated:Connect(function()
-			F.click()
-			Custom.selectModel(kind, id)
-			if preview then
-				preview.pop()
-			end
-		end))
-		b.Parent = grid
-		cards[id] = { button = b, ring = ring, check = check }
-	end
+	local cardMaid = Maid.new("model-cards")
+	page.maid:Give(cardMaid)
+	local Icons = import("ui/Icons")
 	local function refresh()
 		for id, c in pairs(cards) do
 			local on = isSelected(kind, id)
@@ -300,12 +250,85 @@ local function modelGrid(page, kind, ids, preview)
 			Motion.tween(c.ring, { Thickness = on and 2 or 1, Transparency = on and 0 or 0.5 }, Motion.D.fast, "smooth")
 		end
 	end
+	local function populate(list)
+		cardMaid:Clean()
+		table.clear(cards)
+		for i, id in ipairs(list) do
+			local info = Custom.modelInfo(kind, id)
+			if info then
+				local b = Instance.new("TextButton")
+				b.Name = "Model_" .. string.gsub(id, ":", "_")
+				b.Text = ""
+				b.AutoButtonColor = false
+				b.BorderSizePixel = 0
+				b.LayoutOrder = i
+				Theme.bind(b, "BackgroundColor3", function()
+					return Theme.color((Theme.surface("control")))
+				end)
+				Theme.bind(b, "BackgroundTransparency", function()
+					return select(2, Theme.surface("control"))
+				end)
+				F.corner(b, "card")
+				local ring = F.stroke(b, "stroke", 1, 0.5)
+				F.padding(b, 12, 10, 12, 10)
+				F.label(b, info.name, { size = 13, bold = true, dim = UDim2.new(1, -24, 0, 18) })
+				local sub = info.imported and (I18n.tr("Imported mesh") .. " · " .. info.tris .. " " .. I18n.tr("tris")) or (I18n.tr(info.category) .. " · " .. info.partCount .. " " .. I18n.tr("parts"))
+				local cat = F.label(b, sub, { size = 11, token = "textDim", dim = UDim2.new(1, 0, 0, 14) })
+				cat.Position = UDim2.fromOffset(0, 20)
+				if not info.imported then
+					local look = Lib.styleLook(kind, id)
+					local dots = F.frame(b, { Name = "Dots", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 14) })
+					F.list(dots, 5, true)
+					for k, f in ipairs({ "primary", "secondary", "detail", "glow" }) do
+						local d = Instance.new("Frame")
+						d.Name = "Dot_" .. f
+						d.LayoutOrder = k
+						d.Size = UDim2.fromOffset(14, 14)
+						d.BackgroundColor3 = rgbColor(look[f])
+						d.BorderSizePixel = 0
+						F.pillCorner(d)
+						F.stroke(d, "stroke", 1, 0.55)
+						d.Parent = dots
+					end
+				end
+				local check = Instance.new("Frame")
+				check.Name = "Check"
+				check.AnchorPoint = Vector2.new(1, 0)
+				check.Position = UDim2.new(1, 0, 0, 0)
+				check.Size = UDim2.fromOffset(18, 18)
+				check.BorderSizePixel = 0
+				Theme.bind(check, "BackgroundColor3", "accent")
+				F.pillCorner(check)
+				check.Visible = false
+				check.Parent = b
+				local tick = Icons.draw(check, "check", 12, "text")
+				tick.AnchorPoint = Vector2.new(0.5, 0.5)
+				tick.Position = UDim2.fromScale(0.5, 0.5)
+				cardMaid:Give(b.Activated:Connect(function()
+					F.click()
+					Custom.selectModel(kind, id)
+					if preview then
+						preview.pop()
+					end
+				end))
+				if info.imported then
+					local e = Meshes.info(kind, string.match(id, "^import:(.+)$"))
+					if e and e.credit ~= "" then
+						F.tooltip(b, e.credit, cardMaid)
+					end
+				end
+				b.Parent = grid
+				cards[id] = { button = b, ring = ring, check = check }
+			end
+		end
+		refresh()
+	end
 	local keys = kind == "char" and { "costume", "head", "back", "aura" } or { "model" }
 	for _, k in ipairs(keys) do
 		page.maid:Give(Settings.observe(Custom.key(kind, k), refresh))
 	end
-	refresh()
-	return grid
+	populate(ids)
+	return { frame = grid, set = populate }
 end
 
 -- Page builder -----------------------------------------------------------------------------------------------------------------
@@ -521,26 +544,63 @@ local function buildCustom(kind, label, intro)
 		page.maid:Give(Settings.observe(Custom.key(kind, "style"), refreshChips, true))
 		swatchRow(page, kind)
 
-		-- catalogue
-		if kind == "char" then
-			local groups = { costume = {}, head = {}, back = {}, aura = {} }
-			for _, id in ipairs(Lib.ids("char")) do
-				local info = Lib.info("char", id)
-				table.insert(groups[info.group == "costume" and "costume" or info.slot], id)
+		-- catalogue: imported real meshes first, the built-in simple shapes below as placeholders
+		local function importIds(group)
+			local out = {}
+			for _, e in ipairs(Meshes.list(kind)) do
+				if kind ~= "char" or group == nil or (group == "costume" and e.group == "costume") or (group ~= "costume" and e.group == "accessory" and e.slot == group) then
+					table.insert(out, "import:" .. e.id)
+				end
 			end
-			page:section("Costumes (full body, drawn over your avatar)")
-			modelGrid(page, kind, groups.costume, preview)
-			page:section("Head")
-			modelGrid(page, kind, groups.head, preview)
-			page:section("Back")
-			modelGrid(page, kind, groups.back, preview)
-			page:section("Aura")
-			modelGrid(page, kind, groups.aura, preview)
+			return out
+		end
+		local function builtIn(group)
+			local out = {}
+			for _, id in ipairs(Lib.ids(kind)) do
+				if kind ~= "char" then
+					table.insert(out, id)
+				else
+					local info = Lib.info("char", id)
+					if (group == "costume" and info.group == "costume") or (group ~= "costume" and info.group ~= "costume" and info.slot == group) then
+						table.insert(out, id)
+					end
+				end
+			end
+			return out
+		end
+		local importGrids = {}
+		local function emptyNote(txt)
+			page:note(txt, "textDim", 36)
+		end
+		if kind == "char" then
+			for _, g in ipairs({ { "costume", "Costumes (full body, drawn over your avatar)" }, { "head", "Head" }, { "back", "Back" }, { "aura", "Aura" } }) do
+				page:section(g[2])
+				local ids = importIds(g[1])
+				importGrids[g[1]] = modelGrid(page, kind, ids, preview)
+				page:note("Simple built-in shapes (placeholders, not real models):", "textDim", 20)
+				modelGrid(page, kind, builtIn(g[1]), preview)
+			end
 			page:note("Press a selected card again to take it off. A costume only hides your avatar on your own screen; nothing about your character's size, speed or collisions changes.", "textDim", 44)
 		else
-			page:section("Models")
-			modelGrid(page, kind, Lib.ids(kind), preview)
+			page:section("Your imported models (real meshes)")
+			importGrids.all = modelGrid(page, kind, importIds(), preview)
+			page:note("Nothing imported yet? Convert a model you downloaded with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).", "textDim", 36)
+			page:section("Simple built-in shapes (placeholders)")
+			modelGrid(page, kind, builtIn(nil), preview)
 		end
+		buttonStrip(page, {
+			{ text = "Rescan imports", name = "RescanImports", style = "tinted", width = 150, fn = function()
+				local n, problems = Meshes.reload()
+				for g, grid in pairs(importGrids) do
+					grid.set(importIds(g ~= "all" and g or nil))
+				end
+				if #problems > 0 then
+					notify(label, tostring(problems[1]), "warn")
+				else
+					notify(label, n .. " imported model(s) found.", n > 0 and "success" or "info")
+				end
+			end },
+		})
 
 		-- colours and materials
 		page:section("Colours and material")
@@ -603,6 +663,7 @@ local function buildKill(role)
 		page:section("Sound")
 		auto(page, key("enabled"))
 		auto(page, key("volume"))
+		auto(page, "gameaudio.muteKill") -- about the GAME's kill sounds, shared by both roles on purpose (see the Game audio page)
 		local fnApplied = infoLine(page, "Applied sound", function()
 			local src = Settings.get(key("source"))
 			if src == "" then
@@ -643,9 +704,9 @@ local function buildKill(role)
 					table.insert(marks, "SELECTED")
 				end
 				table.insert(items, {
-					index = i, source = e.source, raw = true, rawValue = true,
-					title = e.name,
-					sub = e.category .. "  ·  " .. e.source .. (d and string.format("  ·  %.1f s", d) or ""),
+					index = i, source = e.source, raw = true, rawValue = true, builtin = e.builtin,
+					title = (e.builtin and I18n.get() == "ru" and e.ru) or e.name,
+					sub = I18n.tr(e.category) .. "  ·  " .. (e.builtin and I18n.tr("bundled") or e.source) .. (d and string.format("  ·  %.1f s", d) or ""),
 					value = table.concat(marks, " · "), valueToken = e.source == applied and "good" or "accent",
 				})
 			end
@@ -670,7 +731,7 @@ local function buildKill(role)
 				{ icon = "check", tip = "Select", fn = function(item)
 					KillSounds.pick(role, item.source)
 				end },
-				{ icon = "trash", tip = "Remove from the list", token = "bad", fn = function(item)
+				{ icon = "trash", tip = "Remove from the list", token = "bad", show = function(item) return not item.builtin end, fn = function(item)
 					KillSounds.removeSound(role, item.index)
 				end },
 			},

@@ -12,6 +12,7 @@ local import = ...
 local Settings = import("core/Settings")
 local Json = import("core/Json")
 local Lib = import("data/ModelLib")
+local Meshes = import("features/MeshModels")
 
 local L = {}
 
@@ -140,14 +141,33 @@ function L.normalizeLook(kind, raw)
 	return out
 end
 
+-- modelInfo(kind, id) -> info for a built-in shape ("revolver") or an imported mesh ("import:awp"), else nil
+function L.modelInfo(kind, id)
+	if type(id) ~= "string" then
+		return nil
+	end
+	local name = string.match(id, "^import:([%w_]+)$")
+	if name then
+		local e = Meshes.info(kind, name)
+		if e then
+			return { id = id, name = e.name, category = "Import", group = e.group, slot = e.slot, imported = true, partCount = #e.parts, tris = e.tris }
+		end
+		return nil
+	end
+	if Lib.has(kind, id) then
+		return Lib.info(kind, id)
+	end
+	return nil
+end
+
 local function cleanModel(kind, id, slot)
 	if type(id) ~= "string" or id == "" then
 		return ""
 	end
-	if not Lib.has(kind, id) then
+	local info = L.modelInfo(kind, id)
+	if not info then
 		return ""
 	end
-	local info = Lib.info(kind, id)
 	if kind == "char" then
 		if slot == "costume" then
 			return info.group == "costume" and id or ""
@@ -276,17 +296,19 @@ end
 
 -- selectModel(kind, id): chooses a model; for characters the slot comes from the model (choosing the chosen one again clears it)
 function L.selectModel(kind, id)
-	if not Lib.has(kind, id) then
+	local info = L.modelInfo(kind, id)
+	if not info then
 		return false, "unknown model"
 	end
 	if kind == "char" then
-		local info = Lib.info(kind, id)
 		local slot = info.group == "costume" and "costume" or info.slot
 		local cur = Settings.get(L.key("char", slot))
 		Settings.set(L.key("char", slot), cur == id and "" or id, "custom")
 		if cur ~= id and info.group == "costume" then
-			-- a costume brings its own natural colours
-			L.writeLook("char", Lib.styleLook("char", id))
+			-- a costume brings its own natural colours (an imported mesh keeps its texture, so only built-in shapes have one)
+			if not info.imported then
+				L.writeLook("char", Lib.styleLook("char", id))
+			end
 		end
 		return true
 	end

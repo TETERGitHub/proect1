@@ -1,0 +1,13 @@
+{
+ "note": "Sound files supplied by the project owner. Rights to these recordings are the owner's responsibility; the hub plays them only locally.",
+ "sounds": [
+  { "file": "hit_creature.mp3", "name": "Creature hit", "ru": "Удар по существу", "category": "Impact" },
+  { "file": "glass_shatter.mp3", "name": "Glass shatter", "ru": "Разбитое стекло", "category": "Impact" },
+  { "file": "helmet_hit.mp3", "name": "Helmet hit", "ru": "Попадание в шлем", "category": "Impact" },
+  { "file": "lights_off.mp3", "name": "Lights off", "ru": "Выключение света", "category": "Interface" },
+  { "file": "mode_select.mp3", "name": "Mode select", "ru": "Выбор режима", "category": "Interface" },
+  { "file": "vk_message.mp3", "name": "VK message", "ru": "Сообщение ВКонтакте", "category": "Interface" },
+  { "file": "neverlose.mp3", "name": "Neverlose", "ru": "Neverlose", "category": "Other" },
+  { "file": "stuffy_spirit.mp3", "name": "Stuffy spirit", "ru": "Stuffy spirit", "category": "Other" }
+ ]
+}

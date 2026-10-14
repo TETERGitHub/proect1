@@ -345,6 +345,26 @@ for _, role in ipairs({ { "murderer", "MurdererKillSound", "Murderer kill sound"
 	}))
 end
 
+-- Game audio (local mute list, learn mode, round-end song) ---------------------------------------------------------------------
+-- Silences chosen sounds of the game on YOUR client only (their Volume is set to 0 and restored on disable/unload) and can play your own
+-- song when a round-end sound is detected. Which game sounds count is decided by keywords in the sound's name/path; the defaults are
+-- guesses, "Learn" on the page finds the real names.
+add(with("gameaudio", "GameAudio", {
+	bool("gameaudio.muteKill", true, "Mute the game's kill sounds while mine is on", "While a custom Murderer or Sheriff kill sound is applied and switched on, the game's own kill sounds are silenced on your client.", { master = true }),
+	bool("gameaudio.muteShot", false, "Mute the game's gun shot sound", "Silences the game's own gun shot sound on your client (pair it with your own gun-shot sound on the Sounds page)."),
+	bool("gameaudio.muteReload", false, "Mute the game's reload sound", "Silences the game's own reload sound on your client."),
+	bool("gameaudio.muteKnife", false, "Mute the game's knife sounds", "Silences the game's own knife swing and stab sounds on your client."),
+	{ key = "gameaudio.kwKill", type = "string", default = "kill,death,elimin", maxLen = 120, label = "Kill sound keywords", desc = "Comma-separated words found in the name or path of the game's kill sounds. Defaults are guesses: use Learn." },
+	{ key = "gameaudio.kwShot", type = "string", default = "shoot,shot,fire,gunshot", maxLen = 120, label = "Gun shot keywords", desc = "Words found in the name or path of the gun shot sounds." },
+	{ key = "gameaudio.kwReload", type = "string", default = "reload", maxLen = 120, label = "Reload keywords", desc = "Words found in the name or path of the reload sounds." },
+	{ key = "gameaudio.kwKnife", type = "string", default = "knife,slash,swing,stab", maxLen = 120, label = "Knife keywords", desc = "Words found in the name or path of the knife sounds." },
+	{ key = "gameaudio.kwWin", type = "string", default = "win,victory,defeat,roundend,gameover", maxLen = 120, label = "Round-end keywords", desc = "Words found in the name or path of the round-end sounds that start your song." },
+	bool("gameaudio.songEnabled", false, "Play my song at round end", "When a round-end sound of the game is detected, your song plays instead. Needs a song source below.", { master = true }),
+	{ key = "gameaudio.songSource", type = "string", default = "", maxLen = 120, label = "Round-end song source", desc = "asset:<id> or file:<name.mp3> (in MM2Hub/sounds/). Only audio you may use; the hub does not fetch music from any site." },
+	num("gameaudio.songVolume", 0.8, 0, 1, 0.05, "Round-end song volume", "Volume of your round-end song."),
+	bool("gameaudio.muteWin", true, "Mute the game's round-end sound while my song is on", "Silences the game's own round-end sound on your client when your song is switched on."),
+}))
+
 local conflicts = {
 	{
 		id = "lowprofile-vs-effects",

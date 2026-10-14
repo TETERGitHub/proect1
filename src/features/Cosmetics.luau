@@ -18,6 +18,7 @@ local Env = import("core/Env")
 local Logger = import("core/Logger")
 local Lib = import("data/ModelLib")
 local Custom = import("features/CustomLogic")
+local Meshes = import("features/MeshModels")
 
 local Cosmetics = {}
 
@@ -238,6 +239,15 @@ end
 
 -- buildCustom(kind, id, look, slotId) -> Model (root at the origin, parts welded) | nil, err
 local function buildCustom(kind, id, look, slotId)
+	local imported = string.match(tostring(id), "^import:([%w_]+)$")
+	if imported then
+		-- a real mesh you imported (tools/convert_mesh.py): own textures, only the light/sparkle effects apply
+		local m, err = Meshes.build(kind, imported)
+		if m then
+			addEffects(m, kind, look, slotId)
+		end
+		return m, err
+	end
 	if not Lib.has(kind, id) then
 		return nil, "unknown model '" .. tostring(id) .. "'"
 	end
@@ -253,6 +263,18 @@ end
 -- (see buildPreviewChar below for the character rig)
 -- buildPreview(kind, id, look) -> Model for the preview window: anchored, no lights/particles/trails
 function Cosmetics.buildPreview(kind, id, look)
+	local imported = string.match(tostring(id), "^import:([%w_]+)$")
+	if imported then
+		local m, err = Meshes.build(kind, imported)
+		if m then
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") then
+					d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
+				end
+			end
+		end
+		return m, err
+	end
 	if not Lib.has(kind, id) then
 		return nil, "unknown model '" .. tostring(id) .. "'"
 	end

@@ -15,6 +15,7 @@ local Sounds = import("features/Sounds")
 local Services = import("core/Services")
 local Logger = import("core/Logger")
 local KillEvents = import("features/KillEvents")
+local Pack = import("features/SoundPack")
 
 local KS = {}
 
@@ -49,8 +50,8 @@ local function cleanText(s, max)
 	return t
 end
 
--- library(role) -> list of { name, source, category }; unreadable or invalid entries are dropped
-function KS.library(role)
+-- userLibrary(role) -> the entries YOU added: list of { name, source, category }; unreadable or invalid entries are dropped
+function KS.userLibrary(role)
 	checkRole(role)
 	local text = Settings.get(key(role, "library"))
 	if text == "" then
@@ -67,6 +68,19 @@ function KS.library(role)
 				end
 			end
 		end
+	end
+	return out
+end
+
+-- library(role) -> the owner's bundled sounds (builtin = true, measured duration) followed by the entries you added for this role
+function KS.library(role)
+	checkRole(role)
+	local out = {}
+	for _, b in ipairs(Pack.list()) do
+		table.insert(out, { name = b.name, ru = b.ru, source = b.source, category = b.category, builtin = true, duration = b.duration })
+	end
+	for _, e in ipairs(KS.userLibrary(role)) do
+		table.insert(out, e)
 	end
 	return out
 end
@@ -94,11 +108,11 @@ function KS.addSound(role, name, source, category)
 	if not parsed or parsed.type == "proc" then
 		return false, err or "use asset:<id> or file:<name>"
 	end
-	local list = KS.library(role)
+	local list = KS.userLibrary(role)
 	if #list >= KS.MAX_ENTRIES then
 		return false, "the list is full (" .. KS.MAX_ENTRIES .. ")"
 	end
-	for _, e in ipairs(list) do
+	for _, e in ipairs(KS.library(role)) do
 		if string.lower(e.name) == string.lower(n) then
 			return false, "a sound named '" .. n .. "' is already in this list"
 		end
@@ -109,12 +123,21 @@ end
 
 function KS.removeSound(role, index)
 	checkRole(role)
-	local list = KS.library(role)
-	local e = list[index]
+	local all = KS.library(role)
+	local e = all[index]
 	if not e then
 		return false, "no such entry"
 	end
-	table.remove(list, index)
+	if e.builtin then
+		return false, "bundled sounds cannot be removed"
+	end
+	local list = KS.userLibrary(role)
+	for i, u in ipairs(list) do
+		if u.source == e.source and u.name == e.name then
+			table.remove(list, i)
+			break
+		end
+	end
 	local ok, err = writeLibrary(role, list)
 	-- a removed sound can no longer be the selection; the applied one stays until Apply or Reset (it is a copy)
 	if Settings.get(key(role, "pick")) == e.source then
@@ -165,6 +188,12 @@ local function resolve(source)
 	if not parsed then
 		return nil, err
 	end
+	if parsed.type == "file" and Pack.has(parsed.ref) then
+		local ok, perr = Pack.ensure(parsed.ref)
+		if not ok then
+			return nil, perr
+		end
+	end
 	return Sounds.resolveParsed(parsed, "sounds")
 end
 
@@ -192,7 +221,8 @@ function KS.isPreviewing(role)
 end
 
 function KS.duration(source)
-	return durations[source]
+	local b = Pack.fromSource(source)
+	return b and b.duration or durations[source]
 end
 
 -- preview(role, cb) -> true | false, err. Plays the SELECTED entry (or the applied one if nothing is selected) at this role's

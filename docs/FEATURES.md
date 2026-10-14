@@ -1,6 +1,6 @@
 # Feature catalogue
 
-Generated from `src/data/Features.luau` by `python3 tools/gen_docs.py` - **140 features**: 60 `tested`, 60 `implemented`, 18 `env`, 2 `partial`.
+Generated from `src/data/Features.luau` by `python3 tools/gen_docs.py` - **145 features**: 62 `tested`, 60 `implemented`, 21 `env`, 2 `partial`.
 
 Status meaning:
 
@@ -220,8 +220,13 @@ Status meaning:
 | 7 | Murderer kill sound | Звук убийства: Murderer | env | `features/KillSounds:playEvent` | A kill is confirmed on your client (another player's death soon after your own knife use, nearby); a client cannot prove who killed whom. Sounds are only those you add. |
 | 8 | Sheriff kill sound | Звук убийства: Sheriff | env | `features/KillSounds:playEvent` | A kill is confirmed on your client (another player's death soon after your own gun use); a client cannot prove who killed whom. Sounds are only those you add. |
 | 9 | Confirmed-kill events | Подтверждённые убийства | tested | `features/KillEvents:report` |  |
+| 10 | Imported real meshes | Импорт настоящих мешей | env | `features/MeshModels:build` | Needs getcustomasset (or an asset id) and an executor that may set MeshId; unverified in a real client. The hub ships no third-party meshes. |
+| 11 | Bundled sounds | Встроенные звуки | tested | `features/SoundPack:ensure` |  |
+| 12 | Silence the game's own sounds | Заглушение звуков игры | env | `features/GameAudio:rescan` | Which sounds count is decided by keywords; the defaults are guesses about the game. Use Learn to find the real names. Unverified in a real client. |
+| 13 | Learn the game's sounds | Узнать звуки игры | tested | `features/GameAudio:learn` |  |
+| 14 | Round-end song | Песня конца раунда | env | `features/GameAudio:songPlay` | Round-end detection relies on the sound keywords. Unverified in a real client. |
 
-## Settings schema (248 keys)
+## Settings schema (261 keys)
 
 | Key | Type | Default | Range / options | Module |
 |---|---|---|---|---|
@@ -473,3 +478,16 @@ Status meaning:
 | `ksound.sheriffSource` | string |  |  | SheriffKillSound |
 | `ksound.sheriffVolume` | number | 0.8 | 0..1 step 0.05 | SheriffKillSound |
 | `ksound.sheriffLibrary` | string |  |  | SheriffKillSound |
+| `gameaudio.muteKill` | bool | true |  | GameAudio |
+| `gameaudio.muteShot` | bool | false |  | GameAudio |
+| `gameaudio.muteReload` | bool | false |  | GameAudio |
+| `gameaudio.muteKnife` | bool | false |  | GameAudio |
+| `gameaudio.kwKill` | string | kill,death,elimin |  | GameAudio |
+| `gameaudio.kwShot` | string | shoot,shot,fire,gunshot |  | GameAudio |
+| `gameaudio.kwReload` | string | reload |  | GameAudio |
+| `gameaudio.kwKnife` | string | knife,slash,swing,stab |  | GameAudio |
+| `gameaudio.kwWin` | string | win,victory,defeat,roundend,gameover |  | GameAudio |
+| `gameaudio.songEnabled` | bool | false |  | GameAudio |
+| `gameaudio.songSource` | string |  |  | GameAudio |
+| `gameaudio.songVolume` | number | 0.8 | 0..1 step 0.05 | GameAudio |
+| `gameaudio.muteWin` | bool | true |  | GameAudio |

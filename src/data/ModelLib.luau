@@ -90,8 +90,15 @@ function Lib.styleLook(kind, id)
 	local def = SETS[kind] and SETS[kind][id]
 	local src = def and def.look
 	if not src then
+		-- the style named like the model's category, else the first one
 		local styles = Lib.styles(kind)
 		src = styles[1] and styles[1].look
+		for _, st in ipairs(styles) do
+			if def and st.id == def.category then
+				src = st.look
+				break
+			end
+		end
 	end
 	for k, v in pairs(src or {}) do
 		look[k] = type(v) == "table" and table.clone(v) or v
@@ -100,8 +107,20 @@ function Lib.styleLook(kind, id)
 end
 
 -- parts(kind, id, look) -> resolved plain part list (see ModelKit.resolve)
-function Lib.parts(kind, id, look)
-	return Kit.resolve(Lib.model(kind, id), look or Lib.styleLook(kind, id))
+function Lib.parts(kind, id, look, opts)
+	return Kit.resolve(Lib.model(kind, id), look or Lib.styleLook(kind, id), opts)
+end
+
+-- bounds(kind, id) -> lo {x,y,z}, hi {x,y,z}, size {x,y,z} of the model's rotated parts (cached with the model)
+function Lib.bounds(kind, id)
+	local key = "b|" .. kind .. "|" .. id
+	local c = cache[key]
+	if not c then
+		local lo, hi = Kit.bounds(Lib.parts(kind, id))
+		c = { lo = lo, hi = hi, size = { hi[1] - lo[1], hi[2] - lo[2], hi[3] - lo[3] } }
+		cache[key] = c
+	end
+	return c.lo, c.hi, c.size
 end
 
 Lib.copyLook = copyLook
