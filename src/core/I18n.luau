@@ -214,7 +214,11 @@ end
 -- cut(text, n): at most n characters, never splitting a multi-byte character.
 function I18n.cut(text, n)
 	if utf8.len(text) and utf8.len(text) > n then
-		return string.sub(text, 1, utf8.offset(text, n + 1) - 1)
+		local out = string.sub(text, 1, utf8.offset(text, n + 1) - 1)
+		if current ~= "en" then
+			I18n.remember(out) -- a shortened translation is still a translation
+		end
+		return out
 	end
 	return text
 end

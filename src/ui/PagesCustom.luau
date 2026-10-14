@@ -305,7 +305,7 @@ local function modelGrid(page, kind, ids, preview)
 				local ring = F.stroke(b, "stroke", 1, 0.5)
 				F.padding(b, 12, 10, 12, 10)
 				F.label(b, info.name, { size = 13, bold = true, dim = UDim2.new(1, -24, 0, 18) })
-				local sub = info.imported and (I18n.tr("Imported mesh") .. " · " .. info.tris .. " " .. I18n.tr("tris")) or (I18n.tr(info.category) .. " · " .. info.partCount .. " " .. I18n.tr("parts"))
+				local sub = I18n.remember(info.imported and (I18n.tr("Imported mesh") .. " · " .. info.tris .. " " .. I18n.tr("tris")) or (I18n.tr(info.category) .. " · " .. info.partCount .. " " .. I18n.tr("parts")))
 				local cat = F.label(b, sub, { size = 11, token = "textDim", dim = UDim2.new(1, 0, 0, 14) })
 				cat.Position = UDim2.fromOffset(0, 20)
 				if not info.imported then
