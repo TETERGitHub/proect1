@@ -15,6 +15,9 @@ licence of every model before use (most free models need attribution: put it in 
    python3 tools/convert_mesh.py katana.glb --id katana --kind knife --forward=-z
    python3 tools/convert_mesh.py tung.glb --id tung --kind char --group costume --forward +z --length 5.5
    python3 tools/convert_mesh.py halo.glb --id halo --kind char --group accessory --slot head
+   # models made with docs/PROMPT_VS_MODELS.md (1 unit = 1 stud, origin at the grip): keep both with --as-is
+   python3 tools/convert_mesh.py gun_pistol.glb --id gun_pistol --name "Pistol" --kind gun --as-is
+   python3 tools/convert_mesh.py knife_katana.glb --id knife_katana --name "Katana" --kind knife --as-is
    ```
 
    (write negative axes as `--forward=-z` or `--forward z-`)

@@ -237,15 +237,17 @@ def bounds(meshes):
     return allp.min(axis=0), allp.max(axis=0)
 
 
-def normalize(meshes, length, hold):
+def normalize(meshes, length, keep_scale=False):
+    """Centres the model on its bounding box and scales the longest side to `length` (or keeps the scale).
+    Returns (size, k, origin): origin is where the SOURCE origin (0,0,0) ended up, i.e. the grip when the file was made that way."""
     lo, hi = bounds(meshes)
     size = hi - lo
-    k = length / max(size)
+    k = 1.0 if keep_scale else length / max(size)
     centre = (lo + hi) / 2
     for m in meshes:
         m.pos = (m.pos - centre) * k
     lo, hi = (lo - centre) * k, (hi - centre) * k
-    return (hi - lo), k
+    return (hi - lo), k, -centre * k
 
 
 def decimate(m, target):
@@ -352,6 +354,8 @@ def main():
     ap.add_argument("--forward", default="-z", type=axis_arg, help="axis of the SOURCE model that points to the barrel / blade tip / the character's front")
     ap.add_argument("--up", default="+y", type=axis_arg, help="axis of the SOURCE model that points up")
     ap.add_argument("--length", type=float, default=0, help="longest side in studs (default: gun 2.8, knife 3.0, costume 5.5, accessory 3.0)")
+    ap.add_argument("--as-is", action="store_true", help="keep the file's scale (1 unit = 1 stud) and use its origin as the grip / root point "
+                    "(for models exported by docs/PROMPT_VS_MODELS.md); without it the model is scaled to --length and held at its centre")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
     ap.add_argument("--credit", default="", help="author / title / licence text kept next to the model")
@@ -373,7 +377,7 @@ def main():
     total_in = sum(len(m.faces) for m in meshes)
     orient(meshes, a.forward, a.up)
     length = a.length or {"gun": 2.8, "knife": 3.0}.get(a.kind, 5.5 if a.group == "costume" else 3.0)
-    size, k = normalize(meshes, length, None)
+    size, k, origin = normalize(meshes, length, keep_scale=a.as_is)
     # split the budget between materials in proportion to their size
     budget = a.max_tris
     out_meshes = []
@@ -395,7 +399,8 @@ def main():
         parts.append({"mesh": base + ".obj", "texture": base + ".png", "center": [round(float(c), 4) for c in centre], "size": [round(max(float(s), 0.05), 4) for s in psize], "tris": int(len(m.faces))})
     entry = {
         "id": a.id, "name": a.name or a.id, "kind": a.kind, "parts": parts, "size": [round(float(s), 3) for s in size],
-        "tris": int(sum(p["tris"] for p in parts)), "credit": a.credit, "hold": [0, 0, 0],
+        "tris": int(sum(p["tris"] for p in parts)), "credit": a.credit,
+        "hold": [round(float(c), 4) for c in origin] if a.as_is else [0, 0, 0],
     }
     if a.kind == "char":
         entry["group"] = a.group

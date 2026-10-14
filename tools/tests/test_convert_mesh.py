@@ -86,6 +86,19 @@ class ConvertMesh(unittest.TestCase):
             self.assertEqual(sum(1 for l in lines if l.startswith("f ")), p["tris"])
         self.assertEqual(Image.open(out / e["parts"][0]["texture"]).size, (64, 64))
 
+    def test_as_is_keeps_scale_and_grip(self):
+        out = self.tmp / "asis"
+        r = run(str(self.glb), "--id", "g", "--kind", "gun", "--as-is", "--out", str(out), "--no-preview")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        e = json.loads((out / "index.json").read_text())["models"][0]
+        self.assertAlmostEqual(max(e["size"]), 6.0, places=3, msg="1 unit = 1 stud is kept")
+        # the source origin sits 0.55 above the bounding-box centre (y range -1.6 .. 0.5); it becomes the grip
+        self.assertAlmostEqual(e["hold"][1], 0.55, places=3)
+        self.assertAlmostEqual(e["hold"][0], 0.0, places=3)
+        r2 = run(str(self.glb), "--id", "g", "--kind", "gun", "--out", str(self.tmp / "plain"), "--no-preview")
+        e2 = json.loads((self.tmp / "plain" / "index.json").read_text())["models"][0]
+        self.assertEqual(e2["hold"], [0, 0, 0], "without --as-is the model is held at its centre")
+
     def test_forward_axis_changes_direction(self):
         a, b = self.tmp / "a", self.tmp / "b"
         run(str(self.glb), "--id", "m", "--kind", "gun", "--forward", "+z", "--out", str(a), "--no-preview")
