@@ -346,6 +346,29 @@ C.ballerina = { id = "ballerina", name = "Ballerina Cappuccina", group = "costum
 	b:ring(5, 0.5, function(i, a, x, z) b:ball("Sparkle" .. i, "glow", 0.1, x * 2.8, 0.3 + i * 0.4, z * 2.8) end)
 end }
 
+-- Preview mannequin: a neutral R15-proportioned figure (smooth when meshes are available) used only in the preview window.
+-- Not in `order`: it is never offered as a model. Every part names its bone so the preview walk moves it like a real rig.
+C.mannequin = { id = "mannequin", name = "Mannequin", group = "mannequin", category = "Preview", build = function(b)
+	local function p(part, bone, bevel)
+		part.bone = bone
+		part.bevel = bevel
+		return part
+	end
+	p(b:ball("Head", "steel", 1.15, 0, 1.9, 0), "Head")
+	p(b:cylY("Neck", "steel", 0.3, 0.38, 0, 1.38, 0), "Head")
+	p(b:box("UpperTorso", "steel", 1.9, 1.3, 0.95, 0, 0.78, 0), "UpperTorso", 0.28)
+	p(b:box("LowerTorso", "steel", 1.7, 0.7, 0.88, 0, -0.2, 0), "LowerTorso", 0.24)
+	b:mirror(function(s)
+		local side = s == 1 and "Right" or "Left"
+		p(b:cylY("UpperArm" .. s, "steel", 0.8, 0.46, s * 1.4, 0.85, 0), side .. "UpperArm", 0.12)
+		p(b:cylY("LowerArm" .. s, "steel", 0.75, 0.42, s * 1.4, 0.05, 0), side .. "LowerArm", 0.12)
+		p(b:ball("Hand" .. s, "steel", 0.42, s * 1.4, -0.5, 0), side .. "Hand")
+		p(b:cylY("UpperLeg" .. s, "steel", 0.9, 0.56, s * 0.5, -1.15, 0), side .. "UpperLeg", 0.14)
+		p(b:cylY("LowerLeg" .. s, "steel", 0.85, 0.5, s * 0.5, -2.0, 0), side .. "LowerLeg", 0.12)
+		p(b:box("Foot" .. s, "steel", 0.55, 0.28, 0.95, s * 0.5, -2.78, -0.1), side .. "Foot", 0.1)
+	end)
+end }
+
 C.order = {
 	"halo", "crown", "horns", "headphones", "catears",
 	"wings_angel", "wings_demon", "cape", "chains",

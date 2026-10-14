@@ -7,6 +7,7 @@
 local import = ...
 local Kit = import("data/ModelKit")
 local Guns = import("data/ModelsGun")
+local Rig = import("data/Rig")
 
 local Lib = {}
 
@@ -108,7 +109,21 @@ end
 
 -- parts(kind, id, look) -> resolved plain part list (see ModelKit.resolve)
 function Lib.parts(kind, id, look, opts)
-	return Kit.resolve(Lib.model(kind, id), look or Lib.styleLook(kind, id), opts)
+	local parts = Kit.resolve(Lib.model(kind, id), look or Lib.styleLook(kind, id), opts)
+	local def = SETS[kind] and SETS[kind][id]
+	if def and def.group == "costume" then
+		-- every piece of a costume follows one body part (see data/Rig)
+		for _, p in ipairs(parts) do
+			p.bone = p.bone or Rig.assign(p.pos)
+		end
+	end
+	return parts
+end
+
+-- isCostume(kind, id) -> true for full-body costumes (their meshes/parts are split per bone)
+function Lib.isCostume(kind, id)
+	local def = SETS[kind] and SETS[kind][id]
+	return def ~= nil and def.group == "costume"
 end
 
 -- bounds(kind, id) -> lo {x,y,z}, hi {x,y,z}, size {x,y,z} of the model's rotated parts (cached with the model)

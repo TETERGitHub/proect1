@@ -21,6 +21,7 @@ local Custom = import("features/CustomLogic")
 local Meshes = import("features/MeshModels")
 local MeshCache = import("features/MeshCache")
 local Kit = import("data/ModelKit")
+local Rig = import("data/Rig")
 
 local Cosmetics = {}
 
@@ -176,6 +177,9 @@ local function instantiate(model, root, list)
 		p.TopSurface = Enum.SurfaceType.Smooth
 		p.BottomSurface = Enum.SurfaceType.Smooth
 		p.CFrame = root.CFrame * CFrame.new(d.pos[1], d.pos[2], d.pos[3]) * CFrame.Angles(math.rad(d.rot[1]), math.rad(d.rot[2]), math.rad(d.rot[3]))
+		if d.bone then
+			p:SetAttribute("bone", d.bone) -- the body part this piece follows (costumes), see data/Rig
+		end
 		p.Parent = model
 	end
 end
@@ -274,6 +278,9 @@ local function buildSmooth(kind, id, look)
 		part.Color = Color3.fromRGB(color[1], color[2], color[3])
 		part.Material = Enum.Material[material] or Enum.Material.SmoothPlastic
 		part.Transparency = transparency or 0
+		if g.bone then
+			part:SetAttribute("bone", g.bone)
+		end
 		part.Parent = model
 	end
 	weldAll(model)
@@ -348,37 +355,20 @@ function Cosmetics.buildPreview(kind, id, look)
 	return model
 end
 
--- buildPreviewChar(sel, look) -> Model: a neutral mannequin (or the chosen costume) with the chosen accessories attached at
--- the same anchor offsets the live builder uses. It is a separate model in the preview window and never touches your avatar.
+-- buildPreviewChar(sel, look) -> Model: a neutral mannequin (or the chosen costume) with the chosen accessories attached to the
+-- same bones the live builder uses. Every piece carries its bone and its base CFrame, so Cosmetics.poseRig can swing the limbs
+-- (the preview walk). It is a separate model in the preview window and never touches your avatar.
 local PREVIEW_ANCHOR_Y = { head = 1.9, back = 0.6, aura = 0 }
 
 function Cosmetics.buildPreviewChar(sel, look)
 	local rig = Instance.new("Model")
 	rig.Name = "Preview_char"
 	local root = newRoot(rig)
-	local function piece(name, size, y, x)
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Size = size
-		p.Color = Color3.fromRGB(196, 198, 206)
-		p.Material = Enum.Material.SmoothPlastic
-		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
-		p.CFrame = root.CFrame * CFrame.new(x or 0, y, 0)
-		p.Parent = rig
-	end
+	root.Anchored = true
 	local costume = sel.costume and sel.costume ~= "" and sel.costume or nil
-	if costume then
-		local m = Cosmetics.buildPreview("char", costume, look)
-		if m then
-			m.Parent = rig
-		end
-	else
-		piece("Head", Vector3.new(1.1, 1.1, 1.1), 1.9)
-		piece("Torso", Vector3.new(2, 2, 1), 0.4)
-		piece("ArmL", Vector3.new(1, 2, 1), 0.4, 1.5)
-		piece("ArmR", Vector3.new(1, 2, 1), 0.4, -1.5)
-		piece("LegL", Vector3.new(0.95, 2.1, 1), -1.95, 0.5)
-		piece("LegR", Vector3.new(0.95, 2.1, 1), -1.95, -0.5)
+	local body = Cosmetics.buildPreview("char", costume or "mannequin", costume and look or Lib.styleLook("char", "mannequin"))
+	if body then
+		body.Parent = rig
 	end
 	for _, slot in ipairs({ "head", "back", "aura" }) do
 		local id = sel[slot]
@@ -387,10 +377,39 @@ function Cosmetics.buildPreviewChar(sel, look)
 			if m then
 				m.Parent = rig
 				m:PivotTo(CFrame.new(0, PREVIEW_ANCHOR_Y[slot], 0))
+				for _, d in ipairs(m:GetDescendants()) do
+					if d:IsA("BasePart") then
+						d:SetAttribute("bone", Rig.SLOT_BONE[slot] or "Root")
+					end
+				end
 			end
 		end
 	end
+	-- remember every piece's rest CFrame for posing
+	for _, d in ipairs(rig:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("bone") then
+			d:SetAttribute("base", d.CFrame)
+		end
+	end
 	return rig
+end
+
+-- poseRig(rig, t) -> number of pieces moved. Swings arms, legs and head of a preview rig (walk cycle); t = seconds, nil = rest pose.
+function Cosmetics.poseRig(rig, t)
+	local moved = 0
+	for _, d in ipairs(rig:GetDescendants()) do
+		if d:IsA("BasePart") then
+			local boneId, base = d:GetAttribute("bone"), d:GetAttribute("base")
+			local bone = boneId and Rig.bone(boneId)
+			if bone and base then
+				local angle = t and Rig.swingAngle(bone.swing, t) or 0
+				local pv = CFrame.new(bone.pivot[1], bone.pivot[2], bone.pivot[3])
+				d.CFrame = pv * CFrame.Angles(angle, 0, 0) * pv:Inverse() * base
+				moved += 1
+			end
+		end
+	end
+	return moved
 end
 
 -- Loading and sanitising ----------------------------------------------------------------------------------------------------
@@ -733,6 +752,78 @@ local ACCESSORY_ANCHOR = {
 	costume = function(char) return char:FindFirstChild("HumanoidRootPart") end,
 }
 
+-- restPose(char) -> map of part name -> CFrame relative to the HumanoidRootPart in the rig's REST pose (the Motor6D chain with no
+-- animation applied), and "R15" | "R6". Pieces are welded with offsets from this, so they stay correct whatever pose the avatar is in.
+local function restPose(char)
+	local rest = { HumanoidRootPart = CFrame.new() }
+	local motors = {}
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:IsA("Motor6D") then
+			table.insert(motors, d)
+		end
+	end
+	local progress = true
+	while progress do
+		progress = false
+		for _, m in ipairs(motors) do
+			local p0, p1 = m.Part0, m.Part1
+			if p0 and p1 and rest[p0.Name] and not rest[p1.Name] then
+				rest[p1.Name] = rest[p0.Name] * m.C0 * m.C1:Inverse()
+				progress = true
+			end
+		end
+	end
+	return rest, char:FindFirstChild("UpperTorso") and "R15" or "R6"
+end
+Cosmetics.restPose = restPose
+
+-- attachToRig(char, model, slot) -> animated, static, rigType. Replaces the model's rigid welds: every piece is welded to the body
+-- part of its bone (costume pieces carry their own bone, head/back accessories the Head/UpperTorso, the aura stays on the root).
+-- A piece whose body part or Motor6D rest pose is missing is welded to the root instead and counted as static.
+local function attachToRig(char, model, slot)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local rest, rigType = restPose(char)
+	local root = model.PrimaryPart
+	local anchorId = slot == "costume" and "Root" or (Rig.SLOT_BONE[slot] or "Root")
+	local anchorName = Rig.partName(anchorId, rigType)
+	local anchorRest = (anchorName and rest[anchorName]) or CFrame.new()
+	local base = slot == "costume" and CFrame.new() or anchorRest
+	local rootInv = root.CFrame:Inverse()
+	local pieces = {}
+	for _, d in ipairs(model:GetChildren()) do
+		if d:IsA("BasePart") then
+			for _, c in ipairs(d:GetChildren()) do
+				if c:IsA("WeldConstraint") then
+					c:Destroy()
+				end
+			end
+			table.insert(pieces, d)
+		end
+	end
+	local animated, static = 0, 0
+	for _, d in ipairs(pieces) do
+		local boneId = slot == "costume" and d:GetAttribute("bone") or Rig.SLOT_BONE[slot]
+		local partName = boneId and Rig.partName(boneId, rigType)
+		local bonePart = partName and char:FindFirstChild(partName)
+		local boneRest = partName and rest[partName]
+		if not (bonePart and boneRest) then
+			bonePart, boneRest, partName = hrp, CFrame.new(), "HumanoidRootPart"
+		end
+		local w = Instance.new("Weld")
+		w.Part0 = bonePart
+		w.Part1 = d
+		w.C0 = boneRest:Inverse() * (base * (rootInv * d.CFrame))
+		w.C1 = CFrame.new()
+		w.Parent = d
+		if partName == "HumanoidRootPart" and boneId ~= "Root" and boneId ~= nil then
+			static += 1 -- wanted to follow a limb but the rig has no such part / rest pose
+		elseif partName ~= "HumanoidRootPart" then
+			animated += 1
+		end
+	end
+	return animated, static, rigType
+end
+
 local function applyCustomChar()
 	local snap = Custom.applied("char")
 	local char = Services.Players.LocalPlayer.Character
@@ -752,7 +843,7 @@ local function applyCustomChar()
 		return
 	end
 	clearCustomChar()
-	rec = { skins = {}, hidden = {}, char = char, text = text, scale = Settings.get("cosmetics.charScale"), costume = snap.sel.costume ~= "" }
+	rec = { skins = {}, hidden = {}, char = char, text = text, scale = Settings.get("cosmetics.charScale"), costume = snap.sel.costume ~= "", animated = 0, static = 0 }
 	local problems = {}
 	for _, slot in ipairs(Custom.CHAR_SLOTS) do
 		local id = snap.sel[slot]
@@ -770,9 +861,11 @@ local function applyCustomChar()
 				pcall(function()
 					model:ScaleTo(rec.scale)
 				end)
-				model:PivotTo(anchor.CFrame)
 				model.Parent = char
-				weldTo(anchor, model.PrimaryPart)
+				local animated, static, rigType = attachToRig(char, model, slot)
+				rec.animated += animated
+				rec.static += static
+				rec.rigType = rigType
 				table.insert(rec.skins, model)
 			else
 				table.insert(problems, tostring(err))
@@ -788,6 +881,8 @@ local function applyCustomChar()
 	for _, sk in ipairs(rec.skins) do
 		if sk:GetAttribute("mesh") == true then meshN += 1 else partN += 1 end
 	end
+	state.status.customCharRig = rec.animated > 0 and string.format("%s rest pose: %d pieces follow their body parts%s", tostring(rec.rigType), rec.animated, rec.static > 0 and (", " .. rec.static .. " attached to the root") or "")
+		or (#rec.skins > 0 and "no Motor6D rest pose found: everything is attached to the root (static)" or "")
 	state.status.customCharMesh = meshN > 0 and partN == 0 and "smooth meshes" or (partN > 0 and "simple parts (meshes unavailable, see the model status above)" or "")
 end
 

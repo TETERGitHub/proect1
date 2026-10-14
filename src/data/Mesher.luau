@@ -10,9 +10,10 @@
 
 local import = ...
 local Kit = import("data/ModelKit")
+local Rig = import("data/Rig")
 
 local Mesher = {}
-Mesher.VERSION = 3
+Mesher.VERSION = 4
 
 local sqrt, sin, cos, pi, min, max = math.sqrt, math.sin, math.cos, math.pi, math.min, math.max
 
@@ -320,11 +321,11 @@ function Mesher.build(model, opts)
 	opts = opts or {}
 	local bevel, obevel = opts.bevel or 0.03, opts.outlineBevel or 0.025
 	local groups, order = {}, {}
-	local function group(role, pmat, decor)
-		local key = role .. "|" .. tostring(pmat) .. (decor and "|decor" or "")
+	local function group(role, pmat, decor, bone)
+		local key = role .. "|" .. tostring(pmat) .. (decor and "|decor" or "") .. (bone and ("|" .. bone) or "")
 		local g = groups[key]
 		if not g then
-			g = { key = key, role = role, material = pmat, decor = decor and true or false, mesh = new() }
+			g = { key = key, role = role, material = pmat, decor = decor and true or false, bone = bone, mesh = new() }
 			groups[key] = g
 			order[#order + 1] = g
 		end
@@ -332,13 +333,17 @@ function Mesher.build(model, opts)
 	end
 	for _, p in ipairs(model.parts) do
 		if not p.poly then
-			local g = group(p.role, p.m, p.decor)
+			local bone = nil
+			if opts.bones then
+				bone = p.bone or Rig.assign(p.p)
+			end
+			local g = group(p.role, p.m, p.decor, bone)
 			local from = #g.mesh.v
 			local sx, sy, sz = p.sz[1], p.sz[2], p.sz[3]
 			if p.s == "Block" then
-				roundedBox(g.mesh, sx, sy, sz, bevel)
+				roundedBox(g.mesh, sx, sy, sz, p.bevel or bevel)
 			elseif p.s == "Cylinder" then
-				cylinder(g.mesh, sx, sy, sz, bevel)
+				cylinder(g.mesh, sx, sy, sz, p.bevel or bevel)
 			elseif p.s == "Ball" then
 				sphere(g.mesh, sx, sy, sz)
 			elseif p.s == "Wedge" then
@@ -349,7 +354,7 @@ function Mesher.build(model, opts)
 	end
 	for _, sh in ipairs(model.shapes or {}) do
 		if sh.kind == "poly" then
-			local g = group(sh.role, sh.m, sh.decor)
+			local g = group(sh.role, sh.m, sh.decor, opts.bones and Rig.assign({ sh.x, 0, 0 }) or nil)
 			local from = #g.mesh.v
 			outline(g.mesh, sh.pts, sh.thick, obevel)
 			transform(g.mesh, from, { 0, 0, 0 }, { sh.x, 0, 0 }, false)

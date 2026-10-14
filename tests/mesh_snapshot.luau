@@ -6,7 +6,9 @@ local Lib = import("data/ModelLib")
 local Kit = import("data/ModelKit")
 local Mesher = import("data/Mesher")
 
-for _, id in ipairs(Lib.ids(MODEL_KIND)) do
+local ids = Lib.ids(MODEL_KIND)
+if MODEL_KIND == "char" then table.insert(ids, "mannequin") end
+for _, id in ipairs(ids) do
 	local ok, err = pcall(function()
 		local look = Lib.styleLook(MODEL_KIND, id)
 		local groups = Mesher.build(Lib.model(MODEL_KIND, id))

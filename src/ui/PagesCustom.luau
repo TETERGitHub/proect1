@@ -74,7 +74,7 @@ local function previewCard(page, kind)
 	cam.Parent = vp
 	vp.CurrentCamera = cam
 
-	local view = { yaw = 0, pitch = 0.22, dist = 6, dist0 = 6, zoom = 1, cx = 0, cy = 0, cz = 0, spin = false, model = nil, dirty = true, popping = false }
+	local view = { walk = false, t = 0, yaw = 0, pitch = 0.22, dist = 6, dist0 = 6, zoom = 1, cx = 0, cy = 0, cz = 0, spin = false, model = nil, dirty = true, popping = false }
 	local defaultYaw = kind == "char" and (math.pi - 0.45) or 2.35
 	view.yaw = defaultYaw
 	local popValue = Instance.new("NumberValue")
@@ -186,6 +186,17 @@ local function previewCard(page, kind)
 		view.spin = not view.spin
 		F.setButtonStyle(spinBtn, view.spin and "filled" or "tinted")
 	end, 4)
+	if kind == "char" then
+		local walkBtn
+		walkBtn = tool("skip", "Walk preview", function()
+			view.walk = not view.walk
+			view.t = 0
+			F.setButtonStyle(walkBtn, view.walk and "filled" or "tinted")
+			if not view.walk and view.model then
+				Cosmetics.poseRig(view.model, nil)
+			end
+		end, 5)
+	end
 	local big = false
 	tool("chevron", "Enlarge preview", function()
 		big = not big
@@ -202,6 +213,10 @@ local function previewCard(page, kind)
 		end
 		if view.dirty then
 			rebuild()
+		end
+		if view.walk and view.model and Motion.enabled() then
+			view.t += dt
+			Cosmetics.poseRig(view.model, view.t)
 		end
 		if view.spin and Motion.enabled() then
 			view.yaw += dt * 0.7
@@ -531,6 +546,9 @@ local function buildCustom(kind, label, intro)
 		local fnModel = infoLine(page, "Model drawn as", function()
 			return preview.meshStatus()
 		end)
+		local fnRig = kind == "char" and infoLine(page, "Body binding", function()
+			return Cosmetics.status().customCharRig or "not applied"
+		end) or nil
 		local fnStatus = infoLine(page, "Status", function()
 			local st = Cosmetics.status()[STATUS_KEY[kind]] or "off"
 			if Settings.get(Custom.key(kind, "enabled")) and st == "off" then
@@ -542,6 +560,9 @@ local function buildCustom(kind, label, intro)
 			if visible(page.id) then
 				fnStatus()
 				fnModel()
+				if fnRig then
+					fnRig()
+				end
 			end
 		end)
 		page.maid:Give(h.Cancel)

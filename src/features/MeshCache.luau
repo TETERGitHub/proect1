@@ -108,7 +108,7 @@ function M.request(kind, id)
 			if not Env.has("getcustomasset") then
 				return finish(e, kind, id, false, "getcustomasset is not available in this executor")
 			end
-			local groups = Mesher.build(Lib.model(kind, id))
+			local groups = Mesher.build(Lib.model(kind, id), { bones = Lib.isCostume(kind, id) })
 			local out = {}
 			for i, g in ipairs(groups) do
 				local obj, center, size = Mesher.toObj(g.mesh)
@@ -124,7 +124,7 @@ function M.request(kind, id)
 				if not url then
 					return finish(e, kind, id, false, tostring(uerr))
 				end
-				out[#out + 1] = { key = g.key, role = g.role, material = g.material, decor = g.decor, url = url, center = center, size = size, tris = #g.mesh.f }
+				out[#out + 1] = { key = g.key, role = g.role, material = g.material, decor = g.decor, bone = g.bone, url = url, center = center, size = size, tris = #g.mesh.f }
 			end
 			-- one mesh is enough to know whether the executor accepts generated OBJ files at all
 			local lok, ldetail = (loadCheck or engineLoad)(out[1].url, out[1].size)

@@ -1065,9 +1065,15 @@ local exact = {
 	["simple parts: this executor has no file API (writefile/readfile/isfile), so meshes cannot be written"] = "простые детали: у этого инжектора нет файлового API (writefile/readfile/isfile), поэтому меши записать нельзя",
 	["simple parts: getcustomasset is not available in this executor"] = "простые детали: в этом инжекторе нет getcustomasset",
 	["simple parts: smooth meshes are switched off"] = "простые детали: гладкие меши выключены",
+	["Walk preview"] = "Предпросмотр ходьбы",
+	["Body binding"] = "Привязка к телу",
+	["not applied"] = "не применено",
+	["no Motor6D rest pose found: everything is attached to the root (static)"] = "поза покоя Motor6D не найдена: всё привязано к корню (статично)",
 }
 
 local patterns = {
+	{ "^(R%d+) rest pose: (%d+) pieces follow their body parts$", "поза покоя %s: %s деталей следуют за частями тела" },
+	{ "^(R%d+) rest pose: (%d+) pieces follow their body parts, (%d+) attached to the root$", "поза покоя %s: %s деталей следуют за частями тела, %s привязаны к корню" },
 	{ "^simple parts: (.+)$", "простые детали: %s" },
 	{ "^(%d+) sound%(s%) heard%.$", "Услышано звуков: %s." },
 	{ "^'(.-)' added to (%a+)%.$", "«%s» добавлено в группу %s." },

@@ -292,7 +292,7 @@ function Kit.resolve(model, look, opts)
 		out[#out + 1] = {
 			name = p.n, shape = p.s, size = { p.sz[1], p.sz[2], p.sz[3] }, pos = { p.p[1], p.p[2], p.p[3] },
 			rot = { p.r[1], p.r[2], p.r[3] }, color = color, material = material, transparency = transparency, neon = neon,
-			flip = (p.s == "Wedge" and flip) or nil, role = p.role, poly = p.poly,
+			flip = (p.s == "Wedge" and flip) or nil, role = p.role, poly = p.poly, bone = p.bone,
 		}
 	end
 	return out
