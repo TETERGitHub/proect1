@@ -149,7 +149,8 @@ return Loader.run({
 			task.wait(0.1)
 			me = players.LocalPlayer
 		end
-		return me and me.UserId or 0
+		-- no player -> no uid: the server answers "account id required" instead of binding the key to a fake account
+		return me and me.UserId or nil
 	end)(),
 	notify = notify,
 	clock = os.time, -- wall clock: os.clock is process CPU time and would let a term run longer than it should

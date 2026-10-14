@@ -63,5 +63,64 @@ print(__import("m") == __import("m"), __import("z"), __import("z"), n)
         self.assertEqual(out, "false\ttrue")
 
 
+class BuildReproducibility(unittest.TestCase):
+    """No Luau CLI needed: these check the generator itself."""
+
+    def read(self, path):
+        return pathlib.Path(path).read_bytes()
+
+    def test_two_builds_are_byte_identical(self):
+        a = self.read(build.build(False))
+        b = self.read(build.build(False))
+        self.assertEqual(a, b)
+        a = self.read(build.build_loader("https://example.invalid"))
+        b = self.read(build.build_loader("https://example.invalid"))
+        self.assertEqual(a, b)
+
+    def test_module_order_is_stable_and_sorted(self):
+        names = list(build.collect(ROOT / "src"))
+        self.assertEqual(names, sorted(names))
+
+    def test_every_static_import_resolves_to_a_source_file(self):
+        import re
+        mods = build.collect(ROOT / "src")
+        for name, src in mods.items():
+            for target in re.findall(r'import\("([^"]+)"\)', src):
+                self.assertIn(target, mods, f"{name} imports missing module {target}")
+        loader = build.collect(ROOT / "loader", "loader/")
+        for name, src in loader.items():
+            for target in re.findall(r'import\("([^"]+)"\)', src):
+                self.assertTrue(target in mods or target in loader, f"{name} imports missing module {target}")
+
+    def test_loader_build_contains_no_secret_and_substitutes_the_url(self):
+        text = self.read(build.build_loader("https://example.invalid")).decode()
+        self.assertIn("https://example.invalid", text)
+        self.assertNotIn("@@SERVER_URL@@", text)
+        for forbidden in ("LICENSE_SECRET", "app/Hub", "features/Training"):
+            self.assertNotIn(forbidden, text)
+
+    def test_a_changed_source_changes_the_output(self):
+        original = build.collect
+
+        def patched(base, prefix=""):
+            mods = original(base, prefix)
+            if "core/Codec" in mods:
+                mods["core/Codec"] += "\n-- changed"
+            return mods
+
+        before = self.read(build.build(False))
+        build.collect = patched
+        try:
+            after = self.read(build.build(False))
+        finally:
+            build.collect = original
+        self.assertNotEqual(before, after)
+        self.assertEqual(before, self.read(build.build(False)))
+
+    def test_plain_build_has_no_embedded_secret(self):
+        text = self.read(build.build(False)).decode()
+        self.assertIn("@@LICENSE_SECRET_HEX@@", text)  # still the placeholder: nothing secret in a plain build
+
+
 if __name__ == "__main__":
     unittest.main()

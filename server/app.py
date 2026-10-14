@@ -23,6 +23,7 @@ import licensing  # noqa: E402
 MAX_BODY = 4096
 RATE_LIMIT = 12      # requests
 RATE_WINDOW = 60.0   # seconds, per client address
+MAX_TRACKED = 10000  # distinct client addresses kept by the rate limiter
 
 
 class RateLimiter:
@@ -34,6 +35,10 @@ class RateLimiter:
     def allow(self, who: str) -> bool:
         now = self.clock()
         with self.lock:
+            if len(self.hits) > MAX_TRACKED:
+                # forget addresses whose window has fully passed so a flood of distinct addresses cannot grow memory
+                for k in [k for k, v in self.hits.items() if not v or now - v[-1] > self.window]:
+                    del self.hits[k]
             q = self.hits[who]
             while q and now - q[0] > self.window:
                 q.popleft()
@@ -41,6 +46,21 @@ class RateLimiter:
                 return False
             q.append(now)
             return True
+
+
+def client_address(peer: str, headers) -> str:
+    """The address to rate-limit. Forwarding headers are believed only when the TCP peer is this machine (the
+    tunnel / reverse proxy); otherwise any client could rotate a header value to dodge the limit.
+    CF-Connecting-IP is set by Cloudflare itself; for other proxies the LAST X-Forwarded-For entry is the one the
+    proxy appended."""
+    if peer in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+        cf = headers.get("CF-Connecting-IP")
+        if cf:
+            return cf.strip()
+        xff = headers.get("X-Forwarded-For")
+        if xff:
+            return xff.split(",")[-1].strip()
+    return peer
 
 
 def make_handler(service, limiter):
@@ -66,7 +86,7 @@ def make_handler(service, limiter):
                 self._send(404, {"ok": False, "error": "not found"})
 
         def do_POST(self):
-            who = self.headers.get("X-Forwarded-For", self.client_address[0]).split(",")[0].strip()
+            who = client_address(self.client_address[0], self.headers)
             if not limiter.allow(who):
                 return self._send(429, {"ok": False, "error": "too many attempts, wait a minute"})
             try:
@@ -75,7 +95,7 @@ def make_handler(service, limiter):
                     return self._send(413, {"ok": False, "error": "bad request size"})
                 data = json.loads(self.rfile.read(length))
                 key, uid = data.get("key"), data.get("uid")
-                if not isinstance(key, str) or len(key) > 200 or (uid is not None and not isinstance(uid, int)):
+                if not isinstance(key, str) or len(key) > 200 or (uid is not None and (isinstance(uid, bool) or not isinstance(uid, int))):
                     return self._send(400, {"ok": False, "error": "bad request"})
             except Exception:
                 return self._send(400, {"ok": False, "error": "bad request"})

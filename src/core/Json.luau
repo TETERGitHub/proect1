@@ -3,9 +3,25 @@
 -- Deterministic output is required so checksums over settings stay stable.
 -- Depends on: nothing (does not use HttpService, so it is unit-testable).
 
+-- CONTRACT (client <-> server, pinned by tests/t_audit):
+--   * object field absent  == object field null  by default: decode drops `"k": null`, encode skips nil fields. The
+--     licence server treats a missing and a null `uid` identically, and Config files never contain null.
+--     Pass { keepNull = true } to decode to see the difference (the field then holds Json.Null).
+--   * array elements keep null as Json.Null (positions must not shift).
+--   * an empty Lua table encodes as `{}`. Json.array(t) marks a table as an array so an empty one encodes as `[]`;
+--     decode with { keepShape = true } marks every decoded array, so decode -> encode round-trips the shape.
+--   * encode is deterministic (sorted keys) because Config checksums are taken over its output.
+
 local Json = {}
 
 Json.Null = setmetatable({}, { __tostring = function() return "null" end })
+
+local ARRAY = {}
+
+-- Json.array(t) -> t. Marks t so it is always written as a JSON array, even when empty.
+function Json.array(t)
+	return setmetatable(t or {}, ARRAY)
+end
 
 local MAX_DEPTH = 64
 
@@ -57,7 +73,9 @@ local function encodeValue(v, out, depth)
 	elseif t == "string" then
 		out[#out + 1] = escapeString(v)
 	elseif t == "table" then
-		if next(v) ~= nil and isArray(v) then
+		if next(v) == nil then
+			out[#out + 1] = getmetatable(v) == ARRAY and "[]" or "{}"
+		elseif isArray(v) then
 			out[#out + 1] = "["
 			for i = 1, #v do
 				if i > 1 then
@@ -118,6 +136,8 @@ local function skip(s, i)
 end
 
 local parseValue
+
+local KEEP_NULL, KEEP_SHAPE = false, false -- set per decode() call
 
 local function parseString(s, i)
 	-- s[i] == '"'
@@ -228,7 +248,7 @@ function parseValue(s, i, depth)
 				fail(i, "duplicate key '" .. key .. "'")
 			end
 			seen[key] = true
-			if value ~= Json.Null then
+			if value ~= Json.Null or KEEP_NULL then
 				obj[key] = value
 			end
 			i = skip(s, i)
@@ -242,7 +262,7 @@ function parseValue(s, i, depth)
 			end
 		end
 	elseif c == "[" then
-		local arr = {}
+		local arr = KEEP_SHAPE and Json.array({}) or {}
 		i = skip(s, i + 1)
 		if string.sub(s, i, i) == "]" then
 			return arr, i + 1
@@ -276,10 +296,12 @@ function parseValue(s, i, depth)
 end
 
 -- Json.decode(text) -> value|nil, err|nil. Never throws.
-function Json.decode(text)
+function Json.decode(text, opts)
 	if type(text) ~= "string" then
 		return nil, "input is not a string"
 	end
+	KEEP_NULL = type(opts) == "table" and opts.keepNull == true
+	KEEP_SHAPE = type(opts) == "table" and opts.keepShape == true
 	if string.sub(text, 1, 3) == "\239\187\191" then
 		text = string.sub(text, 4) -- UTF-8 byte order mark
 	end

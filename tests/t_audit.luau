@@ -134,6 +134,28 @@ T.test("encoder edge cases", "empty table, sparse array, bad keys, NaN, depth", 
 	for _, v in ipairs({ 0.1, 1 / 3, 123456.789, 1e-7, 2 ^ 52 }) do T.eq(Json.decode("[" .. Json.encode(v) .. "]")[1], v, tostring(v)) end
 end)
 
+T.suite("Json contract (absent / null / value)")
+T.test("object field: absent, null and a value are three distinct inputs", "default decode merges absent and null; keepNull separates them", function()
+	local absent, null, value = Json.decode('{"a":1}'), Json.decode('{"a":1,"b":null}'), Json.decode('{"a":1,"b":2}')
+	T.eq(absent.b, nil); T.eq(null.b, nil); T.eq(value.b, 2)
+	T.eq(Json.encode(absent), Json.encode(null), "default: null == absent on the wire")
+	local strict = Json.decode('{"a":1,"b":null}', { keepNull = true })
+	T.eq(strict.b, Json.Null); T.eq(strict.a, 1)
+	T.eq(Json.encode(strict), '{"a":1,"b":null}', "keepNull round-trips")
+end)
+T.test("empty array vs empty object", "plain {} stays an object; marked or shape-preserving arrays stay arrays", function()
+	T.eq(Json.encode({}), "{}"); T.eq(Json.encode(Json.array({})), "[]"); T.eq(Json.encode({ list = Json.array() }), '{"list":[]}')
+	local round = Json.decode('{"o":{},"a":[],"n":[1,[]]}', { keepShape = true })
+	T.eq(Json.encode(round), '{"a":[],"n":[1,[]],"o":{}}')
+	T.eq(Json.encode(Json.decode('{"o":{},"a":[]}')), '{"a":{},"o":{}}', "default decode does not keep the shape (documented)")
+	T.eq(Json.encode(Json.array({ 1, 2 })), "[1,2]")
+end)
+T.test("decode options do not leak between calls", "a keepNull call does not change the next default call", function()
+	Json.decode('{"b":null}', { keepNull = true, keepShape = true })
+	local v = Json.decode('{"b":null,"c":[]}')
+	T.eq(v.b, nil); T.eq(getmetatable(v.c), nil)
+end)
+
 T.suite("PayloadCipher (audit)")
 local KEY = "MM2H-0406N-KMFQ9-NCZR9-T6QA2-QNQS4-A5MEY-7BZ39-07AR"
 local NONCE = string.rep("\7", 12)

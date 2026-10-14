@@ -169,5 +169,41 @@ class HttpTests(unittest.TestCase):
             self.assertEqual(json.loads(r.read()), {"ok": True})
 
 
+class RateLimitTrust(unittest.TestCase):
+    def test_forwarding_headers_are_trusted_only_from_the_local_proxy(self):
+        class H(dict):
+            pass
+        # a remote client cannot pick its own bucket by sending headers
+        self.assertEqual(app.client_address("203.0.113.9", H({"X-Forwarded-For": "1.2.3.4", "CF-Connecting-IP": "5.6.7.8"})), "203.0.113.9")
+        # the local tunnel: Cloudflare's own header wins; otherwise the last (proxy-appended) XFF entry
+        self.assertEqual(app.client_address("127.0.0.1", H({"CF-Connecting-IP": "5.6.7.8", "X-Forwarded-For": "9.9.9.9"})), "5.6.7.8")
+        self.assertEqual(app.client_address("127.0.0.1", H({"X-Forwarded-For": "spoofed, 198.51.100.7"})), "198.51.100.7")
+        self.assertEqual(app.client_address("127.0.0.1", H()), "127.0.0.1")
+
+    def test_limiter_memory_is_bounded(self):
+        now = [0.0]
+        lim = app.RateLimiter(limit=2, window=10, clock=lambda: now[0])
+        for i in range(app.MAX_TRACKED + 50):
+            lim.allow(f"10.0.{i // 256}.{i % 256}")
+        now[0] = 100.0  # every window has passed
+        lim.allow("fresh")
+        self.assertLess(len(lim.hits), 10)
+
+    def test_uid_must_be_an_integer_not_a_boolean(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = licensing.LicenseStore(pathlib.Path(d) / "s.json", pathlib.Path(d) / "r.txt")
+            service = licensing.LicenseService(SECRET, store, BUNDLE, clock=lambda: ISSUED + 100)
+            srv = ThreadingHTTPServer(("127.0.0.1", 0), app.make_handler(service, app.RateLimiter()))
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+            try:
+                for uid in (True, "5", 1.5, [1]):
+                    req = urllib.request.Request(f"http://127.0.0.1:{srv.server_port}/v1/activate", data=json.dumps({"key": KEY_ABS, "uid": uid}).encode(), headers={"Content-Type": "application/json"})
+                    with self.assertRaises(urllib.error.HTTPError) as cm:
+                        urllib.request.urlopen(req)
+                    self.assertEqual(cm.exception.code, 400, uid)
+            finally:
+                srv.shutdown()
+
+
 if __name__ == "__main__":
     unittest.main()
