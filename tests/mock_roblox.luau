@@ -260,6 +260,7 @@ local function makeInstance(class)
 		__index = function(t, k)
 			if k == "__isInstance" then return true end
 			if k == "__children" then return children end
+			if k == "__props" then return props end
 			if k == "__events" then return events end
 			local v = props[k]
 			if v ~= nil then return v end
@@ -494,9 +495,9 @@ function M.install()
 			identity = makeCFrame(0, 0, 0),
 		},
 		TweenInfo = { new = function(t, style, dir) return { Time = t, EasingStyle = style, EasingDirection = dir } end },
-		ColorSequence = { new = function(a, b) return { kind = "ColorSequence", a, b } end },
+		ColorSequence = { new = function(...) return { kind = "ColorSequence", ... } end },
 		ColorSequenceKeypoint = { new = function(t, c) return { Time = t, Value = c } end },
-		NumberSequence = { new = function(a, b) return { kind = "NumberSequence", a, b } end },
+		NumberSequence = { new = function(...) return { kind = "NumberSequence", ... } end },
 		NumberSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end },
 		NumberRange = { new = function(a, b) return { Min = a, Max = b or a } end },
 		Rect = { new = function(a, b, c, d) return { a, b, c, d } end },

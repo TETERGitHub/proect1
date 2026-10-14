@@ -1,0 +1,125 @@
+{
+ "jobs": [
+  {
+   "name": "icons",
+   "icons": true,
+   "viewport": [
+    1280,
+    720
+   ]
+  },
+  {
+   "name": "dashboard",
+   "page": "dashboard",
+   "language": "en"
+  },
+  {
+   "name": "ui",
+   "page": "ui",
+   "language": "en"
+  },
+  {
+   "name": "crosshair",
+   "page": "crosshair",
+   "language": "en"
+  },
+  {
+   "name": "camera",
+   "page": "camera",
+   "language": "en"
+  },
+  {
+   "name": "lighting",
+   "page": "lighting",
+   "language": "en"
+  },
+  {
+   "name": "training",
+   "page": "training",
+   "language": "en"
+  },
+  {
+   "name": "defence",
+   "page": "defence",
+   "language": "en"
+  },
+  {
+   "name": "cosmetics",
+   "page": "cosmetics",
+   "language": "en"
+  },
+  {
+   "name": "music",
+   "page": "music",
+   "language": "en"
+  },
+  {
+   "name": "sounds",
+   "page": "sounds",
+   "language": "en"
+  },
+  {
+   "name": "perf",
+   "page": "perf",
+   "language": "en"
+  },
+  {
+   "name": "tools",
+   "page": "tools",
+   "language": "en"
+  },
+  {
+   "name": "keys",
+   "page": "keys",
+   "language": "en"
+  },
+  {
+   "name": "configs",
+   "page": "configs",
+   "language": "en"
+  },
+  {
+   "name": "diagnostics",
+   "page": "diagnostics",
+   "language": "en"
+  },
+  {
+   "name": "help",
+   "page": "help",
+   "language": "en"
+  },
+  {
+   "name": "about",
+   "page": "about",
+   "language": "en"
+  },
+  {
+   "name": "toasts",
+   "page": "dashboard",
+   "language": "en",
+   "setup": "toast"
+  },
+  {
+   "name": "confirm",
+   "page": "ui",
+   "language": "en",
+   "setup": "confirm"
+  },
+  {
+   "name": "phone",
+   "page": "dashboard",
+   "language": "en",
+   "phone": true,
+   "viewport": [
+    844,
+    390
+   ]
+  },
+  {
+   "name": "minimized",
+   "page": "dashboard",
+   "language": "en",
+   "setup": "minimized"
+  }
+ ]
+}

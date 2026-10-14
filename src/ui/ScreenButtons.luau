@@ -23,7 +23,7 @@ local Buttons = {}
 
 local state = nil
 
-local CATEGORY_ICON = { crosshair = "target", camera = "camera", lighting = "sun", training = "bolt", perf = "gauge", ui = "sliders", cosmetics = "shirt", music = "music", sounds = "speaker", tools = "wrench" }
+local CATEGORY_ICON = { crosshair = "target", camera = "camera", lighting = "sun", training = "bolt", perf = "gauge", ui = "sliders", cosmetics = "shirt", music = "music", sounds = "speaker", tools = "timer" }
 local MAX_BUTTONS = 8
 
 -- iconFor(feature) -> icon name

@@ -59,10 +59,46 @@ function Window.pageIds()
 	return table.clone(pageOrder)
 end
 
+-- Navigation groups (sidebar sections). Pages that are not listed here go into a trailing "More" group.
+local NAV_GROUPS = {
+	{ "Hub", { "dashboard", "ui" } },
+	{ "Visuals", { "crosshair", "camera", "lighting", "cosmetics" } },
+	{ "Practice", { "training", "defence" } },
+	{ "Audio", { "music", "sounds" } },
+	{ "System", { "perf", "tools", "keys", "configs", "diagnostics", "help", "about" } },
+}
+
+-- navGroups() -> list of { title, ids } following NAV_GROUPS, with unknown pages appended under "More"
+local function navGroups()
+	local seen, out = {}, {}
+	for _, g in ipairs(NAV_GROUPS) do
+		local ids = {}
+		for _, id in ipairs(g[2]) do
+			if pages[id] and not pages[id].hidden then
+				table.insert(ids, id)
+				seen[id] = true
+			end
+		end
+		if #ids > 0 then
+			table.insert(out, { g[1], ids })
+		end
+	end
+	local rest = {}
+	for _, id in ipairs(pageOrder) do
+		if not pages[id].hidden and not seen[id] then
+			table.insert(rest, id)
+		end
+	end
+	if #rest > 0 then
+		table.insert(out, { "More", rest })
+	end
+	return out
+end
+
 local function navIds()
 	local out = {}
-	for _, id in ipairs(pageOrder) do
-		if not pages[id].hidden then
+	for _, g in ipairs(navGroups()) do
+		for _, id in ipairs(g[2]) do
 			table.insert(out, id)
 		end
 	end
@@ -126,6 +162,7 @@ local function ensurePage(id)
 	local def = pages[id]
 	local page = F.newPage(w.content, id)
 	page.group.Visible = false
+	page:header(titleOf(id), def.desc)
 	local ok, err = xpcall(def.build, function(e)
 		return tostring(e) .. "\n" .. debug.traceback("", 2)
 	end, page)
@@ -141,17 +178,15 @@ local function highlight(row)
 	if not row then
 		return
 	end
-	local stroke = row:FindFirstChildOfClass("UIStroke")
-	if stroke then
-		Theme.bind(stroke, "Color", "accent")
-		stroke.Transparency = 0
-		Motion.tween(stroke, { Transparency = 0.75 }, 1.4, "smooth")
-		task.delay(1.6, function()
-			if stroke.Parent then
-				Theme.bind(stroke, "Color", "stroke")
-			end
-		end)
-	end
+	-- rows have no outline of their own: flash the row background in the accent colour and let it fade
+	Theme.bind(row, "BackgroundColor3", "accent")
+	row.BackgroundTransparency = 0.72
+	Motion.tween(row, { BackgroundTransparency = 1 }, 1.4, "smooth")
+	task.delay(1.6, function()
+		if row.Parent then
+			Theme.bind(row, "BackgroundColor3", "highlight")
+		end
+	end)
 end
 
 local function movePill(id, animate)
@@ -520,7 +555,7 @@ local function buildToasts(maid)
 	host.Name = "Toasts"
 	host.BackgroundTransparency = 1
 	host.AnchorPoint = Vector2.new(0.5, 0)
-	host.Position = UDim2.new(0.5, 0, 0, 10)
+	host.Position = UDim2.new(0.5, 0, 0, 12)
 	host.Size = UDim2.fromOffset(360, 400)
 	host.ZIndex = 200
 	host.Parent = w.gui
@@ -528,26 +563,27 @@ local function buildToasts(maid)
 	local list = F.list(host, 8)
 	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
+	local LEVEL_ICON = { info = "info", success = "check", warn = "alert", error = "alert" }
 	local pool = Pool.new({
 		create = function()
-			local card = Instance.new("Frame")
-			card.BorderSizePixel = 0
-			card.Size = UDim2.fromOffset(340, 58)
-			card.ZIndex = 200
-			Theme.bind(card, "BackgroundColor3", "bg1")
-			F.corner(card, 6)
-			F.stroke(card, "stroke", 1, 0.35)
-			local dot = F.frame(card, { Position = UDim2.fromOffset(14, 19), Size = UDim2.fromOffset(20, 20), ZIndex = 201 })
-			dot.Name = "Dot"
-			F.pillCorner(dot)
-			local title = F.label(card, "", { size = 14, bold = true, dim = UDim2.new(1, -60, 0, 18) })
+			local card = F.surface(nil, "toast", { name = "Toast", sheen = 50, props = { Size = UDim2.new(0, 340, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 200 } })
+			F.padding(card, 12, 11, 14, 11)
+			-- level badge: a tinted disc with the level's glyph
+			local badge = F.frame(card, { Name = "Badge", Position = UDim2.fromOffset(0, 1), Size = UDim2.fromOffset(28, 28), ZIndex = 201 }, { BackgroundColor3 = "accent" })
+			badge.BackgroundTransparency = 0.8
+			F.pillCorner(badge)
+			local text = F.frame(card, { Name = "TextBox", Position = UDim2.fromOffset(40, 0), Size = UDim2.new(1, -40, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, ZIndex = 201 })
+			F.list(text, 2)
+			local title = F.label(text, "", { size = 13.5, bold = true, wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
 			title.Name = "Title"
-			title.Position = UDim2.fromOffset(46, 10)
+			title.AutomaticSize = Enum.AutomaticSize.Y
+			title.LayoutOrder = 1
 			title.ZIndex = 201
-			local text = F.label(card, "", { size = 12, token = "textDim", dim = UDim2.new(1, -60, 0, 16) })
-			text.Name = "Text"
-			text.Position = UDim2.fromOffset(46, 30)
-			text.ZIndex = 201
+			local body = F.label(text, "", { size = 12, token = "textDim", wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
+			body.Name = "Text"
+			body.AutomaticSize = Enum.AutomaticSize.Y
+			body.LayoutOrder = 2
+			body.ZIndex = 201
 			local scale = Instance.new("UIScale")
 			scale.Parent = card
 			return card
@@ -565,14 +601,25 @@ local function buildToasts(maid)
 
 	maid:Give(Notify.Shown:Connect(function(item)
 		local card = pool:Acquire()
-		card.Title.Text = I18n.tr(item.title ~= "" and item.title or "MM2 Hub")
-		card.Text.Text = I18n.tr(item.text)
-		Theme.bind(card.Dot, "BackgroundColor3", levelToken[item.level] or "accent")
+		local badge = card.Badge
+		card.TextBox.Title.Text = I18n.tr(item.title ~= "" and item.title or "MM2 Hub")
+		card.TextBox.Text.Text = I18n.tr(item.text)
+		local token = levelToken[item.level] or "accent"
+		Theme.bind(badge, "BackgroundColor3", token)
+		-- the glyph differs per level, so the meaning never depends on colour alone
+		local old = badge:FindFirstChild("Glyph")
+		if old then
+			old:Destroy()
+		end
+		local glyph = Icons.draw(badge, LEVEL_ICON[item.level] or "info", 16, token)
+		glyph.Name = "Glyph"
+		glyph.AnchorPoint = Vector2.new(0.5, 0.5)
+		glyph.Position = UDim2.fromScale(0.5, 0.5)
 		card.LayoutOrder = item.id
 		card.Parent = host
 		local scale = card:FindFirstChildOfClass("UIScale")
-		scale.Scale = Motion.enabled() and 0.85 or 1
-		Motion.tween(scale, { Scale = 1 }, 0.5, "spring")
+		scale.Scale = Motion.enabled() and 0.94 or 1
+		Motion.tween(scale, { Scale = 1 }, Motion.D.std * 1.2, "enter")
 		live[item.id] = card
 	end))
 	local function done(item)
@@ -580,9 +627,11 @@ local function buildToasts(maid)
 		if card then
 			live[item.id] = nil
 			local scale = card:FindFirstChildOfClass("UIScale")
-			Motion.tween(scale, { Scale = 0.8 }, 0.2, "exit")
-			task.delay(Motion.duration(0.22), function()
-				pool:Release(card)
+			Motion.tween(scale, { Scale = 0.94 }, Motion.D.std * 0.8, "exit")
+			task.delay(Motion.duration(0.2), function()
+				if card.Parent then
+					pool:Release(card)
+				end
 			end)
 		end
 	end
@@ -597,28 +646,48 @@ end
 -- Build ---------------------------------------------------------------------------------------------------------------------------------
 
 local function buildTitleBar(maid)
-	local bar = F.frame(w.window, { Name = "TitleBar", Size = UDim2.new(1, 0, 0, 46), ZIndex = 3 })
+	local bar = F.frame(w.window, { Name = "TitleBar", Size = UDim2.new(1, 0, 0, 52), ZIndex = 3 })
 	w.titleBar = bar
-	local logo = F.frame(bar, { Position = UDim2.fromOffset(16, 13), Size = UDim2.fromOffset(20, 20), ZIndex = 4 }, { BackgroundColor3 = "accent" })
+	-- product mark: an accent disc with a light centre
+	local logo = F.frame(bar, { Position = UDim2.fromOffset(18, 15), Size = UDim2.fromOffset(22, 22), ZIndex = 4 }, { BackgroundColor3 = "accent" })
+	logo.BackgroundTransparency = 0
 	F.pillCorner(logo)
-	local inner = F.frame(logo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.4, 0.4), ZIndex = 5 })
-	inner.BackgroundTransparency = 0
+	local lg = Instance.new("UIGradient")
+	lg.Rotation = 90
+	Theme.bind(lg, "Color", function()
+		return ColorSequence.new(Theme.mix("accent", "highlight", 0.35), Theme.color("accent"))
+	end)
+	lg.Parent = logo
+	local inner = F.frame(logo, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.36, 0.36), ZIndex = 5 })
+	inner.BackgroundTransparency = 0.05
 	inner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	F.pillCorner(inner)
-	local name = F.label(bar, I18n.t("app.title"), { size = 15, bold = true, dim = UDim2.fromOffset(110, 20) })
-	name.Position = UDim2.fromOffset(44, 13)
+	local size, bold = Theme.type("app")
+	local name = F.label(bar, I18n.t("app.title"), { size = size, bold = bold, dim = UDim2.fromOffset(76, 20) })
+	name.Position = UDim2.fromOffset(50, 16)
 	name.ZIndex = 4
 	w.nameLabel = name
+	-- breadcrumb: a hairline and the name of the current page
+	local divider = F.frame(bar, { Position = UDim2.fromOffset(130, 18), Size = UDim2.fromOffset(1, 16), ZIndex = 4 }, { BackgroundColor3 = "stroke" })
+	divider.BackgroundTransparency = 0.45
+	w.titleDivider = divider
 	local sep = F.label(bar, "", { size = 13, token = "textDim", dim = UDim2.fromOffset(150, 20) })
-	sep.Position = UDim2.fromOffset(122, 13)
+	sep.Position = UDim2.fromOffset(142, 16)
 	sep.ZIndex = 4
 	w.titleLabel = sep
 
-	-- search box
-	local box = F.textBox(bar, { placeholder = I18n.t("search.placeholder"), dim = UDim2.new(0, 250, 0, 30) }, maid)
-	box.AnchorPoint = Vector2.new(0.5, 0.5)
-	box.Position = UDim2.new(0.62, 0, 0.5, 0)
+	-- search field with a magnifier
+	local box = F.textBox(bar, { placeholder = I18n.t("search.placeholder"), dim = UDim2.new(0, 250, 0, 32) }, maid)
+	box.AnchorPoint = Vector2.new(1, 0.5)
+	box.Position = UDim2.new(1, -168, 0.5, 0)
 	box.ZIndex = 4
+	local pad = box:FindFirstChildOfClass("UIPadding")
+	if pad then
+		pad.PaddingLeft = UDim.new(0, 34)
+	end
+	local mag = Icons.draw(box, "search", 14, "textDim")
+	mag.AnchorPoint = Vector2.new(0, 0.5)
+	mag.Position = UDim2.new(0, -24, 0.5, 0)
 	w.searchBox = box
 	local token = 0
 	maid:Give(box:GetPropertyChangedSignal("Text"):Connect(function()
@@ -640,22 +709,25 @@ local function buildTitleBar(maid)
 		end
 	end))
 
-	-- right controls
-	local fps = F.label(bar, "", { size = 12, bold = true, token = "textDim", align = Enum.TextXAlignment.Right, dim = UDim2.fromOffset(70, 20) })
+	-- right controls: live FPS (real data from Perf), minimise, close
+	local fps = F.label(bar, "", { size = 12, bold = true, token = "textDim", align = Enum.TextXAlignment.Right, dim = UDim2.fromOffset(62, 20) })
 	fps.AnchorPoint = Vector2.new(1, 0)
-	fps.Position = UDim2.new(1, -92, 0, 13)
+	fps.Position = UDim2.new(1, -96, 0, 16)
 	fps.ZIndex = 4
 	w.fpsLabel = fps
 	local min = F.iconButton(bar, "minus", Window.minimize, 28, maid)
 	min.AnchorPoint = Vector2.new(1, 0.5)
-	min.Position = UDim2.new(1, -46, 0.5, 0)
+	min.Position = UDim2.new(1, -48, 0.5, 0)
 	min.ZIndex = 4
-	local close = F.iconButton(bar, "close", Window.hide, 28, maid)
+	local close = F.iconButton(bar, "close", Window.hide, 28, maid, nil, true)
 	close.AnchorPoint = Vector2.new(1, 0.5)
-	close.Position = UDim2.new(1, -12, 0.5, 0)
+	close.Position = UDim2.new(1, -14, 0.5, 0)
 	close.ZIndex = 4
 	F.tooltip(min, "Minimise", maid)
 	F.tooltip(close, "Hide (use the hotkey or launcher to reopen)", maid)
+	-- hairline under the bar
+	local line = F.frame(w.window, { Name = "BarLine", Position = UDim2.fromOffset(0, 52), Size = UDim2.new(1, 0, 0, 1), ZIndex = 3 }, { BackgroundColor3 = "stroke" })
+	line.BackgroundTransparency = 0.6
 
 	-- drag
 	maid:Give(bar.InputBegan:Connect(function(input)
@@ -676,64 +748,84 @@ local function buildTitleBar(maid)
 	end))
 end
 
+local NAV_H, NAV_GAP, NAV_HEAD = 36, 2, 24
+
 local function buildSidebar(maid)
-	local side = F.frame(w.window, { Name = "Sidebar", Position = UDim2.fromOffset(0, 46), Size = UDim2.new(0, SIDEBAR_W, 1, -46), ZIndex = 2 }, { BackgroundColor3 = "bg1" })
-	side.BackgroundTransparency = 0.35
+	local side = F.surface(w.window, "rail", { name = "Sidebar", radius = "none", edge = false, props = { Position = UDim2.fromOffset(0, 53), Size = UDim2.new(0, SIDEBAR_W, 1, -53), ZIndex = 2 } })
 	w.sidebar = side
+	local edge = F.frame(side, { Name = "EdgeLine", AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 1, 1, 0), ZIndex = 3 }, { BackgroundColor3 = "stroke" })
+	edge.BackgroundTransparency = 0.65
 	local holder = F.frame(side, { Position = UDim2.fromOffset(8, 6), Size = UDim2.new(1, -16, 1, -12) })
 	local sf, smaid = F.scroller(holder)
 	maid:Give(smaid)
 	local inner = F.frame(sf, { AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0) })
 	w.navInner = inner
-	w.pill = F.frame(inner, { Size = UDim2.new(1, 0, 0, 38), ZIndex = 1 }, { BackgroundColor3 = "accent" })
-	w.pill.BackgroundTransparency = 0.8
-	F.corner(w.pill, 2)
-	local accentBar = F.frame(w.pill, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.fromOffset(3, 18) }, { BackgroundColor3 = "accent" })
+	-- the selection pill glides between rows; a short accent bar marks the active page
+	w.pill = F.frame(inner, { Size = UDim2.new(1, 0, 0, NAV_H), ZIndex = 1 }, { BackgroundColor3 = "accent" })
+	w.pill.BackgroundTransparency = 0.84
+	F.corner(w.pill, "control")
+	local accentBar = F.frame(w.pill, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.fromOffset(3, 16) }, { BackgroundColor3 = "accent" })
 	accentBar.BackgroundTransparency = 0
 	F.pillCorner(accentBar)
 
-	w.navButtons = {}
+	w.navButtons, w.navHeads = {}, {}
 	local y = 0
-	for _, id in ipairs(navIds()) do
-		local def = pages[id]
-		local b = Instance.new("TextButton")
-		b.Name = "Nav_" .. id
-		b.Text = ""
-		b.AutoButtonColor = false
-		b.BackgroundTransparency = 1
-		b.BorderSizePixel = 0
-		b.Position = UDim2.fromOffset(0, y)
-		b.Size = UDim2.new(1, 0, 0, 38)
-		b.ZIndex = 2
-		b.Parent = inner
-		local holderIcon = F.frame(b, { Name = "IconHolder", Position = UDim2.fromOffset(10, 8), Size = UDim2.fromOffset(22, 22), ZIndex = 3 })
-		Icons.draw(holderIcon, def.icon or "info", 22, "textDim")
-		local label = F.label(b, titleOf(id), { size = 13, bold = true, token = "textDim", dim = UDim2.new(1, -46, 1, 0) })
-		label.Name = "Label"
-		label.Position = UDim2.fromOffset(42, 0)
-		label.ZIndex = 3
-		maid:Give(b.Activated:Connect(function()
-			F.click()
-			if w.searchBox.Text ~= "" then
-				w.searchBox.Text = ""
-				w.query = ""
-			end
-			Window.navigate(id)
-		end))
-		maid:Give(b.MouseEnter:Connect(function()
-			if w.current ~= id then
-				Motion.tween(label, { TextTransparency = 0 }, 0.1)
-			end
-		end))
-		F.tooltip(b, function()
-			return titleOf(id)
-		end, maid)
-		w.navButtons[id] = b
-		y += 40
+	for gi, group in ipairs(navGroups()) do
+		local head = F.label(inner, I18n.upper(I18n.tr(group[1])), { size = 10, bold = true, token = "textDim", dim = UDim2.new(1, -12, 0, 14) })
+		head.Name = "NavHead"
+		head:SetAttribute("key", group[1])
+		head.Position = UDim2.fromOffset(10, y + (gi == 1 and 4 or 10))
+		head.ZIndex = 2
+		table.insert(w.navHeads, head)
+		y += (gi == 1 and 4 or 10) + NAV_HEAD - 6
+		for _, id in ipairs(group[2]) do
+			local def = pages[id]
+			local b = Instance.new("TextButton")
+			b.Name = "Nav_" .. id
+			b.Text = ""
+			b.AutoButtonColor = false
+			b.BackgroundTransparency = 1
+			b.BorderSizePixel = 0
+			b.Position = UDim2.fromOffset(0, y)
+			b.Size = UDim2.new(1, 0, 0, NAV_H)
+			b.ZIndex = 2
+			Theme.bind(b, "BackgroundColor3", "highlight")
+			F.corner(b, "control")
+			b.Parent = inner
+			local holderIcon = F.frame(b, { Name = "IconHolder", Position = UDim2.fromOffset(11, 8), Size = UDim2.fromOffset(20, 20), ZIndex = 3 })
+			Icons.draw(holderIcon, def.icon or "info", 20, "textDim")
+			local label = F.label(b, titleOf(id), { size = 13, bold = false, token = "textDim", dim = UDim2.new(1, -46, 1, 0) })
+			label.Name = "Label"
+			label.Position = UDim2.fromOffset(42, 0)
+			label.ZIndex = 3
+			maid:Give(b.Activated:Connect(function()
+				F.click()
+				if w.searchBox.Text ~= "" then
+					w.searchBox.Text = ""
+					w.query = ""
+				end
+				Window.navigate(id)
+			end))
+			-- hover: a faint wash on rows that are not selected
+			maid:Give(b.MouseEnter:Connect(function()
+				if w.current ~= id then
+					Motion.tween(b, { BackgroundTransparency = 0.94 }, Motion.D.fast, "smooth")
+				end
+			end))
+			maid:Give(b.MouseLeave:Connect(function()
+				Motion.tween(b, { BackgroundTransparency = 1 }, Motion.D.std, "smooth")
+			end))
+			F.tooltip(b, function()
+				return titleOf(id)
+			end, maid)
+			w.navButtons[id] = b
+			y += NAV_H + NAV_GAP
+		end
 	end
-	inner.Size = UDim2.new(1, 0, 0, y)
+	inner.Size = UDim2.new(1, 0, 0, y + 4)
 	inner.AutomaticSize = Enum.AutomaticSize.None
 end
+
 
 local function buildResize(maid)
 	local grip = Instance.new("TextButton")
@@ -774,42 +866,41 @@ local function buildResize(maid)
 end
 
 local function buildShadow(parent)
+	-- a soft drop shadow made of a few stacked rounded rectangles (Roblox has no blur): the transparency ramp is
+	-- geometric so the layers read as one falloff instead of visible steps
 	local shadow = F.frame(parent, { Name = "Shadow", Size = UDim2.fromScale(1, 1), ZIndex = 0 })
 	w.shadow = shadow
-	for i, spec in ipairs({ { 6, 0.9 }, { 14, 0.94 }, { 24, 0.97 }, { 36, 0.985 } }) do
+	for _, spec in ipairs({ { 4, 0.9 }, { 10, 0.935 }, { 18, 0.955 }, { 28, 0.97 }, { 40, 0.982 }, { 54, 0.99 } }) do
 		local layer = Instance.new("Frame")
+		layer.Name = "Layer"
 		layer.BorderSizePixel = 0
 		layer.AnchorPoint = Vector2.new(0.5, 0.5)
-		layer.Position = UDim2.new(0.5, 0, 0.5, 6)
+		layer.Position = UDim2.new(0.5, 0, 0.5, 10)
 		layer.Size = UDim2.new(1, spec[1] * 2, 1, spec[1] * 2)
 		layer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		layer.BackgroundTransparency = spec[2]
 		layer.ZIndex = 0
-		F.corner(layer, spec[1] * 0.8)
+		local c = Instance.new("UICorner")
+		Theme.bind(c, "CornerRadius", function()
+			return UDim.new(0, Theme.rad("window") + spec[1])
+		end)
+		c.Parent = layer
+		Theme.bind(layer, "Visible", function()
+			return Theme.effectsOn()
+		end)
 		layer.Parent = shadow
 	end
 end
 
 local function buildQuickBar(maid)
-	local quick = Instance.new("Frame")
-	quick.Name = "QuickBar"
-	quick.BorderSizePixel = 0
-	quick.Size = UDim2.new(1, 0, 1, 0)
-	quick.Visible = false
-	Theme.bind(quick, "BackgroundColor3", "bg0")
-	Theme.bind(quick, "BackgroundTransparency", function()
-		return 0.08 + (1 - Settings.get("ui.opacity")) * 0.8
-	end)
-	F.pillCorner(quick)
-	F.stroke(quick, "stroke", 1, 0.4)
-	quick.Parent = w.root
+	local quick = F.surface(w.root, "popover", { name = "QuickBar", radius = "pill", sheen = 24, props = { Size = UDim2.new(1, 0, 1, 0), Visible = false } })
 	w.quick = quick
-	local logo = F.frame(quick, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, 0), Size = UDim2.fromOffset(16, 16) }, { BackgroundColor3 = "accent" })
+	local logo = F.frame(quick, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, 0), Size = UDim2.fromOffset(18, 18) }, { BackgroundColor3 = "accent" })
 	logo.BackgroundTransparency = 0
 	F.pillCorner(logo)
-	local fps = F.label(quick, "", { size = 12, bold = true, dim = UDim2.fromOffset(62, 18) })
+	local fps = F.label(quick, "", { size = 12, bold = true, token = "textDim", dim = UDim2.fromOffset(62, 18) })
 	fps.AnchorPoint = Vector2.new(0, 0.5)
-	fps.Position = UDim2.new(0, 38, 0.5, 0)
+	fps.Position = UDim2.new(0, 40, 0.5, 0)
 	w.quickFps = fps
 	local favHolder = F.frame(quick, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 104, 0.5, 0), Size = UDim2.new(1, -170, 0, 28) })
 	F.list(favHolder, 6, true)
@@ -867,13 +958,19 @@ local function buildLauncher(maid)
 	b.BorderSizePixel = 0
 	b.AnchorPoint = Vector2.new(0, 0.5)
 	b.Position = UDim2.new(0, 10, 0.5, 0)
-	b.Size = UDim2.fromOffset(44, 44)
+	b.Size = UDim2.fromOffset(46, 46)
 	b.ZIndex = 50
 	Theme.bind(b, "BackgroundColor3", "accent")
 	F.pillCorner(b)
-	local s = F.stroke(b, "highlight", 1.5, 0.6)
-	local dot = F.frame(b, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(14, 14), ZIndex = 51 })
-	dot.BackgroundTransparency = 0
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	Theme.bind(g, "Color", function()
+		return ColorSequence.new(Theme.mix("accent", "highlight", Theme.effectsOn() and 0.3 or 0), Theme.color("accent"))
+	end)
+	g.Parent = b
+	F.edge(b, "popover")
+	local dot = F.frame(b, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(16, 16), ZIndex = 51 })
+	dot.BackgroundTransparency = 0.04
 	dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	F.pillCorner(dot)
 	b.Parent = w.gui
@@ -881,6 +978,12 @@ local function buildLauncher(maid)
 		return Settings.get("ui.showLauncher")
 	end)
 	Motion.pressable(b, maid, 0.1)
+	maid:Give(b.MouseEnter:Connect(function()
+		Motion.tween(dot, { Size = UDim2.fromOffset(20, 20) }, Motion.D.fast, "smooth")
+	end))
+	maid:Give(b.MouseLeave:Connect(function()
+		Motion.tween(dot, { Size = UDim2.fromOffset(16, 16) }, Motion.D.std, "smooth")
+	end))
 	maid:Give(b.Activated:Connect(function()
 		F.click()
 		Window.toggle()
@@ -939,47 +1042,35 @@ function Window.start(ctx)
 	w.openScale.Parent = root
 	buildShadow(root)
 
-	local window = Instance.new("Frame")
-	window.Name = "Window"
-	window.Size = UDim2.fromScale(1, 1)
-	window.BorderSizePixel = 0
-	window.ClipsDescendants = true
-	window.ZIndex = 1
-	Theme.bind(window, "BackgroundColor3", "bg0")
-	Theme.bind(window, "BackgroundTransparency", function()
-		return Theme.data().glass + (1 - Settings.get("ui.opacity")) * 0.85
-	end)
-	F.corner(window, 6)
-	local ws = F.stroke(window, "highlight", 1.2, 0.84)
-	window.Parent = root
+	local window = F.surface(root, "window", { name = "Window", props = { Size = UDim2.fromScale(1, 1), ClipsDescendants = true, ZIndex = 1 } })
 	w.window = window
-	Theme.bind(window, "BackgroundTransparency", function()
-		return Theme.data().glass + (1 - Settings.get("ui.opacity")) * 0.85
+	-- colour pooling: a very faint accent wash from the top-left corner (effects on only)
+	local ambient = F.frame(window, { Name = "Ambient", Size = UDim2.fromScale(1, 1), ZIndex = 1 }, { BackgroundColor3 = "accent" })
+	ambient.BackgroundTransparency = 0
+	local ag = Instance.new("UIGradient")
+	ag.Rotation = 35
+	Theme.bind(ag, "Transparency", function()
+		return NumberSequence.new(0.9 + (1 - Theme.glassAmount()) * 0.1, 1)
 	end)
-	ctx.maid:Give(Settings.observe("ui.opacity", function()
-		Theme.refresh()
-	end))
+	ag.Parent = ambient
+	Theme.bind(ambient, "Visible", function()
+		return Theme.effectsOn()
+	end)
 
 	-- specular sheen + animated accent line (decor)
-	local sheen = F.frame(window, { Name = "Sheen", Size = UDim2.new(1, 0, 0, 160), ZIndex = 1 })
-	sheen.BackgroundTransparency = 0
-	sheen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	local sg = Instance.new("UIGradient")
-	sg.Rotation = 90
-	sg.Transparency = NumberSequence.new(0.93, 1)
-	sg.Parent = sheen
-	local line = F.frame(window, { Name = "AccentLine", Size = UDim2.new(1, 0, 0, 2), ZIndex = 6 })
+	F.sheen(window, 170)
+	local line = F.frame(window, { Name = "AccentLine", Size = UDim2.new(1, 0, 0, 1), ZIndex = 6 })
 	line.BackgroundTransparency = 0
 	line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	local lg = Instance.new("UIGradient")
-	lg.Transparency = NumberSequence.new(1, 0.15)
+	lg.Transparency = NumberSequence.new(1, 0.35)
 	Theme.bind(lg, "Color", function()
 		return ColorSequence.new(Theme.color("accent"), Theme.color("accent"))
 	end)
 	lg.Parent = line
 	w.lineGradient = lg
 	local decorHandle = Perf.every("ui.decor", 20, function(dt)
-		if Settings.get("ui.decor") and not Perf.isLow() and w.visible and not Settings.get("state.minimized") then
+		if Settings.get("ui.decor") and Theme.effectsOn() and w.visible and not Settings.get("state.minimized") then
 			w.decorPhase = ((w.decorPhase or 0) + dt * 0.35) % 2
 			local p = w.decorPhase
 			lg.Offset = Vector2.new(p < 1 and (p * 2 - 1) or ((2 - p) * 2 - 1), 0)
@@ -992,7 +1083,7 @@ function Window.start(ctx)
 
 	buildTitleBar(ctx.maid)
 	buildSidebar(ctx.maid)
-	w.content = F.frame(window, { Name = "Content", Position = UDim2.fromOffset(SIDEBAR_W + 6, 52), Size = UDim2.new(1, -SIDEBAR_W - 14, 1, -60), ZIndex = 2 })
+	w.content = F.frame(window, { Name = "Content", Position = UDim2.fromOffset(SIDEBAR_W + 10, 60), Size = UDim2.new(1, -SIDEBAR_W - 20, 1, -68), ZIndex = 2 })
 	buildResize(ctx.maid)
 	buildQuickBar(ctx.maid)
 	buildToasts(ctx.maid)
@@ -1012,17 +1103,21 @@ function Window.start(ctx)
 		local width = w.root.AbsoluteSize.X / math.max(0.1, w.scale.Scale)
 		local compact = width < 600
 		local sw = compact and SIDEBAR_COMPACT or SIDEBAR_W
-		w.sidebar.Size = UDim2.new(0, sw, 1, -46)
-		w.content.Position = UDim2.fromOffset(sw + 6, 52)
-		w.content.Size = UDim2.new(1, -sw - 14, 1, -60)
+		w.sidebar.Size = UDim2.new(0, sw, 1, -53)
+		w.content.Position = UDim2.fromOffset(sw + 10, 60)
+		w.content.Size = UDim2.new(1, -sw - 20, 1, -68)
 		for _, b in pairs(w.navButtons) do
 			local l = b:FindFirstChild("Label")
 			if l then
 				l.Visible = not compact
 			end
 		end
+		for _, head in ipairs(w.navHeads) do
+			head.Visible = not compact
+		end
 		w.titleLabel.Visible = width > 700
-		w.searchBox.Size = UDim2.new(0, compact and 150 or 250, 0, 30)
+		w.titleDivider.Visible = width > 700
+		w.searchBox.Size = UDim2.new(0, compact and 150 or 250, 0, 32)
 	end
 	ctx.maid:Give(w.root:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout))
 
@@ -1095,6 +1190,9 @@ function Window.relocalize()
 		if label then
 			label.Text = titleOf(id)
 		end
+	end
+	for _, head in ipairs(w.navHeads) do
+		head.Text = I18n.upper(I18n.tr(head:GetAttribute("key") or ""))
 	end
 	refreshQuickFavs(w.maid)
 	local cur = w.current

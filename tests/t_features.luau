@@ -178,13 +178,19 @@ T.test("icon geometry is valid and inside the grid", "every primitive well-forme
 		T.truthy(#prims >= 1, name)
 		for i, p in ipairs(prims) do
 			local kind = p[1]
-			T.truthy(kind == "r" or kind == "o" or kind == "d", name .. "#" .. i)
+			T.truthy(kind == "r" or kind == "o" or kind == "d" or kind == "b" or kind == "a" or kind == "t", name .. "#" .. i)
 			if kind == "r" then
 				T.truthy(#p >= 5, name .. " rect args")
 				T.truthy(p[4] > 0 and p[5] > 0, name .. " rect size")
 				T.truthy(p[2] >= 0 and p[2] <= 24 and p[3] >= 0 and p[3] <= 24, name .. " rect centre")
+			elseif kind == "b" then
+			T.truthy(p[4] > 0 and p[5] > 0 and p[6] > 0 and p[2] >= 0 and p[2] <= 24 and p[3] >= 0 and p[3] <= 24, name .. " box outline")
+			elseif kind == "a" then
+			T.truthy(p[4] > 0 and p[5] > 0 and (p[6] == "r" or p[6] == "l" or p[6] == "t" or p[6] == "b"), name .. " arc")
+			elseif kind == "t" then
+			T.truthy(p[4] > 0 and type(p[5]) == "string" and #p[5] >= 1, name .. " glyph")
 			elseif kind == "o" then
-				T.truthy(p[4] > 0 and p[5] > 0 and p[5] < p[4], name .. " ring")
+			T.truthy(p[4] > 0 and p[5] > 0 and p[5] < p[4], name .. " ring")
 				T.truthy(p[2] - p[4] / 2 >= -0.5 and p[2] + p[4] / 2 <= 24.5, name .. " ring bounds")
 				T.truthy(p[3] - p[4] / 2 >= -0.5 and p[3] + p[4] / 2 <= 24.5, name .. " ring bounds y")
 			else

@@ -8,6 +8,7 @@ local import = ...
 local Settings = import("core/Settings")
 local Themes = import("data/Themes")
 local Signal = import("core/Signal")
+local Perf = import("core/Perf")
 
 local Theme = {}
 
@@ -108,6 +109,90 @@ function Theme.radius(extra)
 	return math.max(0, Settings.get("ui.cornerRadius") + (themeData().radiusBoost or 0) + (extra or 0))
 end
 
+-- Design system -----------------------------------------------------------------------------------------------------
+-- One place for the numbers every component uses: glass intensity, surface levels, radii, type scale, spacing.
+-- "Glass" here is translucency + a thin light edge + a faint sheen; Roblox has no real background blur, so nothing
+-- here claims to refract or blur what is behind the window.
+
+-- glassAmount() -> 0..1. 0 = solid surfaces and no sheen (reduced effects, low load profile, or a theme without glass).
+function Theme.glassAmount()
+	if Settings.get("ui.reduceEffects") or Perf.isLow() or themeData().glass <= 0 then
+		return 0
+	end
+	return Settings.get("ui.glass")
+end
+
+function Theme.effectsOn()
+	return Theme.glassAmount() > 0
+end
+
+local LEVELS = {
+	window = { token = "bg0", solid = 0.02, glass = 0.14 },
+	rail = { token = "bg1", solid = 0.10, glass = 0.5 },
+	card = { token = "bg2", solid = 0.06, glass = 0.45 },
+	control = { token = "bg3", solid = 0.0, glass = 0.32 },
+	popover = { token = "bg1", solid = 0.0, glass = 0.1 },
+	modal = { token = "bg1", solid = 0.0, glass = 0.06 },
+	toast = { token = "bg1", solid = 0.02, glass = 0.12 },
+}
+
+-- surface(level) -> colour token, background transparency
+function Theme.surface(level)
+	local def = LEVELS[level] or LEVELS.card
+	local g = Theme.glassAmount()
+	local t = def.solid + (def.glass - def.solid) * g
+	if level == "window" then
+		t += (1 - Settings.get("ui.opacity")) * 0.85
+	end
+	return def.token, math.clamp(t, 0, 1)
+end
+
+-- edge(level) -> top transparency, bottom transparency of the thin light edge (a stroke with a vertical gradient).
+-- Big floating surfaces carry a clearer edge than the cards and controls that sit on them.
+local EDGE_STRENGTH = { window = 1, popover = 0.9, modal = 0.9, toast = 0.9, card = 0.3, control = 0.3, rail = 0.3 }
+
+function Theme.edge(level)
+local g = Theme.glassAmount()
+local k = EDGE_STRENGTH[level] or 0.5
+return 0.74 + (0.5 - 0.74) * g * k, 0.74 + (0.92 - 0.74) * g
+end
+
+-- sheen() -> transparency of the faint highlight laid over the top of large surfaces (1 = invisible)
+function Theme.sheen()
+	return 1 + (0.93 - 1) * Theme.glassAmount()
+end
+
+local RADII = { window = 20, card = 14, control = 10, small = 7, none = 0 }
+
+-- rad(name) -> pixels. "pill" is always fully round. The corner-radius setting scales the whole scale.
+function Theme.rad(name)
+	if name == "pill" then
+		return 999
+	end
+	local base = RADII[name] or RADII.card
+	local scale = Settings.get("ui.cornerRadius") / 8 * (themeData().shape or 1)
+	return math.floor(base * scale + 0.5)
+end
+
+-- Type scale: size (px at 100 %), bold, colour token
+local TYPE = {
+	app = { 15, true, "text" },
+	page = { 20, true, "text" },
+	section = { 11.5, true, "textDim" },
+	card = { 14, true, "text" },
+	body = { 13, false, "text" },
+	caption = { 11.5, false, "textDim" },
+	value = { 12.5, true, "textDim" },
+	micro = { 10, true, "textDim" },
+}
+
+function Theme.type(name)
+	local t = TYPE[name] or TYPE.body
+	return t[1], t[2], t[3]
+end
+
+Theme.space = { xs = 4, s = 8, m = 12, l = 16, xl = 24 }
+
 -- Binding --------------------------------------------------------------------------------
 
 local function apply(inst, b)
@@ -172,6 +257,7 @@ end
 
 local watched = {
 	"ui.theme", "ui.accent", "ui.useThemeAccent", "ui.textScale", "ui.density", "ui.cornerRadius", "ui.compact",
+	"ui.glass", "ui.reduceEffects", "ui.opacity",
 }
 
 -- start(maid): observe appearance settings so bound properties follow them.
@@ -181,6 +267,9 @@ function Theme.start(maid)
 			Theme.refresh()
 		end))
 	end
+	maid:Give(Perf.LowChanged:Connect(function()
+		Theme.refresh()
+	end))
 end
 
 return Theme

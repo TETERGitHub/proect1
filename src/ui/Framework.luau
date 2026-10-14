@@ -110,11 +110,19 @@ end
 
 -- Small builders -----------------------------------------------------------------------------
 
+-- corner(inst, radius): radius is a scale name ("window", "card", "control", "small", "none") from Theme.rad, or a
+-- number of pixels relative to the corner-radius setting (older call sites)
 function F.corner(inst, extra)
 	local c = Instance.new("UICorner")
-	Theme.bind(c, "CornerRadius", function()
-		return UDim.new(0, Theme.radius(extra))
-	end)
+	if type(extra) == "string" then
+		Theme.bind(c, "CornerRadius", function()
+			return UDim.new(0, Theme.rad(extra))
+		end)
+	else
+		Theme.bind(c, "CornerRadius", function()
+			return UDim.new(0, Theme.radius(extra))
+		end)
+	end
 	c.Parent = inst
 	return c
 end
@@ -134,6 +142,80 @@ function F.stroke(inst, token, thickness, transparency)
 	Theme.bind(s, "Color", token or "stroke")
 	s.Parent = inst
 	return s
+end
+
+-- edge(inst): the thin light edge of a glass surface - a stroke whose transparency runs from a brighter top
+-- to a fainter bottom. With effects off it is a plain faint outline.
+function F.edge(inst, level)
+local s = Instance.new("UIStroke")
+	s.Thickness = 1
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	Theme.bind(s, "Color", function()
+		return Theme.effectsOn() and Theme.color("edge") or Theme.color("stroke")
+	end)
+	s.Parent = inst
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	Theme.bind(g, "Transparency", function()
+		local top, bottom = Theme.edge(level)
+		return NumberSequence.new(top, bottom)
+	end)
+	g.Parent = s
+	return s
+end
+
+-- sheen(inst, height): a faint white wash over the top part of a large surface (hidden when effects are off)
+function F.sheen(inst, height)
+	local f = Instance.new("Frame")
+	f.Name = "Sheen"
+	f.BorderSizePixel = 0
+	f.Active = false
+	f.Size = UDim2.new(1, 0, 0, height or 120)
+	f.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	f.BackgroundTransparency = 0
+	f.ZIndex = 1
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	Theme.bind(g, "Transparency", function()
+		return NumberSequence.new(Theme.sheen(), 1)
+	end)
+	g.Parent = f
+	Theme.bind(f, "Visible", function()
+		return Theme.effectsOn()
+	end)
+	f.Parent = inst
+	return f
+end
+
+local LEVEL_RADIUS = { window = "window", rail = "none", card = "card", control = "control", popover = "card", modal = "window", toast = "card" }
+
+-- surface(parent, level, opts{name, props, radius, edge, sheen}) -> Frame
+-- level: window | rail | card | control | popover | modal | toast (see Theme.surface for the translucency ladder)
+function F.surface(parent, level, opts)
+	opts = opts or {}
+	local f = Instance.new("Frame")
+	f.Name = opts.name or "Surface"
+	f.BorderSizePixel = 0
+	for k, v in pairs(opts.props or {}) do
+		f[k] = v
+	end
+	Theme.bind(f, "BackgroundColor3", function()
+		return Theme.color((Theme.surface(level)))
+	end)
+	Theme.bind(f, "BackgroundTransparency", function()
+		return select(2, Theme.surface(level))
+	end)
+	if opts.radius ~= false then
+		F.corner(f, opts.radius or LEVEL_RADIUS[level] or "card")
+	end
+	if opts.edge ~= false then
+		F.edge(f, level)
+	end
+	if opts.sheen then
+		F.sheen(f, opts.sheen)
+	end
+	f.Parent = parent
+	return f
 end
 
 function F.padding(inst, l, t, r, b)
@@ -313,27 +395,74 @@ function F.scroller(parent)
 	return sf, maid
 end
 
--- Buttons ---------------------------------------------------------------------------------------
+-- Buttons ---------------------------------------------------------------------------------------------------------
 
-local function buttonColors(style)
+-- Styles: primary (filled accent), secondary (control surface), tertiary (text only), destructive (red text).
+-- The old names filled / tinted / plain / danger still work.
+local STYLE_ALIAS = {
+	primary = "filled", filled = "filled",
+	secondary = "tinted", tinted = "tinted",
+	tertiary = "plain", plain = "plain",
+	destructive = "danger", danger = "danger",
+}
+
+local buttonStates = setmetatable({}, { __mode = "k" })
+
+-- Target look of a button for its current state: background colour, background transparency, text colour, text transparency.
+local function buttonLook(st)
+	local style = st.style
+	local _, controlT = Theme.surface("control")
+	local bg, bgT, tc
 	if style == "filled" then
-		return "accent", function() return Theme.accentText() end
-	elseif style == "danger" then
-		return "bg3", function() return Theme.color("bad") end
+		bg, bgT, tc = Theme.color("accent"), 0, Theme.accentText()
+		if st.down then
+			bg = Theme.mix("accent", "bg0", 0.22)
+		elseif st.hover then
+			bg = Theme.mix("accent", "highlight", 0.14)
+		end
 	elseif style == "plain" then
-		return nil, function() return Theme.color("accent") end
+		bg, bgT, tc = Theme.color("accent"), 1, Theme.color("accent")
+		if st.down then
+			bgT = 0.82
+		elseif st.hover then
+			bgT = 0.9
+		end
+	elseif style == "danger" then
+		bg, bgT, tc = Theme.color("bg3"), controlT, Theme.color("bad")
+		if st.down then
+			bg, bgT = Theme.mix("bg3", "bad", 0.34), 0.1
+		elseif st.hover then
+			bg, bgT = Theme.mix("bg3", "bad", 0.2), 0
+		end
+	else
+		bg, bgT, tc = Theme.color("bg3"), controlT, Theme.color("text")
+		if st.down then
+			bg, bgT = Theme.mix("bg3", "bg0", 0.2), 0
+		elseif st.hover then
+			bg, bgT = Theme.mix("bg3", "highlight", 0.1), math.min(controlT, 0.15)
+		end
 	end
-	return "bg3", function() return Theme.color("text") end
+	local textT = 0
+	if not st.enabled then
+		bgT = bgT + (1 - bgT) * 0.55
+		textT = 0.55
+	elseif st.loading then
+		textT = 0.35
+	end
+	return bg, bgT, tc, textT
 end
 
--- button(parent, text, onClick, style, dim, maid) -> TextButton. style: filled|tinted|danger|plain
+-- button(parent, text, onClick, style, dim, maid) -> TextButton
+-- States: normal, hover, pressed, disabled (F.setButtonEnabled) and loading (F.setButtonLoading). A disabled or loading
+-- button ignores presses, so an operation that is still running cannot be started a second time.
 function F.button(parent, text, onClick, style, dim, maid)
 	maid = maid or (ctx and ctx.maid) or Maid.new("button")
-	local base, textColor = buttonColors(style or "tinted")
+	local st = { style = STYLE_ALIAS[style or "tinted"] or "tinted", enabled = true, loading = false, hover = false, down = false, label = I18n.tr(text) }
 	local b = Instance.new("TextButton")
+	buttonStates[b] = st
 	b.AutoButtonColor = false
 	b.BorderSizePixel = 0
-	b.Text = I18n.tr(text)
+	b.Text = st.label
 	b.Size = dim or UDim2.fromOffset(110, 32)
 	b.TextTruncate = Enum.TextTruncate.AtEnd
 	Theme.bind(b, "TextSize", function()
@@ -342,25 +471,58 @@ function F.button(parent, text, onClick, style, dim, maid)
 	Theme.bind(b, "Font", function()
 		return Theme.font(true)
 	end)
-	Theme.bind(b, "TextColor3", textColor)
-	if base then
-		Theme.bind(b, "BackgroundColor3", base)
-		b.BackgroundTransparency = 0
-	else
-		b.BackgroundTransparency = 1
+	Theme.bind(b, "BackgroundColor3", function()
+		return (buttonLook(st))
+	end)
+	Theme.bind(b, "BackgroundTransparency", function()
+		return select(2, buttonLook(st))
+	end)
+	Theme.bind(b, "TextColor3", function()
+		return select(3, buttonLook(st))
+	end)
+	Theme.bind(b, "TextTransparency", function()
+		return select(4, buttonLook(st))
+	end)
+	F.corner(b, "control")
+	if st.style ~= "plain" then
+		F.edge(b, "control")
 	end
-	F.corner(b, 2)
 	b.Parent = parent
-	Motion.pressable(b, maid, 0.05)
-	if base then
-		maid:Give(b.MouseEnter:Connect(function()
-			Motion.tween(b, { BackgroundColor3 = Theme.mix(base, "highlight", 0.12) }, 0.15, "smooth")
-		end))
-		maid:Give(b.MouseLeave:Connect(function()
-			Motion.tween(b, { BackgroundColor3 = Theme.color(base) }, 0.25, "smooth")
-		end))
+	local scale = Motion.pressable(b, maid, 0.03)
+	st.scale = scale
+
+	local function paint(animate)
+		local bg, bgT, tc, tT = buttonLook(st)
+		local goal = { BackgroundColor3 = bg, BackgroundTransparency = bgT, TextColor3 = tc, TextTransparency = tT }
+		if animate then
+			Motion.tween(b, goal, Motion.D.fast, "smooth")
+		else
+			for k, v in pairs(goal) do
+				b[k] = v
+			end
+		end
 	end
+	st.paint = paint
+	maid:Give(b.MouseEnter:Connect(function()
+		st.hover = true
+		paint(true)
+	end))
+	maid:Give(b.MouseLeave:Connect(function()
+		st.hover, st.down = false, false
+		paint(true)
+	end))
+	maid:Give(b.MouseButton1Down:Connect(function()
+		st.down = true
+		paint(true)
+	end))
+	maid:Give(b.MouseButton1Up:Connect(function()
+		st.down = false
+		paint(true)
+	end))
 	maid:Give(b.Activated:Connect(function()
+		if not st.enabled or st.loading then
+			return
+		end
 		click()
 		if onClick then
 			local ok, err = pcall(onClick)
@@ -372,8 +534,58 @@ function F.button(parent, text, onClick, style, dim, maid)
 	return b
 end
 
--- iconButton(parent, iconName, onClick, px, maid): borderless round icon button
-function F.iconButton(parent, iconName, onClick, px, maid, token)
+function F.setButtonEnabled(btn, enabled)
+	local st = buttonStates[btn]
+	if st and st.enabled ~= (enabled and true or false) then
+		st.enabled = enabled and true or false
+		btn.Active = st.enabled
+		st.paint(true)
+	end
+end
+
+-- setButtonLoading(btn, loading, label?): while loading the button shows `label` (default "...") and ignores presses
+function F.setButtonLoading(btn, loading, label)
+	local st = buttonStates[btn]
+	if not st then
+		return
+	end
+	st.loading = loading and true or false
+	btn.Text = st.loading and I18n.tr(label or "…") or st.label
+	st.paint(true)
+end
+
+-- setButtonStyle(btn, style): switch between primary / secondary / tertiary / destructive at run time (for toggle chips)
+function F.setButtonStyle(btn, style)
+local st = buttonStates[btn]
+local resolved = STYLE_ALIAS[style or "tinted"] or "tinted"
+if st and st.style ~= resolved then
+	st.style = resolved
+	st.paint(true)
+end
+end
+
+function F.buttonState(btn)
+	local st = buttonStates[btn]
+	if not st then
+		return nil
+	end
+	return { enabled = st.enabled, loading = st.loading, style = st.style }
+end
+
+-- flashButton(btn, "success"|"error"): a brief confirmation tint; call it only when the outcome is known
+function F.flashButton(btn, kind)
+	local token = kind == "error" and "bad" or "good"
+	Motion.tween(btn, { BackgroundColor3 = Theme.color(token) }, Motion.D.fast, "smooth")
+	task.delay(Motion.duration(0.7), function()
+		local st = buttonStates[btn]
+		if st and btn.Parent then
+			st.paint(true)
+		end
+	end)
+end
+
+-- iconButton(parent, iconName, onClick, px, maid, token, danger): borderless round icon button with hover and press states
+function F.iconButton(parent, iconName, onClick, px, maid, token, danger)
 	maid = maid or ctx.maid
 	px = px or 28
 	local b = Instance.new("TextButton")
@@ -381,19 +593,23 @@ function F.iconButton(parent, iconName, onClick, px, maid, token)
 	b.Text = ""
 	b.BorderSizePixel = 0
 	b.Size = UDim2.fromOffset(px, px)
-	Theme.bind(b, "BackgroundColor3", "bg3")
+	Theme.bind(b, "BackgroundColor3", danger and "bad" or "highlight")
 	b.BackgroundTransparency = 1
 	F.pillCorner(b)
 	local icon = Icons.draw(b, iconName, math.floor(px * 0.6), token or "textDim")
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	b.Parent = parent
-	Motion.pressable(b, maid, 0.1)
+	Motion.pressable(b, maid, 0.08)
+	local rest = danger and 0.82 or 0.9
 	maid:Give(b.MouseEnter:Connect(function()
-		Motion.tween(b, { BackgroundTransparency = 0.2 }, 0.15, "smooth")
+		Motion.tween(b, { BackgroundTransparency = rest }, Motion.D.fast, "smooth")
 	end))
 	maid:Give(b.MouseLeave:Connect(function()
-		Motion.tween(b, { BackgroundTransparency = 1 }, 0.25, "smooth")
+		Motion.tween(b, { BackgroundTransparency = 1 }, Motion.D.std, "smooth")
+	end))
+	maid:Give(b.MouseButton1Down:Connect(function()
+		Motion.tween(b, { BackgroundTransparency = rest - 0.1 }, Motion.D.fast, "smooth")
 	end))
 	maid:Give(b.Activated:Connect(function()
 		click()
@@ -404,7 +620,28 @@ function F.iconButton(parent, iconName, onClick, px, maid, token)
 	return b, icon
 end
 
--- textBox(parent, opts{placeholder,text,dim,onSubmit,clear}) -> TextBox
+-- textBox(parent, opts{placeholder,text,dim,onSubmit,clear,multiline}) -> TextBox
+-- States: normal, focused (accent ring) and invalid (F.setInvalid, red ring).
+local invalidBoxes = setmetatable({}, { __mode = "k" })
+
+local function boxStroke(t, focused)
+	local s = invalidBoxes[t]
+	if s and s.invalid then
+		return "bad", 0
+	elseif focused then
+		return "accent", 0
+	end
+	return "stroke", 0.55
+end
+
+function F.setInvalid(box, invalid)
+	local s = invalidBoxes[box]
+	if s then
+		s.invalid = invalid and true or false
+		s.refresh(true)
+	end
+end
+
 function F.textBox(parent, opts, maid)
 	maid = maid or ctx.maid
 	local t = Instance.new("TextBox")
@@ -412,12 +649,15 @@ function F.textBox(parent, opts, maid)
 	t.ClearTextOnFocus = opts.clear == true
 	t.PlaceholderText = I18n.tr(opts.placeholder or "")
 	t.Text = opts.text or ""
-	t.TextXAlignment = opts.multiline and Enum.TextXAlignment.Left or Enum.TextXAlignment.Left
+	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.TextYAlignment = opts.multiline and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
 	t.MultiLine = opts.multiline == true
 	t.TextWrapped = opts.multiline == true
-	t.Size = opts.dim or UDim2.fromOffset(160, 30)
+	t.Size = opts.dim or UDim2.fromOffset(160, 32)
 	Theme.bind(t, "BackgroundColor3", "bg3")
+	Theme.bind(t, "BackgroundTransparency", function()
+		return select(2, Theme.surface("control"))
+	end)
 	Theme.bind(t, "TextColor3", "text")
 	Theme.bind(t, "PlaceholderColor3", "textDim")
 	Theme.bind(t, "Font", function()
@@ -426,16 +666,28 @@ function F.textBox(parent, opts, maid)
 	Theme.bind(t, "TextSize", function()
 		return Theme.textSize(13)
 	end)
-	F.corner(t, 0)
-	F.padding(t, 10, 4, 10, 4)
-	local s = F.stroke(t, "stroke", 1, 0.5)
+	F.corner(t, "control")
+	F.padding(t, 12, 4, 12, 4)
+	local stroke = F.stroke(t, "stroke", 1, 0.55)
+	local st = { invalid = false, focused = false }
+	invalidBoxes[t] = st
+	st.refresh = function(animate)
+		local token, tr = boxStroke(t, st.focused)
+		Theme.bind(stroke, "Color", token)
+		stroke.Thickness = (token == "stroke") and 1 or 1.5
+		if animate then
+			Motion.tween(stroke, { Transparency = tr }, Motion.D.fast, "smooth")
+		else
+			stroke.Transparency = tr
+		end
+	end
 	maid:Give(t.Focused:Connect(function()
-		Theme.bind(s, "Color", "accent")
-		Motion.tween(s, { Transparency = 0 }, 0.15, "smooth")
+		st.focused = true
+		st.refresh(true)
 	end))
 	maid:Give(t.FocusLost:Connect(function(enter)
-		Theme.bind(s, "Color", "stroke")
-		Motion.tween(s, { Transparency = 0.5 }, 0.2, "smooth")
+		st.focused = false
+		st.refresh(true)
 		if opts.onSubmit then
 			pcall(opts.onSubmit, t.Text, enter)
 		end
@@ -457,7 +709,7 @@ function F.closePopover()
 		end
 		local frame = p.frame
 		if frame and frame.Parent then
-			Motion.tween(frame, { Size = UDim2.fromOffset(p.width, 0) }, 0.18, "exit")
+			Motion.tween(frame, { Size = UDim2.fromOffset(p.width, 0) }, Motion.D.std * 0.8, "exit")
 			task.delay(Motion.enabled() and Motion.duration(0.2) or 0, function()
 				if frame.Parent then
 					frame:Destroy()
@@ -494,9 +746,14 @@ function F.openPopover(anchor, width, height, onClose)
 	frame.ZIndex = 120
 	frame.ClipsDescendants = true
 	frame.BorderSizePixel = 0
-	Theme.bind(frame, "BackgroundColor3", "bg1")
-	F.corner(frame, 2)
-	F.stroke(frame, "stroke", 1, 0.3)
+	Theme.bind(frame, "BackgroundColor3", function()
+		return Theme.color((Theme.surface("popover")))
+	end)
+	Theme.bind(frame, "BackgroundTransparency", function()
+		return select(2, Theme.surface("popover"))
+	end)
+	F.corner(frame, "card")
+	F.edge(frame, "popover")
 	local ap, as, op, os = anchor.AbsolutePosition, anchor.AbsoluteSize, overlay.AbsolutePosition, overlay.AbsoluteSize
 	local x = math.clamp(ap.X - op.X + as.X - width, 6, math.max(6, os.X - width - 6))
 	local y = ap.Y - op.Y + as.Y + 6
@@ -509,7 +766,7 @@ function F.openPopover(anchor, width, height, onClose)
 	local maid = Maid.new("popover")
 	popover = { frame = frame, catcher = catcher, maid = maid, width = width, onClose = onClose }
 	catcher.Activated:Connect(F.closePopover)
-	Motion.tween(frame, { Size = UDim2.fromOffset(width, height) }, 0.28, "spring")
+	Motion.tween(frame, { Size = UDim2.fromOffset(width, height) }, Motion.D.slow * 0.75, "enter")
 	return frame, maid
 end
 
@@ -531,40 +788,35 @@ function F.confirm(opts)
 	backdrop.ZIndex = 150
 	backdrop.Parent = overlay
 	maid:Give(backdrop)
-	Motion.tween(backdrop, { BackgroundTransparency = 0.45 }, 0.25, "smooth")
+	Motion.tween(backdrop, { BackgroundTransparency = 0.5 }, Motion.D.std, "smooth")
 
-	local sheet = Instance.new("Frame")
+	local sheet = F.surface(backdrop, "modal", { name = "Sheet", sheen = 90 })
 	sheet.AnchorPoint = Vector2.new(0.5, 0.5)
 	sheet.Position = UDim2.fromScale(0.5, 0.5)
-	sheet.Size = UDim2.fromOffset(330, 160)
+	sheet.Size = UDim2.fromOffset(340, 168)
 	sheet.ZIndex = 160
-	sheet.BorderSizePixel = 0
-	Theme.bind(sheet, "BackgroundColor3", "bg1")
-	F.corner(sheet, 8)
-	F.stroke(sheet, "stroke", 1, 0.3)
-	F.padding(sheet, 18, 16, 18, 16)
-	sheet.Parent = backdrop
+	F.padding(sheet, 20, 18, 20, 16)
 	local scale = Instance.new("UIScale")
-	scale.Scale = 0.88
+	scale.Scale = Motion.enabled() and 0.94 or 1
 	scale.Parent = sheet
-	Motion.tween(scale, { Scale = 1 }, 0.4, "spring")
+	Motion.tween(scale, { Scale = 1 }, Motion.D.slow * 0.8, "enter")
 
-	local t = F.label(sheet, opts.title or "", { size = 16, bold = true })
+	local t = F.label(sheet, opts.title or "", { size = 17, bold = true })
 	local msg = F.label(sheet, opts.text or "", { size = 13, token = "textDim", wrap = true, dim = UDim2.new(1, 0, 0, 56), valign = Enum.TextYAlignment.Top })
-	msg.Position = UDim2.fromOffset(0, 28)
+	msg.Position = UDim2.fromOffset(0, 30)
 	local function close()
 		maid:Clean()
 	end
 	local row = F.frame(sheet, { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 34) })
 	F.list(row, 10, true)
-	local cancel = F.button(row, I18n.t("btn.cancel"), close, "tinted", UDim2.new(0.5, -5, 1, 0), maid)
+	local cancel = F.button(row, I18n.t("btn.cancel"), close, "secondary", UDim2.new(0.5, -5, 1, 0), maid)
 	cancel.LayoutOrder = 1
 	local ok = F.button(row, opts.confirmText or I18n.t("btn.confirm"), function()
 		close()
 		if opts.onConfirm then
 			opts.onConfirm()
 		end
-	end, opts.danger and "danger" or "filled", UDim2.new(0.5, -5, 1, 0), maid)
+	end, opts.danger and "destructive" or "primary", UDim2.new(0.5, -5, 1, 0), maid)
 	ok.LayoutOrder = 2
 	maid:Give(backdrop.Activated:Connect(function() end)) -- swallow clicks outside the sheet
 	return close
@@ -617,36 +869,73 @@ local function bindSetting(page, key, fn)
 end
 
 -- row(opts{label, desc, key, width, tip}) -> row Frame, holder Frame (right side)
+-- Rows live inside a grouped card (one card per section) separated by hairlines, so a page reads as a few
+-- surfaces instead of a stack of identical boxes. A group is opened by Page:section() or automatically
+-- when a row follows something that is not a row.
+function Page:openGroup()
+	local g = Instance.new("Frame")
+	g.Name = "Group"
+	g.BorderSizePixel = 0
+	g.LayoutOrder = self:nextOrder()
+	g.Size = UDim2.new(1, 0, 0, 0)
+	g.AutomaticSize = Enum.AutomaticSize.Y
+	Theme.bind(g, "BackgroundColor3", function()
+		return Theme.color((Theme.surface("card")))
+	end)
+	Theme.bind(g, "BackgroundTransparency", function()
+		return select(2, Theme.surface("card"))
+	end)
+	F.corner(g, "card")
+	F.edge(g, "card")
+	local list = Instance.new("UIListLayout")
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = g
+	g.Parent = self.content
+	self.card, self.cardOrder, self.cardCount = g, self.order, 0
+	return g
+end
+
+local function rowParent(self)
+	if not self.card or self.order ~= self.cardOrder then
+		self:openGroup()
+	end
+	self.cardCount += 1
+	return self.card, self.cardCount
+end
+
 function Page:row(opts)
 	local feat = opts.key and Registry.forSetting(opts.key) or nil
 	local hasDesc = opts.desc and opts.desc ~= ""
+	local parent, index = rowParent(self)
 	local row = Instance.new("Frame")
 	row.Name = opts.key or opts.label or "Row"
 	row.BorderSizePixel = 0
-	row.LayoutOrder = self:nextOrder()
-	Theme.bind(row, "BackgroundColor3", "bg2")
-	Theme.bind(row, "BackgroundTransparency", function()
-		return Theme.isGlass() and 0.15 or 0
-	end)
+	row.LayoutOrder = index
+	row.BackgroundTransparency = 1
+	Theme.bind(row, "BackgroundColor3", "highlight")
+	row.AutomaticSize = Enum.AutomaticSize.Y
 	Theme.bind(row, "Size", function()
-		local extra = (hasDesc and not Settings.get("ui.compact")) and 12 or 0
-		return UDim2.new(1, 0, 0, Theme.rowHeight() + extra)
+		return UDim2.new(1, 0, 0, Theme.rowHeight())
 	end)
-	F.corner(row, 0)
-	F.stroke(row, "stroke", 1, 0.75)
-	row.Parent = self.content
+	row.Parent = parent
+	if index > 1 then
+		local div = F.frame(row, { Name = "Divider", Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -28, 0, 1), ZIndex = 2 }, { BackgroundColor3 = "stroke" })
+		div.BackgroundTransparency = 0.72
+	end
 	if opts.key then
 		self.anchors[opts.key] = row
 	end
 
 	local starW = feat and 26 or 0
-	local textBox = F.frame(row, { Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1 })
-	textBox.Size = UDim2.new(1, -(opts.width or 0) - 30 - starW, 1, 0)
-	F.list(textBox, 1).VerticalAlignment = Enum.VerticalAlignment.Center
+	local textBox = F.frame(row, { Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y })
+	textBox.Size = UDim2.new(1, -(opts.width or 0) - 34 - starW, 0, 0)
+	F.padding(textBox, 0, 9, 0, 9)
+	local tl = F.list(textBox, 2)
 	local title = F.label(textBox, opts.label or "", { size = 14, bold = true })
 	title.LayoutOrder = 1
 	if hasDesc then
-		local d = F.label(textBox, opts.desc, { size = 11, token = "textDim", dim = UDim2.new(1, 0, 0, 14) })
+		local d = F.label(textBox, opts.desc, { size = 11.5, token = "textDim", wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
+		d.AutomaticSize = Enum.AutomaticSize.Y
 		d.LayoutOrder = 2
 		Theme.bind(d, "Visible", function()
 			return not Settings.get("ui.compact")
@@ -654,20 +943,42 @@ function Page:row(opts)
 		F.tooltip(row, opts.tip or opts.desc, self.maid)
 	end
 
-	local holder = F.frame(row, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12 - starW, 0.5, 0), Size = UDim2.fromOffset(opts.width or 0, 30) })
+	local holder = F.frame(row, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12 - starW, 0.5, 0), Size = UDim2.fromOffset(opts.width or 0, 32) })
+
+	-- hover wash (very faint) so the row under the pointer is easy to find
+	self.maid:Give(row.MouseEnter:Connect(function()
+		Motion.tween(row, { BackgroundTransparency = 0.965 }, Motion.D.fast, "smooth")
+	end))
+	self.maid:Give(row.MouseLeave:Connect(function()
+		Motion.tween(row, { BackgroundTransparency = 1 }, Motion.D.std, "smooth")
+	end))
 
 	if feat then
 		local star = F.iconButton(row, "star", nil, 24, self.maid, "textDim")
 		star.AnchorPoint = Vector2.new(1, 0.5)
 		star.Position = UDim2.new(1, -8, 0.5, 0)
+		star.ZIndex = 3
 		local icon = star:FindFirstChildOfClass("Frame")
+		local hovered = false
+		local touch = Services.UserInputService.TouchEnabled
 		local function paint()
+			local fav = Recents.isFavorite(feat.id)
 			if icon then
-				Icons.recolor(icon, Recents.isFavorite(feat.id) and "warn" or "textDim")
+				Icons.recolor(icon, fav and "warn" or "textDim")
 			end
+			-- a star that is not a favourite only shows while the row is hovered (always on touch screens)
+			star.Visible = fav or hovered or touch
 		end
+		self.maid:Give(row.MouseEnter:Connect(function()
+			hovered = true
+			paint()
+		end))
+		self.maid:Give(row.MouseLeave:Connect(function()
+			hovered = false
+			paint()
+		end))
 		self.maid:Give(star.Activated:Connect(function()
-			local ok, err = Recents.toggleFavorite(feat.id)
+			local ok = Recents.toggleFavorite(feat.id)
 			if not ok then
 				-- the only failure users can hit is the limit; a silent star is indistinguishable from a broken one
 				Notify.push({ title = I18n.tr("Favourites"), text = I18n.tr("Favourite limit reached. Press the star of another feature to remove it first."), level = "warn" })
@@ -685,38 +996,74 @@ local function touch(feat)
 	end
 end
 
+-- section(title): small caption above a new grouped card; the rows that follow go into that card
 function Page:section(title)
 	local h = Instance.new("Frame")
+	h.Name = "SectionHeader"
 	h.BackgroundTransparency = 1
 	h.BorderSizePixel = 0
 	h.LayoutOrder = self:nextOrder()
-	h.Size = UDim2.new(1, 0, 0, 30)
-	local l = F.label(h, I18n.upper(I18n.tr(title)), { size = 11, bold = true, token = "textDim" })
-	l.Position = UDim2.fromOffset(6, 10)
-	l.Size = UDim2.new(1, -6, 0, 16)
+	h.Size = UDim2.new(1, 0, 0, 28)
+	local size, bold, token = Theme.type("section")
+	local l = F.label(h, I18n.upper(I18n.tr(title)), { size = size, bold = bold, token = token })
+	l.Position = UDim2.fromOffset(Theme.space.s, 10)
+	l.Size = UDim2.new(1, -Theme.space.s, 0, 16)
 	h.Parent = self.content
+	self.card = nil
 	return h
 end
 
 -- note(text, token): free text block
 function Page:note(text, token, height)
-	local frame = F.frame(self.content, { LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, height or 40), AutomaticSize = Enum.AutomaticSize.Y })
-	local l = F.label(frame, text, { size = 12, token = token or "textDim", wrap = true, dim = UDim2.new(1, -12, 0, 0), valign = Enum.TextYAlignment.Top })
+	local frame = F.frame(self.content, { Name = "Note", LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, height or 40), AutomaticSize = Enum.AutomaticSize.Y })
+	F.padding(frame, Theme.space.s, 2, Theme.space.s, 6)
+	local l = F.label(frame, text, { size = 11.5, token = token or "textDim", wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
 	l.AutomaticSize = Enum.AutomaticSize.Y
-	l.Position = UDim2.fromOffset(6, 0)
 	return frame, l
 end
 
--- custom(height) -> Frame (card background) for arbitrary content
+-- custom(height) -> Frame (card surface) for arbitrary content
 function Page:card(height)
-	local card = F.frame(self.content, { LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, height) })
-	Theme.bind(card, "BackgroundColor3", "bg2")
-	Theme.bind(card, "BackgroundTransparency", function()
-		return Theme.isGlass() and 0.15 or 0
-	end)
-	F.corner(card, 0)
-	F.stroke(card, "stroke", 1, 0.75)
+	local card = F.surface(self.content, "card", { name = "Card", props = { LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, height) } })
 	return card
+end
+
+-- header(title, subtitle): the page heading shown above the first section. Actions (for example "Reset page")
+-- are added with Page:addHeaderAction and sit on the right of the heading.
+function Page:header(title, subtitle)
+	local frame = F.frame(self.content, { Name = "PageHeader", LayoutOrder = self:nextOrder(), Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y })
+	F.padding(frame, Theme.space.s, 4, 0, Theme.space.s)
+	local size, bold, token = Theme.type("page")
+	local text = F.frame(frame, { Name = "Text", Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y })
+	F.list(text, 2)
+	local t = F.label(text, title, { size = size, bold = bold, token = token })
+	t.LayoutOrder = 1
+	if subtitle and subtitle ~= "" then
+		local s, _, tk = Theme.type("caption")
+		local d = F.label(text, subtitle, { size = s + 0.5, token = tk, wrap = true, dim = UDim2.new(1, 0, 0, 0), valign = Enum.TextYAlignment.Top })
+		d.AutomaticSize = Enum.AutomaticSize.Y
+		d.LayoutOrder = 2
+	end
+	local actions = F.frame(frame, { Name = "Actions", AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 0, 0, 30) })
+	local al = F.list(actions, 8, true)
+	al.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	self.headerText, self.headerActions, self.headerActionW = text, actions, 0
+	self.card = nil
+	return frame
+end
+
+-- addHeaderAction(text, onClick, style, width) -> button
+function Page:addHeaderAction(text, onClick, style, width)
+	if not self.headerActions then
+		return nil
+	end
+	width = width or 104
+	local b = F.button(self.headerActions, text, onClick, style or "tertiary", UDim2.fromOffset(width, 30), self.maid)
+	b.LayoutOrder = #self.headerActions:GetChildren()
+	self.headerActionW += width + 8
+	self.headerActions.Size = UDim2.new(0, self.headerActionW, 0, 30)
+	self.headerText.Size = UDim2.new(1, -(self.headerActionW + 8), 0, 0)
+	return b
 end
 
 -- Toggle (iOS switch) -----------------------------------------------------------------------------------------
@@ -834,9 +1181,14 @@ function Page:slider(opts)
 	hit.Position = UDim2.fromScale(0, 0.5)
 	hit.Size = UDim2.new(1, -62, 0, 30)
 	hit.Parent = holder
-	local bar = F.frame(hit, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 5) }, { BackgroundColor3 = "bg3" })
+	local bar = F.frame(hit, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 6) })
+	Theme.bind(bar, "BackgroundColor3", function()
+		return Theme.mix("bg3", "highlight", 0.08)
+	end)
+	bar.BackgroundTransparency = 0
 	F.pillCorner(bar)
 	local fill = F.frame(bar, { Size = UDim2.fromScale(0, 1) }, { BackgroundColor3 = "accent" })
+	fill.BackgroundTransparency = 0
 	F.pillCorner(fill)
 	local knob = Instance.new("Frame")
 	knob.BorderSizePixel = 0
@@ -851,6 +1203,12 @@ function Page:slider(opts)
 	ks.Color = Color3.fromRGB(0, 0, 0)
 	ks.Parent = knob
 	knob.Parent = bar
+	local ring = Instance.new("UIStroke")
+	ring.Name = "Ring"
+	ring.Thickness = 3
+	ring.Transparency = 1
+	Theme.bind(ring, "Color", "accent")
+	ring.Parent = knob
 
 	local span = def.max - def.min
 	local function show(v, animate)
@@ -877,13 +1235,15 @@ function Page:slider(opts)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			touch(feat)
-			Motion.tween(knob, { Size = UDim2.fromOffset(24, 24) }, 0.2, "spring")
+			Motion.tween(knob, { Size = UDim2.fromOffset(22, 22) }, Motion.D.fast, "smooth")
+			Motion.tween(ring, { Transparency = 0.65 }, Motion.D.fast, "smooth")
 			fromX(input.Position.X)
 			F.beginDrag(function(pos)
 				fromX(pos.X)
 			end, function()
 				dragging = false
-				Motion.tween(knob, { Size = UDim2.fromOffset(18, 18) }, 0.3, "spring")
+				Motion.tween(knob, { Size = UDim2.fromOffset(18, 18) }, Motion.D.std, "smooth")
+				Motion.tween(ring, { Transparency = 1 }, Motion.D.std, "smooth")
 			end)
 		end
 	end))
@@ -912,7 +1272,11 @@ function Page:enum(opts)
 		local box = F.frame(holder, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(1, 0.5), Size = UDim2.fromOffset(total, 32) }, { BackgroundColor3 = "bg3" })
 		box.BackgroundTransparency = 0
 		F.pillCorner(box)
-		local pill = F.frame(box, { Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(segW, 26) }, { BackgroundColor3 = "accent" })
+		local pill = F.frame(box, { Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(segW, 26) })
+		Theme.bind(pill, "BackgroundColor3", function()
+			return Theme.mix("bg3", "highlight", 0.24)
+		end)
+		pill.BackgroundTransparency = 0
 		F.pillCorner(pill)
 		local buttons = {}
 		for i, o in ipairs(options) do
@@ -945,11 +1309,11 @@ function Page:enum(opts)
 			if first then
 				pill.Position = goal.Position
 			else
-				Motion.tween(pill, goal, 0.4, "spring")
+				Motion.tween(pill, goal, Motion.D.slow, "enter")
 			end
 			for o, b in pairs(buttons) do
 				Theme.bind(b, "TextColor3", function()
-					return o == Settings.get(opts.key) and Theme.accentText() or Theme.color("textDim")
+					return o == Settings.get(opts.key) and Theme.color("text") or Theme.color("textDim")
 				end)
 			end
 			first = false
@@ -966,7 +1330,11 @@ function Page:enum(opts)
 	btn.Position = UDim2.fromScale(1, 0.5)
 	btn.Size = UDim2.fromOffset(170, 32)
 	Theme.bind(btn, "BackgroundColor3", "bg3")
-	F.corner(btn, 2)
+	Theme.bind(btn, "BackgroundTransparency", function()
+		return select(2, Theme.surface("control"))
+	end)
+	F.corner(btn, "control")
+	F.edge(btn)
 	btn.Parent = holder
 	local text = F.label(btn, "", { size = 13, bold = true, dim = UDim2.new(1, -34, 1, 0) })
 	text.Position = UDim2.fromOffset(12, 0)
@@ -996,8 +1364,8 @@ function Page:enum(opts)
 			item.LayoutOrder = i
 			item.Size = UDim2.new(1, 0, 0, itemH - 2)
 			item.BackgroundTransparency = 1
-			Theme.bind(item, "BackgroundColor3", "bg3")
-			F.corner(item, -2)
+			Theme.bind(item, "BackgroundColor3", "highlight")
+			F.corner(item, "small")
 			local sel = Settings.get(opts.key) == o
 			local l = F.label(item, I18n.tr(tostring(o)), { size = 13, bold = sel, token = sel and "accent" or "text", dim = UDim2.new(1, -34, 1, 0) })
 			l.Position = UDim2.fromOffset(10, 0)
@@ -1008,10 +1376,10 @@ function Page:enum(opts)
 			end
 			item.Parent = inner
 			pmaid:Give(item.MouseEnter:Connect(function()
-				Motion.tween(item, { BackgroundTransparency = 0.3 }, 0.12, "smooth")
+				Motion.tween(item, { BackgroundTransparency = 0.9 }, Motion.D.fast, "smooth")
 			end))
 			pmaid:Give(item.MouseLeave:Connect(function()
-				Motion.tween(item, { BackgroundTransparency = 1 }, 0.2, "smooth")
+				Motion.tween(item, { BackgroundTransparency = 1 }, Motion.D.std, "smooth")
 			end))
 			pmaid:Give(item.Activated:Connect(function()
 				click()
@@ -1044,7 +1412,7 @@ function Page:color(opts)
 	swatch.AnchorPoint = Vector2.new(1, 0.5)
 	swatch.Position = UDim2.fromScale(1, 0.5)
 	swatch.Size = UDim2.fromOffset(110, 30)
-	F.corner(swatch, 2)
+	F.corner(swatch, "control")
 	F.stroke(swatch, "stroke", 1, 0.2)
 	swatch.Parent = holder
 	local hex = F.label(swatch, "", { size = 12, bold = true, align = Enum.TextXAlignment.Center, dim = UDim2.fromScale(1, 1) })
@@ -1205,7 +1573,7 @@ function Page:keybind(opts)
 	btn.Position = UDim2.new(1, -30, 0.5, 0)
 	btn.Size = UDim2.fromOffset(130, 30)
 	Theme.bind(btn, "BackgroundColor3", "bg3")
-	F.corner(btn, 2)
+	F.corner(btn, "control")
 	local stroke = F.stroke(btn, "stroke", 1, 0.5)
 	btn.Parent = holder
 	local text = F.label(btn, "", { size = 12, bold = true, align = Enum.TextXAlignment.Center, dim = UDim2.fromScale(1, 1) })
@@ -1297,15 +1665,9 @@ function Page:stats(items)
 	local layout = F.list(frame, 8, true)
 	local labels = {}
 	for i, item in ipairs(items) do
-		local card = F.frame(frame, { Size = UDim2.new(1 / #items, -8 * (#items - 1) / #items, 1, 0), LayoutOrder = i }, { BackgroundColor3 = "bg2" })
-		card.BackgroundTransparency = 0
-		Theme.bind(card, "BackgroundTransparency", function()
-			return Theme.isGlass() and 0.15 or 0
-		end)
-		F.corner(card, 0)
-		F.stroke(card, "stroke", 1, 0.75)
-		F.padding(card, 12, 8, 12, 8)
-		local t = F.label(card, I18n.upper(I18n.tr(item.title)), { size = 11, bold = true, token = "textDim" })
+		local card = F.surface(frame, "card", { name = "Stat", props = { Size = UDim2.new(1 / #items, -8 * (#items - 1) / #items, 1, 0), LayoutOrder = i } })
+		F.padding(card, 14, 10, 14, 8)
+		local t = F.label(card, I18n.upper(I18n.tr(item.title)), { size = 10.5, bold = true, token = "textDim" })
 		local v = F.label(card, item.value or "—", { size = 22, bold = true, token = item.token or "text", dim = UDim2.new(1, 0, 0, 32) })
 		v.Position = UDim2.fromOffset(0, 22)
 		labels[i] = v

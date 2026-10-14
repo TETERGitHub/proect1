@@ -12,6 +12,14 @@ local Services = import("core/Services")
 
 local Motion = {}
 
+-- Duration classes (seconds at animation speed 1): fast = direct feedback to input, std = a state change,
+-- slow = a large layer appearing. Components pick a class instead of inventing a number.
+Motion.D = { fast = 0.12, std = 0.22, slow = 0.4 }
+
+-- weak: instance -> list of { tween, props }. Starting a tween on a property cancels the running tween of the
+-- same property, so two animations never fight over one value and old tweens do not pile up.
+local active = setmetatable({}, { __mode = "k" })
+
 function Motion.enabled()
 	return Settings.get("ui.animSpeed") > 0 and not Perf.isLow()
 end
@@ -34,6 +42,70 @@ local STYLES = {
 	exit = { "Quart", "In" },
 }
 
+-- reduced effects trade the springy styles for plain easing
+local function curve(style)
+	if Settings.get("ui.reduceEffects") and (style == "spring" or style == "bounce") then
+		return "smooth"
+	end
+	return style or "smooth"
+end
+
+local function forget(inst, entry)
+	local list = active[inst]
+	if list then
+		local i = table.find(list, entry)
+		if i then
+			table.remove(list, i)
+		end
+		if #list == 0 then
+			active[inst] = nil
+		end
+	end
+end
+
+-- cancel(inst): stop every running tween on inst (used before destroying or re-parenting)
+function Motion.cancel(inst)
+	local list = active[inst]
+	if list then
+		active[inst] = nil
+		for _, entry in ipairs(list) do
+			pcall(function()
+				entry.tween:Cancel()
+			end)
+		end
+	end
+end
+
+local function cancelOverlapping(inst, goal)
+	local list = active[inst]
+	if not list then
+		return
+	end
+	for i = #list, 1, -1 do
+		local entry = list[i]
+		for k in pairs(goal) do
+			if entry.props[k] then
+				table.remove(list, i)
+				pcall(function()
+					entry.tween:Cancel()
+				end)
+				break
+			end
+		end
+	end
+	if #list == 0 then
+		active[inst] = nil
+	end
+end
+
+function Motion.activeCount()
+	local n = 0
+	for _, list in pairs(active) do
+		n += #list
+	end
+	return n
+end
+
 -- tween(inst, goal, base, style) -> tween|nil
 function Motion.tween(inst, goal, base, style)
 	if not inst then
@@ -47,12 +119,29 @@ function Motion.tween(inst, goal, base, style)
 		end
 		return nil
 	end
-	local s = STYLES[style or "smooth"] or STYLES.smooth
+	local s = STYLES[curve(style)] or STYLES.smooth
 	local info = TweenInfo.new(Motion.duration(base or 0.25), Enum.EasingStyle[s[1]], Enum.EasingDirection[s[2]])
+	cancelOverlapping(inst, goal)
 	local ok, tw = pcall(function()
 		return Services.TweenService:Create(inst, info, goal)
 	end)
 	if ok and tw then
+		local props = {}
+		for k in pairs(goal) do
+			props[k] = true
+		end
+		local entry = { tween = tw, props = props }
+		local list = active[inst]
+		if not list then
+			list = {}
+			active[inst] = list
+		end
+		table.insert(list, entry)
+		if tw.Completed then
+			tw.Completed:Once(function()
+				forget(inst, entry)
+			end)
+		end
 		tw:Play()
 		return tw
 	end

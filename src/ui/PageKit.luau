@@ -65,24 +65,19 @@ local function section(page, title, keys, overrides)
 end
 
 -- Reset-page button shown at the top of generated settings pages.
+-- resetButton(page, module): a "Reset page" action in the page header (confirmed before anything changes)
 local function resetButton(page, module)
-	page:action({
-		label = I18n.t("btn.reset"),
-		desc = "Restore the default values of every setting on this page.",
-		text = I18n.t("btn.reset"),
-		style = "danger",
-		onClick = function()
-			F.confirm({
-				title = I18n.t("btn.reset"),
-				text = "All settings of this page return to their defaults.",
-				danger = true,
-				onConfirm = function()
-					local n = Settings.resetModule(module)
-					notify(I18n.t("btn.reset"), I18n.t("notify.reset", n), "success")
-				end,
-			})
+page:addHeaderAction(I18n.t("btn.reset"), function()
+	F.confirm({
+		title = I18n.t("btn.reset"),
+		text = "All settings of this page return to their defaults.",
+		danger = true,
+		onConfirm = function()
+			local n = Settings.resetModule(module)
+			notify(I18n.t("btn.reset"), I18n.t("notify.reset", n), "success")
 		end,
 	})
+end, "danger", 112)
 end
 
 -- DataList: pooled rows with a title, sub-line, right-hand value and up to four icon buttons.

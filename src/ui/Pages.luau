@@ -48,10 +48,12 @@ local function buildDashboard(page)
 	gl.CellPadding = UDim2.fromOffset(8, 8)
 	gl.SortOrder = Enum.SortOrder.LayoutOrder
 	gl.Parent = grid
+	-- the first three are switches: they show their real state (filled accent + a filled dot when on, plain + an
+	-- empty ring when off), so the state never depends on colour alone
 	local quick = {
-		{ "Crosshair", "crosshair.toggle" },
-		{ "Training range", "training.toggle" },
-		{ "Low load profile", "lowprofile.toggle" },
+		{ "Crosshair", "crosshair.toggle", "crosshair.enabled" },
+		{ "Training range", "training.toggle", "training.enabled" },
+		{ "Low load profile", "lowprofile.toggle", "perf.lowProfile" },
 		{ "Save profile", "config.save" },
 		{ "Minimise", "window.minimize" },
 	}
@@ -60,8 +62,20 @@ local function buildDashboard(page)
 			if Actions.has(q[2]) then
 				Actions.run(q[2])
 			end
-		end, i <= 3 and "filled" or "tinted", UDim2.fromOffset(100, 40), page.maid)
+		end, "secondary", UDim2.fromOffset(100, 40), page.maid)
 		b.LayoutOrder = i
+		if q[3] then
+			local dot = F.frame(b, { Name = "StateDot", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, 0), Size = UDim2.fromOffset(9, 9), ZIndex = 3 })
+			F.pillCorner(dot)
+			local ring = F.stroke(dot, "text", 1.5, 0.2)
+			page.maid:Give(Settings.observe(q[3], function(on)
+				F.setButtonStyle(b, on and "primary" or "secondary")
+				-- filled dot when on, hollow ring when off
+				dot.BackgroundTransparency = on and 0 or 1
+				dot.BackgroundColor3 = Theme.accentText()
+				ring.Color = on and Theme.accentText() or Theme.color("textDim")
+			end, true))
+		end
 	end
 
 	page:section(I18n.t("dash.favorites"))
@@ -144,8 +158,9 @@ end
 
 local function buildInterface(page)
 	resetButton(page, "Interface")
-	section(page, "Appearance", { "ui.theme", "ui.useThemeAccent", "ui.accent", "ui.opacity", "ui.cornerRadius", "ui.density", "ui.textScale", "ui.scale" })
-	section(page, "Motion", { "ui.animSpeed", "ui.decor" })
+	section(page, "Appearance", { "ui.theme", "ui.useThemeAccent", "ui.accent", "ui.cornerRadius", "ui.density", "ui.textScale", "ui.scale" })
+	section(page, "Glass & effects", { "ui.glass", "ui.opacity", "ui.reduceEffects", "ui.decor" })
+	section(page, "Motion", { "ui.animSpeed" })
 	section(page, "On-screen buttons", { "ui.screenButtons", "ui.screenButtonSize", "ui.screenButtonOpacity" })
 	section(page, "Behaviour", { "ui.compact", "ui.lockPosition", "ui.showTooltips", "ui.showLauncher", "ui.showFpsBadge", "ui.notifications", "ui.notifyDuration" })
 	page:section("Language")
@@ -277,26 +292,26 @@ function Pages.registerAll()
 	local Game = import("ui/PagesGame")
 	local System = import("ui/PagesSystem")
 	local list = {
-		{ "dashboard", "home", buildDashboard },
-		{ "ui", "sliders", buildInterface },
-		{ "crosshair", "target", buildCrosshair },
-		{ "camera", "camera", buildCamera },
-		{ "lighting", "sun", buildLighting },
-		{ "training", "bolt", Game.training },
-		{ "defence", "shield", Game.defence },
-		{ "cosmetics", "shirt", Game.cosmetics },
-		{ "music", "music", Game.music },
-		{ "sounds", "speaker", Game.sounds },
-		{ "perf", "gauge", System.perf },
-		{ "tools", "wrench", System.tools },
-		{ "keys", "keyboard", System.keys },
-		{ "configs", "folder", System.configs },
-		{ "diagnostics", "bug", System.diagnostics },
-		{ "help", "help", System.help },
-		{ "about", "info", System.about },
+		{ "dashboard", "home", buildDashboard, "Session overview, quick actions and your favourite features." },
+		{ "ui", "sliders", buildInterface, "Theme, glass effects, motion, language and notifications." },
+		{ "crosshair", "target", buildCrosshair, "Draw your own crosshair on screen. Everything stays on your client." },
+		{ "camera", "camera", buildCamera, "Zoom, field of view, mouse sensitivity, camera mode and local invisibility." },
+		{ "lighting", "sun", buildLighting, "Time of day, colour correction, blur and bloom on your own screen." },
+		{ "training", "bolt", Game.training, "A local practice range with targets, a dummy, a hitbox lab and the Select Aim selector." },
+		{ "defence", "shield", Game.defence, "Protect your own character from abnormal speed, spin and pushing." },
+		{ "cosmetics", "shirt", Game.cosmetics, "Skins for your gun, knife and character. You supply the models." },
+		{ "music", "music", Game.music, "Your own playlist, played on your client." },
+		{ "sounds", "speaker", Game.sounds, "Custom sounds for your gun, knife, hits and the interface." },
+		{ "perf", "gauge", System.perf, "Frame rate, the low load profile and where the hub spends time." },
+		{ "tools", "timer", System.tools, "Session timer, stopwatch, countdowns and notes." },
+		{ "keys", "keyboard", System.keys, "Assign a hotkey to every hub action." },
+		{ "configs", "folder", System.configs, "Save, switch, export and import settings profiles." },
+		{ "diagnostics", "bug", System.diagnostics, "Module states, executor capabilities and the log." },
+		{ "help", "help", System.help, "How the hub works and what each area is for." },
+		{ "about", "info", System.about, "Version, changelog and the honest status of every feature." },
 	}
 	for _, p in ipairs(list) do
-		Window.registerPage({ id = p[1], icon = p[2], title = "nav." .. p[1], build = p[3] })
+		Window.registerPage({ id = p[1], icon = p[2], title = "nav." .. p[1], desc = p[4], build = p[3] })
 	end
 end
 

@@ -57,6 +57,8 @@ add(with("ui", "Interface", {
 	bool("ui.useThemeAccent", true, "Use theme accent", "When off, the custom accent colour below is used."),
 	color("ui.accent", { r = 110, g = 120, b = 255 }, "Accent colour", "Custom accent used when 'Use theme accent' is off."),
 	num("ui.opacity", 0.96, 0.5, 1, 0.01, "Window opacity", "Background opacity of the main window."),
+	num("ui.glass", 0.7, 0, 1, 0.05, "Glass intensity", "How translucent surfaces are and how strong the light edge and sheen look. Low values give flatter, more solid panels."),
+	bool("ui.reduceEffects", false, "Reduced effects", "Solid surfaces, no sheen, shadows, gradients or animated accents. Also applied automatically by the low load profile."),
 	num("ui.scale", 1, 0.7, 1.5, 0.05, "Interface scale", "Scales the entire window. Clamped to fit the screen."),
 	num("ui.animSpeed", 1, 0, 2, 0.1, "Animation speed", "0 disables animations (reduced motion)."),
 	num("ui.cornerRadius", 8, 0, 16, 1, "Corner radius", "Roundness of cards and controls in pixels."),
