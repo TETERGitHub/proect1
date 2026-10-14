@@ -503,7 +503,13 @@ function S.about(page)
 	page:section("Changelog")
 	for _, entry in ipairs(Version.changelog) do
 		local notes = (I18n.get() == "ru" and entry.notesRu) or entry.notes
-		page:note("v" .. entry.version .. "  ·  " .. entry.date .. "\n• " .. table.concat(notes, "\n• "), "text", 24 + #notes * 34)
+		if I18n.get() ~= "ru" then
+			notes = table.clone(notes)
+			for i, n in ipairs(notes) do
+				notes[i] = I18n.tr(n)
+			end
+		end
+		page:note(I18n.remember("v" .. entry.version .. "  ·  " .. entry.date .. "\n• " .. table.concat(notes, "\n• ")), "text", 24 + #notes * 34)
 	end
 	page:section("Limits")
 	page:note("This hub is client-side. It cannot reveal hidden game data (such as other players' roles) and it does not interact with or affect other players. License keys are time-limited and signed; see the security note in the documentation for what that does and does not protect.", "textDim", 70)

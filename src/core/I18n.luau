@@ -120,6 +120,32 @@ local function translate(text)
 	return nil
 end
 
+-- texts that are already in the current language (a translated text passed through tr() again, e.g. an upper-cased section
+-- title): returned as they are. Cyrillic is recognised by its letters; Latin languages need this set.
+local known, knownLang = {}, nil
+local function isKnown(text)
+	if knownLang ~= current then
+		known, knownLang = {}, current
+		for _, v in pairs(Texts.exact) do
+			known[v] = true
+			known[I18n.upper(v)] = true
+		end
+		local keyedStrings = keyed(current)
+		for _, v in pairs(keyedStrings or {}) do
+			known[v] = true
+			known[I18n.upper(v)] = true
+		end
+	end
+	return known[text] == true
+end
+
+-- remember(text): marks a text composed from translated parts as already translated
+function I18n.remember(text)
+	isKnown("")
+	known[text] = true
+	return text
+end
+
 function I18n.tr(text)
 	if current == "en" or type(text) ~= "string" or text == "" then
 		return text
@@ -127,6 +153,9 @@ function I18n.tr(text)
 	local hit = cache[text]
 	if hit then
 		return hit
+	end
+	if isKnown(text) then
+		return text
 	end
 	if not needsTranslation(text) or Texts.keep[text] then
 		return text

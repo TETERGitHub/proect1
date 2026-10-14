@@ -1217,7 +1217,16 @@
   "Value validation": "Validación de valores",
   "Version info": "Info de versión",
   "Visual tools": "Herramientas visuales",
-  "Window management": "Gestión de ventanas"
+  "Window management": "Gestión de ventanas",
+  "Applied. Visible only to you.": "Aplicado. Solo tú lo ves.",
+  "Dynamic spread is on but the crosshair itself is off.": "La apertura dinámica está activa, pero la mira está apagada.",
+  "Switches this sound off and clears its selection and volume. Your list and the other role are not touched.": "Apaga este sonido y borra su selección y volumen. Tu lista y el otro rol no cambian.",
+  "The applied look is removed and this page returns to its defaults. Saved presets and the other pages are not touched.": "Se quita el aspecto aplicado y la página vuelve a sus valores. Los presets guardados y otras páginas no cambian.",
+  "Initial release: modular core (Signal, Maid, Logger, Settings, Config, Input, Perf, Diagnostics).": "Primera versión: núcleo modular (Signal, Maid, Logger, Settings, Config, Input, Perf, Diagnostics).",
+  "UI framework with 6 themes, draggable/resizable window, search, favorites, recents.": "Interfaz con 6 temas, ventana movible y redimensionable, búsqueda, favoritos, recientes.",
+  "Visuals: custom crosshair, camera controls, local lighting/colour filters.": "Visuales: mira propia, cámara, iluminación y filtros locales.",
+  "Local training range: target practice and physics stand (own objects only).": "Campo de práctica local: blancos y banco de física (solo objetos propios).",
+  "Tools: session timer, stopwatch, countdown timers, notes.": "Herramientas: tiempo de sesión, cronómetro, temporizadores, notas."
  },
  "patterns": [
   [
@@ -1427,6 +1436,14 @@
   [
    "^(.-) failed: (.+)$",
    "%s falló: %s"
+  ],
+  [
+   "^Reset (.+)$",
+   "Restablecer: %s"
+  ],
+  [
+   "^Default_(%d+)$",
+   "Default_%s"
   ]
  ],
  "strings": {
@@ -1525,6 +1542,18 @@
   "Ballerina Cappuccina": true,
   "Default": true,
   "Lirili Larila": true,
-  "Chimpanzini Bananini": true
+  "Chimpanzini Bananini": true,
+  "English": true,
+  "Русский": true,
+  "Українська": true,
+  "Español": true,
+  "Português": true,
+  "Français": true,
+  "Deutsch": true,
+  "Gotham": true,
+  "Montserrat": true,
+  "BuilderSans": true,
+  "Arial": true,
+  "SourceSans": true
  }
 }
