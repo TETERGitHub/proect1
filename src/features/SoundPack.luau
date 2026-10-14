@@ -64,6 +64,11 @@ function M.ensure(file)
 	if not ok then
 		return false, tostring(err)
 	end
+	-- read it back: an executor whose writefile mangles binary data (stops at a zero byte, re-encodes) must not pass as installed
+	local back = Env.read(path)
+	if not back or #back ~= e.bytes then
+		return false, string.format("writefile stored %s of %d bytes: this executor cannot write binary files", back and tostring(#back) or "nothing", e.bytes)
+	end
 	installed[file] = true
 	Logger.info("SoundPack", "installed %s (%d bytes)", file, e.bytes)
 	return true

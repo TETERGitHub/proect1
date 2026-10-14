@@ -323,10 +323,10 @@ for _, k in ipairs(CUSTOM_KINDS) do
 	}
 	if kind == "char" then
 		for _, slot in ipairs({ "costume", "head", "back", "aura" }) do
-			table.insert(list, { key = p .. string.upper(string.sub(slot, 1, 1)) .. string.sub(slot, 2), type = "string", default = "", maxLen = 24, label = "Selected " .. slot, desc = "Chosen model for this slot (empty = none).", hidden = true })
+			table.insert(list, { key = p .. string.upper(string.sub(slot, 1, 1)) .. string.sub(slot, 2), type = "string", default = "", maxLen = 40, label = "Selected " .. slot, desc = "Chosen model for this slot (empty = none).", hidden = true })
 		end
 	else
-		table.insert(list, { key = p .. "Model", type = "string", default = model, maxLen = 24, label = "Selected model", desc = "Chosen model id.", hidden = true })
+		table.insert(list, { key = p .. "Model", type = "string", default = model, maxLen = 40, label = "Selected model", desc = "Chosen model id.", hidden = true })
 	end
 	add(with("custom", module, list))
 end
@@ -357,11 +357,11 @@ add(with("gameaudio", "GameAudio", {
 	bool("gameaudio.muteShot", false, "Mute the game's gun shot sound", "Silences the game's own gun shot sound on your client (pair it with your own gun-shot sound on the Sounds page)."),
 	bool("gameaudio.muteReload", false, "Mute the game's reload sound", "Silences the game's own reload sound on your client."),
 	bool("gameaudio.muteKnife", false, "Mute the game's knife sounds", "Silences the game's own knife swing and stab sounds on your client."),
-	{ key = "gameaudio.kwKill", type = "string", default = "kill,death,elimin", maxLen = 120, label = "Kill sound keywords", desc = "Comma-separated words found in the name or path of the game's kill sounds. Defaults are guesses: use Learn." },
-	{ key = "gameaudio.kwShot", type = "string", default = "shoot,shot,fire,gunshot", maxLen = 120, label = "Gun shot keywords", desc = "Words found in the name or path of the gun shot sounds." },
-	{ key = "gameaudio.kwReload", type = "string", default = "reload", maxLen = 120, label = "Reload keywords", desc = "Words found in the name or path of the reload sounds." },
-	{ key = "gameaudio.kwKnife", type = "string", default = "knife,slash,swing,stab", maxLen = 120, label = "Knife keywords", desc = "Words found in the name or path of the knife sounds." },
-	{ key = "gameaudio.kwWin", type = "string", default = "win,victory,defeat,roundend,gameover", maxLen = 120, label = "Round-end keywords", desc = "Words found in the name or path of the round-end sounds that start your song." },
+	{ key = "gameaudio.kwKill", type = "string", default = "kill,killed,death,eliminated", maxLen = 120, label = "Kill sound keywords", desc = "Comma-separated whole words of the names of the game's kill sounds (\"GunShot\" has the words gun and shot). Defaults are guesses: use Learn." },
+	{ key = "gameaudio.kwShot", type = "string", default = "shoot,shot,fire,gunshot,bang", maxLen = 120, label = "Gun shot keywords", desc = "Whole words of the names of the gun shot sounds." },
+	{ key = "gameaudio.kwReload", type = "string", default = "reload,reloading", maxLen = 120, label = "Reload keywords", desc = "Whole words of the names of the reload sounds." },
+	{ key = "gameaudio.kwKnife", type = "string", default = "knife,slash,swing,stab", maxLen = 120, label = "Knife keywords", desc = "Whole words of the names of the knife sounds." },
+	{ key = "gameaudio.kwWin", type = "string", default = "victory,winner,roundend,gameover", maxLen = 120, label = "Round-end keywords", desc = "Whole words of the names of the round-end sounds that start your song." },
 	bool("gameaudio.songEnabled", false, "Play my song at round end", "When a round-end sound of the game is detected, your song plays instead. Needs a song source below.", { master = true }),
 	{ key = "gameaudio.songSource", type = "string", default = "", maxLen = 120, label = "Round-end song source", desc = "asset:<id> or file:<name.mp3> (in MM2Hub/sounds/). Only audio you may use; the hub does not fetch music from any site." },
 	num("gameaudio.songVolume", 0.8, 0, 1, 0.05, "Round-end song volume", "Volume of your round-end song."),

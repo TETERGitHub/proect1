@@ -303,7 +303,10 @@ function L.selectModel(kind, id)
 	if kind == "char" then
 		local slot = info.group == "costume" and "costume" or info.slot
 		local cur = Settings.get(L.key("char", slot))
-		Settings.set(L.key("char", slot), cur == id and "" or id, "custom")
+		local ok, err = Settings.set(L.key("char", slot), cur == id and "" or id, "custom")
+		if not ok then
+			return false, err
+		end
 		if cur ~= id and info.group == "costume" then
 			-- a costume brings its own natural colours (an imported mesh keeps its texture, so only built-in shapes have one)
 			if not info.imported then
@@ -312,7 +315,10 @@ function L.selectModel(kind, id)
 		end
 		return true
 	end
-	Settings.set(L.key(kind, "model"), id, "custom")
+	local ok, err = Settings.set(L.key(kind, "model"), id, "custom")
+	if not ok then
+		return false, err
+	end
 	return true
 end
 

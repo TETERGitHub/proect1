@@ -384,7 +384,10 @@ T.test("all five pages exist, build and keep one ticker each", "navigation, Appl
 	local apply
 	for _, d in ipairs(page:GetDescendants()) do if d:IsA("TextButton") and d.Name == "Apply" then apply = d end end
 	T.truthy(apply, "Apply button")
+	local Logger = import("core/Logger")
+	local errorsBefore = Logger.count("error")
 	apply.Activated:Fire({}, 1); frames(4)
+	T.eq(Logger.count("error"), errorsBefore, "pressing Apply logs no error (the button flashes itself)")
 	T.eq(Settings.get("custom.gunEnabled"), true)
 	T.truthy(Custom.applied("gun") ~= nil)
 	-- picking a model card selects it
@@ -394,6 +397,13 @@ T.test("all five pages exist, build and keep one ticker each", "navigation, Appl
 	-- the sheriff page has no controls bound to the murderer settings and the other way round
 	local sh = gui:FindFirstChild("Page_killsheriff", true)
 	for _, d in ipairs(sh:GetDescendants()) do T.falsy(string.find(d.Name, "murderer", 1, true), "sheriff page references " .. d.Name) end
+	-- the kill-sound page's Apply flashes its own button without an error
+	local kp = gui:FindFirstChild("Page_killsheriff", true)
+	local kApply
+	for _, d in ipairs(kp:GetDescendants()) do if d:IsA("TextButton") and d.Name == "Apply" then kApply = d end end
+	local e2 = Logger.count("error")
+	kApply.Activated:Fire({}, 1); frames(4)
+	T.eq(Logger.count("error"), e2, "kill page Apply logs no error")
 	-- leaving the hub destroys the preview models
 	h.unload(); Mock.uninstall()
 end)
@@ -538,7 +548,11 @@ end
 T.test("keywords decide the category", "name and path, fixed order, our own sounds ignored", function()
 	T.fresh()
 	T.eq(GameAudio.categoryOf("ReloadSound", "Character/Gun/ReloadSound"), "reload")
-	T.eq(GameAudio.categoryOf("Boom", "Character/Knife/Boom"), "knife", "the path counts")
+	T.eq(GameAudio.categoryOf("Boom", "Character/Knife/Boom"), nil, "only the sound's own name counts, not its path")
+	T.eq(GameAudio.categoryOf("KnifeSlash", "x"), "knife", "camelCase words")
+	T.eq(GameAudio.categoryOf("Swing", "x"), "knife", "'swing' is a knife word, not 'win'")
+	T.eq(GameAudio.categoryOf("Edwin", "x"), nil, "no match inside another word")
+	T.eq(GameAudio.categoryOf("SkillUp", "x"), nil, "'kill' inside 'Skill' does not count")
 	T.eq(GameAudio.categoryOf("Victory", "SoundService/Victory"), "win")
 	T.eq(GameAudio.categoryOf("Ambient", "Workspace/Ambient"), nil)
 	T.truthy(GameAudio.addKeyword("shot", "Pew")); T.eq(GameAudio.categoryOf("pew", "Workspace/pew"), "shot")
@@ -753,6 +767,23 @@ T.test("meshed solids face outward", "a rounded box, a cylinder, a ball and an e
 	bad, total = outward(o)
 	T.eq(bad, 0, bad .. " of " .. total .. " outline faces point inward")
 	T.truthy(total > 40)
+	-- a wedge: measured from the prism's own centroid (y = -sy/6, z = +sz/6), not from the box centre, which lies on the slope
+	local w = Kit.new(); w:wedge("w", "primary", 1, 2, 3)
+	local wb, wt = 0, 0
+	for _, g in ipairs(Mesher.build(w)) do
+		local m = g.mesh
+		for _, f in ipairs(m.f) do
+			local a, b, c = m.v[f[1]], m.v[f[2]], m.v[f[3]]
+			local nx = (b[2] - a[2]) * (c[3] - a[3]) - (b[3] - a[3]) * (c[2] - a[2])
+			local ny = (b[3] - a[3]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[3] - a[3])
+			local nz = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1])
+			local cx, cy, cz = (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3 + 2 / 6, (a[3] + b[3] + c[3]) / 3 - 3 / 6
+			wt += 1
+			if nx * cx + ny * cy + nz * cz <= 0 then wb += 1 end
+		end
+	end
+	T.eq(wb, 0, wb .. " of " .. wt .. " wedge faces point inward")
+	T.eq(wt, 8)
 end)
 T.test("an OBJ carries every vertex, normal and face once", "text format, 1-based valid indices, bbox-centred", function()
 	local b = Kit.new(); b:box("b", "primary", 1, 2, 3, 5, 5, 5)

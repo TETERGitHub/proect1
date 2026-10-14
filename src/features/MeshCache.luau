@@ -64,12 +64,18 @@ local function engineLoad(url, size)
 	pcall(function()
 		game:GetService("ContentProvider"):PreloadAsync({ part })
 	end)
+	local function meshSize()
+		local rok, v = pcall(function()
+			return part.MeshSize
+		end)
+		return rok and v or nil -- not readable in this executor: the size check is skipped
+	end
 	local waited = 0
-	local native = part.MeshSize
+	local native = meshSize()
 	while native ~= nil and native.Magnitude < 1e-4 and waited < M.LOAD_TIMEOUT do
 		task.wait(0.1)
 		waited += 0.1
-		native = part.MeshSize
+		native = meshSize()
 	end
 	pcall(function()
 		part:Destroy()
@@ -125,6 +131,9 @@ function M.request(kind, id)
 					return finish(e, kind, id, false, tostring(uerr))
 				end
 				out[#out + 1] = { key = g.key, role = g.role, material = g.material, decor = g.decor, bone = g.bone, url = url, center = center, size = size, tris = #g.mesh.f }
+			end
+			if #out == 0 then
+				return finish(e, kind, id, false, "the model produced no mesh groups")
 			end
 			-- one mesh is enough to know whether the executor accepts generated OBJ files at all
 			local lok, ldetail = (loadCheck or engineLoad)(out[1].url, out[1].size)

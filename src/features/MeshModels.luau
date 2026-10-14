@@ -224,6 +224,10 @@ function M.build(kind, id)
 		part.Size = Vector3.new(p.size[1], p.size[2], p.size[3])
 		part.CFrame = root.CFrame * CFrame.new(p.center[1] - e.hold[1], p.center[2] - e.hold[2], p.center[3] - e.hold[3])
 		part.Parent = model
+		-- unanchored in tools: without this weld the mesh would fall out of the Handle (the rig path replaces it with Welds)
+		local w = Instance.new("WeldConstraint")
+		w.Part0, w.Part1 = root, part
+		w.Parent = part
 	end
 	return model
 end

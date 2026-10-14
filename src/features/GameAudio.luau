@@ -51,13 +51,31 @@ local function pathOf(inst)
 	return table.concat(parts, "/")
 end
 
--- categoryOf(name, path) -> the first category whose keyword occurs in the sound's name or path (pure; used by tests)
+-- tokens(name) -> lowercase words of a sound name: "GunShotSound_2" -> { gun, shot, sound, 2 }
+function GA.tokens(name)
+	local spaced = string.gsub(tostring(name), "(%l)(%u)", "%1 %2")
+	spaced = string.gsub(spaced, "(%u)(%u%l)", "%1 %2")
+	spaced = string.gsub(spaced, "(%a)(%d)", "%1 %2")
+	local out = {}
+	for w in string.gmatch(string.lower(spaced), "[%w]+") do
+		table.insert(out, w)
+	end
+	return out
+end
+
+-- categoryOf(name) -> the first category with a keyword that is a whole WORD of the sound's name, or the whole name itself
+-- (what Learn adds). Only the sound's own name counts: parents are not looked at, so a player called "Firebird" or "Killua"
+-- cannot drag their footsteps into a category, and "Swing" never matches "win". (`path` is accepted for older callers and ignored.)
 function GA.categoryOf(name, path, keywordsFn)
 	keywordsFn = keywordsFn or GA.keywords
-	local text = string.lower(tostring(path or name))
+	local whole = string.lower(tostring(name))
+	local words = {}
+	for _, w in ipairs(GA.tokens(name)) do
+		words[w] = true
+	end
 	for _, cat in ipairs(GA.CATEGORIES) do
 		for _, w in ipairs(keywordsFn(cat)) do
-			if string.find(text, w, 1, true) then
+			if words[w] or w == whole then
 				return cat
 			end
 		end
@@ -191,13 +209,17 @@ local function hook(sound)
 	end
 end
 
-local function scopeRoots()
+local function scopeRoots(withWorld)
 	local lp = Services.Players.LocalPlayer
 	local roots = { Services.SoundService, lp, lp.Character }
+	if withWorld then
+		table.insert(roots, Services.Workspace)
+	end
 	return roots
 end
 
--- rescan(): forget everything and re-apply the current settings to the sounds that exist now
+-- rescan(): forget everything and re-apply the current settings to the sounds that exist now (the world included: sounds that
+-- were there before the hub started, or before a keyword changed, must be found again)
 function GA.rescan()
 	if not state then
 		return
@@ -206,7 +228,7 @@ function GA.rescan()
 		unmute(sound)
 		forget(sound)
 	end
-	for _, root in ipairs(scopeRoots()) do
+	for _, root in ipairs(scopeRoots(true)) do
 		if root then
 			for _, d in ipairs(root:GetDescendants()) do
 				hook(d)
@@ -386,7 +408,7 @@ end
 
 function GA.start(ctx)
 	assert(state == nil, "GameAudio already started")
-	state = { hooked = {}, muted = {}, mutedCount = 0, busy = false, learning = false }
+	state = { hooked = setmetatable({}, { __mode = "k" }), muted = setmetatable({}, { __mode = "k" }), mutedCount = 0, busy = false, learning = false }
 	local lp = Services.Players.LocalPlayer
 	ctx.maid:Give(function()
 		if not state then
@@ -413,8 +435,12 @@ function GA.start(ctx)
 	watch(Services.SoundService)
 	watch(lp)
 	watch(Services.Workspace)
-	ctx.maid:Give(lp.CharacterAdded:Connect(function()
-		GA.rescan()
+	ctx.maid:Give(lp.CharacterAdded:Connect(function(char)
+		if state then
+			for _, d in ipairs(char:GetDescendants()) do
+				hook(d)
+			end
+		end
 	end))
 	-- any change of a setting that decides what is silenced re-applies at once
 	local keys = { "gameaudio.muteKill", "gameaudio.muteShot", "gameaudio.muteReload", "gameaudio.muteKnife", "gameaudio.muteWin", "gameaudio.songEnabled", "gameaudio.songSource",

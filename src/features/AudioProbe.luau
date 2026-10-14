@@ -115,13 +115,20 @@ function Probe.run(spec, cb)
 			if not stage(report, "sound", cok, cok and "Sound created in SoundService" or tostring(cerr)) then
 				return finish("a Sound object could not be created: " .. tostring(cerr))
 			end
-			local function cleanup()
-				if snd and not spec.keep then
-					pcall(function()
-						snd:Stop()
-						snd:Destroy()
-					end)
-				end
+			if spec.onSound then
+				spec.onSound(snd) -- lets the caller stop it while the check is still running
+			end
+			local function destroy()
+				pcall(function()
+					snd:Stop()
+					snd:Destroy()
+				end)
+			end
+			-- The checks below are DIAGNOSTICS: whatever they say, Play() is still attempted, so a sound that the executor reports
+			-- oddly but can actually play is never kept silent by the check itself. The verdict names the first stage that failed.
+			local firstProblem
+			local function problem(msg)
+				firstProblem = firstProblem or msg
 			end
 			-- fetch
 			local status = "no status"
@@ -134,17 +141,15 @@ function Probe.run(spec, cb)
 			local fetched = not pok or status == "no status" or string.find(status, "Success", 1, true) ~= nil
 			local fdetail = pok and ("ContentProvider status: " .. status) or ("skipped, PreloadAsync unavailable: " .. tostring(perr2))
 			if not stage(report, "fetch", fetched, fdetail) then
-				cleanup()
-				return finish("the asset could not be fetched (" .. status .. "): wrong id, private audio, or the file is unreadable")
+				problem("the asset could not be fetched (" .. status .. "): wrong id, private audio, or the file is unreadable")
 			end
 			-- loaded
 			local loaded = waitUntil(function()
 				return snd.IsLoaded ~= false and (snd.TimeLength == nil or snd.TimeLength > 0)
-			end, Probe.LOAD_TIMEOUT, 0.1)
+			end, fetched and Probe.LOAD_TIMEOUT or 1, 0.1)
 			report.length = tonumber(snd.TimeLength)
-			if not stage(report, "loaded", loaded, loaded and string.format("IsLoaded, length %.2f s", report.length or 0) or ("not loaded after " .. Probe.LOAD_TIMEOUT .. " s (IsLoaded=" .. tostring(snd.IsLoaded) .. ", TimeLength=" .. tostring(snd.TimeLength) .. ")")) then
-				cleanup()
-				return finish("the audio did not load: the game may not be allowed to play this asset")
+			if not stage(report, "loaded", loaded, loaded and string.format("IsLoaded, length %.2f s", report.length or 0) or ("not loaded after the wait (IsLoaded=" .. tostring(snd.IsLoaded) .. ", TimeLength=" .. tostring(snd.TimeLength) .. ")")) then
+				problem("the audio did not load: the game may not be allowed to play this asset")
 			end
 			-- volume
 			local mv = masterVolume()
@@ -156,11 +161,14 @@ function Probe.run(spec, cb)
 			-- playing
 			snd.TimePosition = 0
 			snd:Play()
-			local playing, advanced, maxLoud = false, false, 0
+			local playing, advanced, maxLoud, ended = false, false, 0, false
 			local t = 0
 			while t < Probe.PLAY_WINDOW do
 				task.wait(0.05)
 				t += 0.05
+				if not snd.Parent then
+					break -- stopped by the caller
+				end
 				if snd.IsPlaying then
 					playing = true
 				end
@@ -172,27 +180,36 @@ function Probe.run(spec, cb)
 					maxLoud = l
 				end
 				if snd.IsPlaying == false and playing then
+					ended = true
 					break -- short sound finished
 				end
 			end
 			report.loudness = maxLoud
 			local pl = playing or advanced
-			stage(report, "playing", pl, pl and ("IsPlaying=" .. tostring(playing) .. ", position advanced=" .. tostring(advanced)) or "Play() was called but the sound never started (stopped by another script or blocked)")
-			local sigok = maxLoud > 0
-			stage(report, "signal", sigok, string.format("max PlaybackLoudness %.1f", maxLoud))
-			if spec.keep then
+			if not stage(report, "playing", pl, pl and ("IsPlaying=" .. tostring(playing) .. ", position advanced=" .. tostring(advanced)) or "Play() was called but the sound never started (stopped by another script or blocked)") then
+				problem("Play() did not start the sound")
+			end
+			local short = (report.length ~= nil and report.length > 0 and report.length < 0.5) or ended
+			local sigok = maxLoud > 0 or (pl and short)
+			stage(report, "signal", sigok, maxLoud > 0 and string.format("max PlaybackLoudness %.1f", maxLoud)
+				or (pl and short and "not measured: the sound is too short for the 50 ms samples") or "max PlaybackLoudness 0")
+			if not vok then
+				problem("it plays, but a volume setting is zero (see the volume line)")
+			end
+			if not sigok then
+				problem("the engine plays it but measures no loudness: the file may be silent")
+			end
+			-- keep a sound that is still playing (preview); everything else is removed here, also on failure
+			if spec.keep and pl and snd.IsPlaying and snd.Parent then
 				report.sound = snd
 			else
-				cleanup()
+				destroy()
 			end
-			if not pl then
-				return finish("Play() did not start the sound")
-			elseif not vok then
-				return finish("it plays, but a volume setting is zero (see the volume line)")
-			elseif not sigok then
-				return finish("the engine plays it but measures no loudness: the file may be silent, or the check missed a very short sound")
+			if firstProblem then
+				return finish(firstProblem)
 			end
-			finish(string.format("playing: the engine measures a signal (loudness %.0f). If you still hear nothing, check your system and in-game volume.", maxLoud))
+			finish(maxLoud > 0 and string.format("playing: the engine measures a signal (loudness %.0f). If you still hear nothing, check your system and in-game volume.", maxLoud)
+				or "playing (too short to measure loudness). If you hear nothing, check your system and in-game volume.")
 		end)
 		if not ok then
 			report.failed = report.failed or "error"

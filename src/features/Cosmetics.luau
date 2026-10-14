@@ -294,6 +294,8 @@ local function buildCustom(kind, id, look, slotId)
 		-- a real mesh you imported (tools/convert_mesh.py): own textures, only the light/sparkle effects apply
 		local m, err = Meshes.build(kind, imported)
 		if m then
+			m:SetAttribute("mesh", true)
+			m:SetAttribute("meshNote", "imported mesh")
 			addEffects(m, kind, look, slotId)
 		end
 		return m, err
@@ -324,6 +326,8 @@ function Cosmetics.buildPreview(kind, id, look)
 	if imported then
 		local m, err = Meshes.build(kind, imported)
 		if m then
+			m:SetAttribute("mesh", true)
+			m:SetAttribute("meshNote", "imported mesh")
 			for _, d in ipairs(m:GetDescendants()) do
 				if d:IsA("BasePart") then
 					d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
@@ -509,6 +513,13 @@ local function template(kind, text)
 		local model
 		if url then
 			model, err = loadExternal(url)
+		end
+		if not state then
+			-- the hub was unloaded while this was loading: do not leave the model in the (already cleared) cache
+			if model then
+				model:Destroy()
+			end
+			return
 		end
 		cache[key] = model and { model = model } or { err = err or "load failed" }
 		if not model then
@@ -736,9 +747,22 @@ local function clearCustomChar()
 	end
 end
 
+local function inTool(d, char)
+	local cur = d.Parent
+	while cur and cur ~= char do
+		if cur:IsA("Tool") then
+			return true
+		end
+		cur = cur.Parent
+	end
+	return false
+end
+
+-- Hides the avatar's own body under a costume. Held tools are left alone: their visibility belongs to the tool skins, and
+-- restoring a recorded value here could otherwise leave the real gun or knife invisible.
 local function hideAvatar(char, rec)
 	for _, d in ipairs(char:GetDescendants()) do
-		if (d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture")) and not rec.hidden[d] and d.Name ~= "HumanoidRootPart" and not isSkin(d, char) then
+		if (d:IsA("BasePart") or d:IsA("Decal") or d:IsA("Texture")) and not rec.hidden[d] and d.Name ~= "HumanoidRootPart" and not isSkin(d, char) and not inTool(d, char) then
 			rec.hidden[d] = d.Transparency
 			d.Transparency = 1
 		end
@@ -882,7 +906,7 @@ local function applyCustomChar()
 		if sk:GetAttribute("mesh") == true then meshN += 1 else partN += 1 end
 	end
 	state.status.customCharRig = rec.animated > 0 and string.format("%s rest pose: %d pieces follow their body parts%s", tostring(rec.rigType), rec.animated, rec.static > 0 and (", " .. rec.static .. " attached to the root") or "")
-		or (#rec.skins > 0 and "no Motor6D rest pose found: everything is attached to the root (static)" or "")
+		or (#rec.skins > 0 and "attached to the root (static): the model has no bone information or the rig has no Motor6D rest pose" or "")
 	state.status.customCharMesh = meshN > 0 and partN == 0 and "smooth meshes" or (partN > 0 and "simple parts (meshes unavailable, see the model status above)" or "")
 end
 
@@ -898,6 +922,11 @@ local function applyBody()
 			state.bodyOrig[part] = nil
 		end
 		return
+	end
+	for part in pairs(state.bodyOrig) do
+		if part.Parent == nil then
+			state.bodyOrig[part] = nil -- a part of a previous (respawned) character
+		end
 	end
 	local c = Settings.get("cosmetics.bodyColor")
 	local color = Color3.fromRGB(c.r, c.g, c.b)
@@ -936,11 +965,11 @@ function Cosmetics.reapply()
 	if not state then
 		return
 	end
+	clearCustomChar() -- before the tools, so the tool restore is the last word on their transparency
 	for name in pairs(toolSlots()) do
 		clearTools(name)
 	end
 	clearChar()
-	clearCustomChar()
 	for key, entry in pairs(cache) do
 		if entry.err then
 			cache[key] = nil
@@ -1003,11 +1032,11 @@ function Cosmetics.start(ctx)
 		if not state then
 			return
 		end
+		clearCustomChar()
 		for name in pairs(toolSlots()) do
 			clearTools(name)
 		end
 		clearChar()
-		clearCustomChar()
 		for part, orig in pairs(state.bodyOrig) do
 			pcall(function()
 				part.Color, part.Material = orig.color, orig.material

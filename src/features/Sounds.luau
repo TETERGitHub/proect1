@@ -34,6 +34,16 @@ function Sounds.resolveParsed(parsed, folder)
 	if parsed.type == "asset" then
 		return "rbxassetid://" .. parsed.ref
 	elseif parsed.type == "file" then
+		if folder == "sounds" then
+			-- a bundled sound (features/SoundPack) is written on first use, wherever it is chosen
+			local Pack = import("features/SoundPack")
+			if Pack.has(parsed.ref) then
+				local ok, err = Pack.ensure(parsed.ref)
+				if not ok then
+					return nil, err
+				end
+			end
+		end
 		return Env.customAsset(Env.ROOT .. "/" .. folder .. "/" .. parsed.ref)
 	end
 	return nil, "unsupported source type"
@@ -49,6 +59,10 @@ function Sounds.slotSound(slot)
 		return nil, "no source set"
 	end
 	local cached = resolved[text]
+	-- errors are retried after a few seconds, so a file that is installed or fixed later works without editing the text
+	if cached and cached.err and os.clock() - (cached.at or 0) > 5 then
+		cached = nil
+	end
 	if cached == nil then
 		local parsed, perr = Sources.parse(text, "audio")
 		if not parsed then
@@ -57,6 +71,7 @@ function Sounds.slotSound(slot)
 			local id, rerr = Sounds.resolveParsed(parsed, "sounds")
 			cached = id and { id = id } or { err = rerr }
 		end
+		cached.at = os.clock()
 		resolved[text] = cached
 		if cached.err then
 			Logger.warn("Sounds", "slot %s: %s", slot, tostring(cached.err))

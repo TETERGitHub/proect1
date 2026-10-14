@@ -15,6 +15,7 @@ local Settings = import("core/Settings")
 local Signal = import("core/Signal")
 local Services = import("core/Services")
 local Logger = import("core/Logger")
+local Maid = import("core/Maid")
 
 local KillEvents = {}
 
@@ -82,12 +83,14 @@ function KillEvents.start(ctx)
 		state = nil
 	end)
 
-	local function hookTool(tool)
+	-- Connections live in a Maid per container (backpack, own character) and per other player's character; a respawn replaces
+	-- the old Maid, so connections do not pile up over a long session.
+	local function hookTool(tool, owner)
 		if not tool:IsA("Tool") or state.hookedTools[tool] then
 			return
 		end
 		state.hookedTools[tool] = true
-		ctx.maid:Give(tool.Activated:Connect(function()
+		owner:Give(tool.Activated:Connect(function()
 			if not state then
 				return
 			end
@@ -98,25 +101,31 @@ function KillEvents.start(ctx)
 			end
 		end))
 	end
-	local function watchContainer(c)
+	local function watchContainer(c, slot)
+		local m = Maid.new("KillEvents." .. slot)
+		ctx.maid:GiveNamed("container:" .. slot, m)
 		for _, child in ipairs(c:GetChildren()) do
-			hookTool(child)
+			hookTool(child, m)
 		end
-		ctx.maid:Give(c.ChildAdded:Connect(hookTool))
+		m:Give(c.ChildAdded:Connect(function(child)
+			hookTool(child, m)
+		end))
 	end
 	local backpack = lp:FindFirstChildOfClass("Backpack")
 	if backpack then
-		watchContainer(backpack)
+		watchContainer(backpack, "backpack")
 	end
 	ctx.maid:Give(lp.ChildAdded:Connect(function(child)
 		if child:IsA("Backpack") then
-			watchContainer(child)
+			watchContainer(child, "backpack")
 		end
 	end))
 	if lp.Character then
-		watchContainer(lp.Character)
+		watchContainer(lp.Character, "character")
 	end
-	ctx.maid:Give(lp.CharacterAdded:Connect(watchContainer))
+	ctx.maid:Give(lp.CharacterAdded:Connect(function(char)
+		watchContainer(char, "character")
+	end))
 
 	local function onDeath(char)
 		if not state then
@@ -137,15 +146,17 @@ function KillEvents.start(ctx)
 			return
 		end
 		state.hookedChars[char] = true
+		local m = Maid.new("KillEvents.char")
+		ctx.maid:GiveNamed("char:" .. tostring(player.UserId), m) -- replaces (and cleans) the previous character's hooks
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum then
-			ctx.maid:Give(hum.Died:Once(function()
+			m:Give(hum.Died:Once(function()
 				onDeath(char)
 			end))
 		else
-			ctx.maid:Give(char.ChildAdded:Connect(function(child)
+			m:Give(char.ChildAdded:Connect(function(child)
 				if child:IsA("Humanoid") then
-					ctx.maid:Give(child.Died:Once(function()
+					m:Give(child.Died:Once(function()
 						onDeath(char)
 					end))
 				end
@@ -159,7 +170,7 @@ function KillEvents.start(ctx)
 		if player.Character then
 			hookCharacter(player, player.Character)
 		end
-		ctx.maid:Give(player.CharacterAdded:Connect(function(char)
+		ctx.maid:GiveNamed("player:" .. tostring(player.UserId), player.CharacterAdded:Connect(function(char)
 			hookCharacter(player, char)
 		end))
 	end
@@ -167,6 +178,10 @@ function KillEvents.start(ctx)
 		hookPlayer(p)
 	end
 	ctx.maid:Give(Services.Players.PlayerAdded:Connect(hookPlayer))
+	ctx.maid:Give(Services.Players.PlayerRemoving:Connect(function(player)
+		ctx.maid:Remove("char:" .. tostring(player.UserId))
+		ctx.maid:Remove("player:" .. tostring(player.UserId))
+	end))
 	Logger.info("KillEvents", "watching tool use and other players' deaths")
 end
 

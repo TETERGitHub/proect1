@@ -129,7 +129,7 @@ local function previewCard(page, kind)
 		end
 		local meshed = m:GetAttribute("mesh")
 		if meshed == true then
-			return "smooth meshes"
+			return m:GetAttribute("meshNote") == "imported mesh" and "imported mesh" or "smooth meshes"
 		end
 		return "simple parts: " .. tostring(m:GetAttribute("meshNote") or "no mesh information")
 	end
@@ -236,7 +236,8 @@ local function previewCard(page, kind)
 		end
 	end)
 	-- any draft change marks the model stale
-	for _, key in ipairs(Settings.keys({ category = "custom" })) do
+	-- (the chosen model keys are hidden settings, so they must be included or picking a card would not redraw the preview)
+	for _, key in ipairs(Settings.keys({ category = "custom", includeHidden = true })) do
 		if string.find(key, "^custom%." .. kind) then
 			page.maid:Give(Settings.observe(key, function()
 				view.dirty = true
@@ -288,7 +289,7 @@ local function modelGrid(page, kind, ids, preview)
 		for i, id in ipairs(list) do
 			local info = Custom.modelInfo(kind, id)
 			if info then
-				local b = Instance.new("TextButton")
+				local b = cardMaid:Give(Instance.new("TextButton")) -- destroyed on the next populate (Rescan imports)
 				b.Name = "Model_" .. string.gsub(id, ":", "_")
 				b.Text = ""
 				b.AutoButtonColor = false
@@ -519,7 +520,9 @@ local function buildCustom(kind, label, intro)
 		page:note(intro, "textDim", 52)
 		auto(page, Custom.key(kind, "enabled"))
 		local preview = previewCard(page, kind)
-		local _, strip = buttonStrip(page, {
+		-- declared first: the Apply handler below flashes its own button, so the table must exist inside the closure
+		local strip
+		strip = select(2, buttonStrip(page, {
 			{ text = "Preview", name = "Preview", style = "tinted", width = 110, fn = function()
 				preview.rebuild()
 				preview.pop()
@@ -542,7 +545,7 @@ local function buildCustom(kind, label, intro)
 					notify(label, "Back to the default look.", "info")
 				end })
 			end },
-		})
+		}))
 		local fnModel = infoLine(page, "Model drawn as", function()
 			return preview.meshStatus()
 		end)
@@ -612,9 +615,6 @@ local function buildCustom(kind, label, intro)
 			return out
 		end
 		local importGrids = {}
-		local function emptyNote(txt)
-			page:note(txt, "textDim", 36)
-		end
 		if kind == "char" then
 			for _, g in ipairs({ { "costume", "Costumes (full body, drawn over your avatar)" }, { "head", "Head" }, { "back", "Back" }, { "aura", "Aura" } }) do
 				page:section(g[2])
@@ -828,7 +828,8 @@ local function buildKill(role)
 
 		-- actions: each acts on THIS role only
 		page:section("Actions")
-		local _, acts = buttonStrip(page, {
+		local acts
+		acts = select(2, buttonStrip(page, {
 			{ text = "Play preview", name = "PlayPreview", style = "tinted", width = 120, fn = function()
 				local ok, err = KillSounds.preview(role, function(done, msg, len, report)
 					setReport(Probe.format(report))
@@ -863,8 +864,8 @@ local function buildKill(role)
 					notify(text.title, "Reset.", "info")
 				end })
 			end },
-		})
-		local _, tests = buttonStrip(page, {
+		}))
+		buttonStrip(page, {
 			{ text = "Test event", name = "TestEvent", style = "tinted", width = 160, fn = function()
 				-- a labelled TEST: goes through the same confirmed-kill pipeline, so it plays only when this role is on and applied
 				local fired = KillEvents.simulate(role)

@@ -247,7 +247,17 @@ function KS.preview(role, cb)
 	token += 1
 	local mine = token
 	previews[role] = { sound = nil, token = mine }
-	Probe.run({ source = source, volume = Settings.get(key(role, "volume")), keep = true, label = role .. " preview: " .. source }, function(report)
+	local function onSound(snd)
+		-- known as soon as it exists, so Stop or a second press stops it even while the check is still running
+		snd.Name = "MM2Hub_KillPreview_" .. role
+		local p = previews[role]
+		if p and p.token == mine then
+			p.sound = snd
+		else
+			destroySound(snd)
+		end
+	end
+	Probe.run({ source = source, volume = Settings.get(key(role, "volume")), keep = true, onSound = onSound, label = role .. " preview: " .. source }, function(report)
 		local p = previews[role]
 		if not p or p.token ~= mine then
 			-- stopped or replaced while the check ran
@@ -257,16 +267,20 @@ function KS.preview(role, cb)
 			return
 		end
 		KS.lastReport[role] = report
-		if report.sound then
-			report.sound.Name = "MM2Hub_KillPreview_" .. role
-			p.sound = report.sound
-			report.sound.Ended:Once(function()
+		local snd = report.sound
+		if snd and snd.IsPlaying then
+			p.sound = snd
+			snd.Ended:Once(function()
 				if previews[role] and previews[role].token == mine then
 					previews[role] = nil
 				end
-				destroySound(report.sound)
+				destroySound(snd)
 			end)
 		else
+			-- a short sound already finished during the check (or it never started): nothing is left playing
+			if snd then
+				destroySound(snd)
+			end
 			previews[role] = nil
 		end
 		if report.length and report.length > 0 then
@@ -287,8 +301,10 @@ function KS.check(role, cb)
 		source = Settings.get(key(role, "pick"))
 	end
 	local mine, control
+	local fired = false
 	local function done()
-		if mine and control and cb then
+		if mine and control and cb and not fired then
+			fired = true
 			cb(mine, control)
 		end
 	end
@@ -352,6 +368,7 @@ local function ensureVoice(role)
 			game:GetService("ContentProvider"):PreloadAsync({ snd })
 		end)
 		if voices[role] == v then
+			v.checked = true
 			v.ready = snd.IsLoaded ~= false
 			if not v.ready then
 				Logger.warn("KillSounds", "%s: '%s' did not load; use the audio check on the page", role, source)
@@ -394,7 +411,7 @@ function KS.voiceStatus(role)
 	if v.ready then
 		return "ready"
 	end
-	return v.sound.IsLoaded == false and "loading" or "failed"
+	return v.checked and "failed" or "loading"
 end
 
 function KS.start(ctx)

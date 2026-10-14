@@ -13,7 +13,7 @@ local Kit = import("data/ModelKit")
 local Rig = import("data/Rig")
 
 local Mesher = {}
-Mesher.VERSION = 4
+Mesher.VERSION = 5
 
 local sqrt, sin, cos, pi, min, max = math.sqrt, math.sin, math.cos, math.pi, math.min, math.max
 
@@ -175,7 +175,7 @@ local function wedge(m, sx, sy, sz)
 	face({ 1, 0, 0 }, a1, c1, b1)
 	face({ 0, -1, 0 }, a0, a1, b1, b0)
 	face({ 0, 0, 1 }, b0, b1, c1, c0)
-	face({ 0, -sz / sl, sy / sl }, a0, c0, c1, a1)
+	face({ 0, sz / sl, -sy / sl }, a0, c0, c1, a1) -- outward: away from the right-angle edge b
 end
 
 -- Extruded outline with rounded edges ------------------------------------------------------------------------------------------
@@ -269,9 +269,6 @@ local function outline(m, pts, thick, bevel)
 			local ia, ib = inset[i], inset[i2]
 			local function arc(p, nrm, ins)
 				local cz, cy = ins[1], ins[2] -- arc centre in the plane
-				local mz, my = nrm[1] + 0, nrm[2] + 0
-				local l = sqrt(mz * mz + my * my + 1)
-				local mid = { { cz + nrm[1] * r * 0.7071, cy + nrm[2] * r * 0.7071 }, nil }
 				return {
 					{ { x0, p[2], p[1] }, { 0, nrm[2], nrm[1] } },
 					{ { side * (hx - r + r * 0.7071), cy + nrm[2] * r * 0.7071, cz + nrm[1] * r * 0.7071 }, { side * 0.7071, nrm[2] * 0.7071, nrm[1] * 0.7071 } },
@@ -333,10 +330,8 @@ function Mesher.build(model, opts)
 	end
 	for _, p in ipairs(model.parts) do
 		if not p.poly then
-			local bone = nil
-			if opts.bones then
-				bone = p.bone or Rig.assign(p.p)
-			end
+			-- an explicit bone (mannequin, costumes) always splits the mesh, so the preview walk can move it
+			local bone = p.bone or (opts.bones and Rig.assign(p.p) or nil)
 			local g = group(p.role, p.m, p.decor, bone)
 			local from = #g.mesh.v
 			local sx, sy, sz = p.sz[1], p.sz[2], p.sz[3]
