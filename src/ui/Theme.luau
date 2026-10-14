@@ -79,7 +79,31 @@ end
 
 -- Fonts ----------------------------------------------------------------------------
 
+-- Gotham has no Cyrillic glyphs in Roblox: the engine borrows them from a fallback font, so Russian text looks uneven ("shifted"
+-- letters, mixed weights). "Auto" therefore uses Montserrat (which has Cyrillic) for every language but English. The choice is a
+-- setting because the result can only be judged in the real client.
+local FONT_FAMILIES = {
+	Gotham = { "GothamMedium", "GothamBold" },
+	Montserrat = { "MontserratMedium", "MontserratBold" },
+	BuilderSans = { "BuilderSansMedium", "BuilderSansBold" },
+	Arial = { "Arial", "ArialBold" },
+	SourceSans = { "SourceSansSemibold", "SourceSansBold" },
+}
+Theme.FONT_FAMILIES = FONT_FAMILIES
+
+function Theme.fontFamily()
+	local choice = Settings.get("ui.font")
+	if FONT_FAMILIES[choice] then
+		return choice
+	end
+	return Settings.get("ui.language") == "en" and "Theme" or "Montserrat"
+end
+
 function Theme.font(bold)
+	local fam = FONT_FAMILIES[Theme.fontFamily()]
+	if fam then
+		return Enum.Font[bold and fam[2] or fam[1]]
+	end
 	local t = themeData()
 	return Enum.Font[bold and t.fontBold or t.font]
 end
@@ -257,7 +281,7 @@ end
 
 local watched = {
 	"ui.theme", "ui.accent", "ui.useThemeAccent", "ui.textScale", "ui.density", "ui.cornerRadius", "ui.compact",
-	"ui.glass", "ui.reduceEffects", "ui.opacity",
+	"ui.glass", "ui.reduceEffects", "ui.opacity", "ui.font", "ui.language",
 }
 
 -- start(maid): observe appearance settings so bound properties follow them.

@@ -91,11 +91,11 @@ function KeyCard.build(parent, opts)
 	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(110, 185, 255), PAL.accent) }, mark)
 	local dot = make("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 12), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BorderSizePixel = 0 }, mark)
 	corner(dot, 6)
-	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(72, 22), Size = UDim2.new(1, -98, 0, 22), Text = opts.title, Font = Enum.Font.GothamBold, TextSize = 19, TextColor3 = PAL.text, TextXAlignment = Enum.TextXAlignment.Left }, card)
-	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(72, 45), Size = UDim2.new(1, -98, 0, 30), Text = opts.prompt, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = PAL.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, card)
+	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(72, 22), Size = UDim2.new(1, -98, 0, 22), Text = opts.title, Font = Enum.Font.MontserratBold, TextSize = 19, TextColor3 = PAL.text, TextXAlignment = Enum.TextXAlignment.Left }, card)
+	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(72, 45), Size = UDim2.new(1, -98, 0, 30), Text = opts.prompt, Font = Enum.Font.MontserratMedium, TextSize = 12, TextColor3 = PAL.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, card)
 
 	-- key field with focus / error ring
-	local box = make("TextBox", { Name = "KeyBox", Position = UDim2.fromOffset(26, 100), Size = UDim2.new(1, -52, 0, 44), BackgroundColor3 = PAL.field, BackgroundTransparency = 0.1, BorderSizePixel = 0, Text = "", PlaceholderText = opts.placeholder, PlaceholderColor3 = Color3.fromRGB(140, 140, 145), TextColor3 = PAL.text, Font = Enum.Font.GothamMedium, TextSize = 14, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left }, card)
+	local box = make("TextBox", { Name = "KeyBox", Position = UDim2.fromOffset(26, 100), Size = UDim2.new(1, -52, 0, 44), BackgroundColor3 = PAL.field, BackgroundTransparency = 0.1, BorderSizePixel = 0, Text = "", PlaceholderText = opts.placeholder, PlaceholderColor3 = Color3.fromRGB(140, 140, 145), TextColor3 = PAL.text, Font = Enum.Font.MontserratMedium, TextSize = 14, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left }, card)
 	corner(box, 12)
 	make("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, box)
 	local ring = make("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.82, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, box)
@@ -124,10 +124,10 @@ function KeyCard.build(parent, opts)
 	-- status line: a glyph + text. Kind: error | ok | info
 	local statusDot = make("Frame", { Position = UDim2.fromOffset(28, 161), Size = UDim2.fromOffset(8, 8), BackgroundColor3 = PAL.bad, BackgroundTransparency = 1, BorderSizePixel = 0 }, card)
 	corner(statusDot, 4)
-	local status = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(44, 154), Size = UDim2.new(1, -70, 0, 22), Text = "", Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = PAL.dim, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Center }, card)
+	local status = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(44, 154), Size = UDim2.new(1, -70, 0, 22), Text = "", Font = Enum.Font.MontserratMedium, TextSize = 12, TextColor3 = PAL.dim, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Center }, card)
 
 	-- primary button: hover, press, busy
-	local button = make("TextButton", { Name = "Submit", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(1, -52, 0, 46), BackgroundColor3 = PAL.accent, BorderSizePixel = 0, Text = opts.button, Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = Color3.fromRGB(255, 255, 255), AutoButtonColor = false }, card)
+	local button = make("TextButton", { Name = "Submit", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(1, -52, 0, 46), BackgroundColor3 = PAL.accent, BorderSizePixel = 0, Text = opts.button, Font = Enum.Font.MontserratBold, TextSize = 15, TextColor3 = Color3.fromRGB(255, 255, 255), AutoButtonColor = false }, card)
 	corner(button, 14)
 	local bscale = make("UIScale", { Scale = 1 }, button)
 	local function paintButton(down, hover)

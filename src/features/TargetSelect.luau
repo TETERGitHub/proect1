@@ -225,7 +225,7 @@ local function buildVisuals(maid)
 	label.BackgroundTransparency = 1
 	label.Position = UDim2.new(0, 0, 1, 2)
 	label.Size = UDim2.new(1, 0, 0, 16)
-	label.Font = Enum.Font.GothamBold
+	label.Font = Enum.Font.MontserratBold
 	label.TextSize = 12
 	label.TextStrokeTransparency = 0.5
 	label.Text = ""

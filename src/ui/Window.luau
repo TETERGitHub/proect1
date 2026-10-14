@@ -63,7 +63,7 @@ end
 local NAV_GROUPS = {
 	{ "Hub", { "dashboard", "ui" } },
 	{ "Visuals", { "crosshair", "camera", "lighting", "cosmetics" } },
-	{ "Customize", { "customgun", "customknife", "customchar", "killmurderer", "killsheriff" } },
+	{ "Customize", { "customgun", "customknife", "customchar", "aura", "killmurderer", "killsheriff" } },
 	{ "Practice", { "training", "defence" } },
 	{ "Audio", { "music", "sounds", "gameaudio" } },
 	{ "System", { "perf", "tools", "keys", "configs", "diagnostics", "help", "about" } },

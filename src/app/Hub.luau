@@ -161,6 +161,7 @@ local function registerModules(h)
 		{ "lighting", "features/Lighting", { "services" } },
 		{ "training", "features/Training", { "services", "sounds" } },
 		{ "cosmetics", "features/Cosmetics", { "services" } },
+		{ "aura", "features/Aura", { "services" } },
 		{ "music", "features/Music", { "services" } },
 		{ "screenbuttons", "ui/ScreenButtons", { "services" } },
 		{ "antifling", "features/AntiFling", { "services" } },

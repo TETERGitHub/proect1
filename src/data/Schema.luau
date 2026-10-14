@@ -69,6 +69,7 @@ add(with("ui", "Interface", {
 	bool("ui.showTooltips", true, "Tooltips", "Shows descriptions when hovering a control."),
 	bool("ui.decor", true, "Decorative effects", "Animated accent line and soft gradient. Disabled automatically in low profile."),
 	enum("ui.language", "ru", { "en", "ru" }, "Language", "Interface language."),
+	enum("ui.font", "Auto", { "Auto", "Gotham", "Montserrat", "BuilderSans", "Arial", "SourceSans" }, "Font", "Auto: Montserrat for Russian and other non-English text (the default Gotham font has no Cyrillic letters in Roblox), the theme font for English. Pick another one if letters look uneven."),
 	bool("ui.notifications", true, "Notifications", "Show toast notifications."),
 	num("ui.notifyDuration", 4, 2, 12, 1, "Notification time", "Seconds before a toast disappears."),
 	bool("ui.showLauncher", true, "Floating launcher button", "Round button that opens the hub (essential on mobile where there is no keyboard)."),
@@ -330,6 +331,22 @@ for _, k in ipairs(CUSTOM_KINDS) do
 	end
 	add(with("custom", module, list))
 end
+add(with("aura", "Aura", {
+	bool("aura.enabled", false, "Aura", "Wings, halo, a rotating rune circle, orbiting chains and sparkles on your own character. Only you see it.", { master = true }),
+	enum("aura.preset", "Angel", { "Angel", "Inferno", "Frost", "Toxic", "Crimson", "Rainbow" }, "Preset", "Colour scheme of the aura."),
+	bool("aura.wings", true, "Wings", "Angel wings behind your back; they flap faster while you run."),
+	bool("aura.halo", true, "Halo", "A double ring above your head."),
+	bool("aura.circle", true, "Rune circle", "Rotating rings, runes and a glowing disc under your feet."),
+	bool("aura.chains", true, "Chains", "Four chains orbiting around you."),
+	bool("aura.particles", true, "Sparkles and light", "Particles and a soft light. Switched off automatically in the low load profile and with reduced effects."),
+	num("aura.intensity", 1, 0.2, 2, 0.05, "Intensity", "Brightness and particle amount."),
+	num("aura.wingScale", 1, 0.5, 1.6, 0.05, "Wing size", "Size of the wings."),
+	bool("aura.rainbow", false, "Rainbow", "Colours cycle through the rainbow."),
+	bool("aura.customColors", false, "Own colours", "Use the two colours below instead of the preset."),
+	color("aura.primary", { r = 176, g = 84, b = 255 }, "Main colour", "Rims, rings, chains and the light."),
+	color("aura.secondary", { r = 90, g = 210, b = 255 }, "Second colour", "Halo, runes and the particle fade."),
+}))
+
 add(with("custom", "CustomMeshes", {
 	bool("custom.useMeshes", true, "Smooth meshes", "Draws the built-in models as smooth meshes (written to MM2Hub/meshcache/ and loaded with getcustomasset). When the executor cannot, the page says why and the simple Part version is used instead."),
 }))

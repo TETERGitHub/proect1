@@ -1,13 +1,113 @@
 {
- "note": "Sound files supplied by the project owner. Rights to these recordings are the owner's responsibility; the hub plays them only locally.",
+ "note": "Sound files supplied by the project owner (hit_* were synthesized for the owner on their PC). Rights are the owner's responsibility; the hub plays them only locally.",
  "sounds": [
-  { "file": "hit_creature.mp3", "name": "Creature hit", "ru": "Удар по существу", "category": "Impact" },
-  { "file": "glass_shatter.mp3", "name": "Glass shatter", "ru": "Разбитое стекло", "category": "Impact" },
-  { "file": "helmet_hit.mp3", "name": "Helmet hit", "ru": "Попадание в шлем", "category": "Impact" },
-  { "file": "lights_off.mp3", "name": "Lights off", "ru": "Выключение света", "category": "Interface" },
-  { "file": "mode_select.mp3", "name": "Mode select", "ru": "Выбор режима", "category": "Interface" },
-  { "file": "vk_message.mp3", "name": "VK message", "ru": "Сообщение ВКонтакте", "category": "Interface" },
-  { "file": "neverlose.mp3", "name": "Neverlose", "ru": "Neverlose", "category": "Other" },
-  { "file": "stuffy_spirit.mp3", "name": "Stuffy spirit", "ru": "Stuffy spirit", "category": "Other" }
+  {
+   "file": "hit_creature.mp3",
+   "name": "Creature hit",
+   "ru": "Удар по существу",
+   "category": "Impact"
+  },
+  {
+   "file": "glass_shatter.mp3",
+   "name": "Glass shatter",
+   "ru": "Разбитое стекло",
+   "category": "Impact"
+  },
+  {
+   "file": "helmet_hit.mp3",
+   "name": "Helmet hit",
+   "ru": "Попадание в шлем",
+   "category": "Impact"
+  },
+  {
+   "file": "lights_off.mp3",
+   "name": "Lights off",
+   "ru": "Выключение света",
+   "category": "Interface"
+  },
+  {
+   "file": "mode_select.mp3",
+   "name": "Mode select",
+   "ru": "Выбор режима",
+   "category": "Interface"
+  },
+  {
+   "file": "vk_message.mp3",
+   "name": "VK message",
+   "ru": "Сообщение ВКонтакте",
+   "category": "Interface"
+  },
+  {
+   "file": "neverlose.mp3",
+   "name": "Neverlose",
+   "ru": "Neverlose",
+   "category": "Other"
+  },
+  {
+   "file": "stuffy_spirit.mp3",
+   "name": "Stuffy spirit",
+   "ru": "Stuffy spirit",
+   "category": "Other"
+  },
+  {
+   "file": "hit_01_bell.mp3",
+   "name": "Bell",
+   "ru": "Колокольчик",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_02_ding_high.mp3",
+   "name": "High ding",
+   "ru": "Высокий дзынь",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_03_chirp.mp3",
+   "name": "Chirp",
+   "ru": "Чирик",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_04_bubble.mp3",
+   "name": "Bubble",
+   "ru": "Пузырь",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_05_click.mp3",
+   "name": "Click",
+   "ru": "Щелчок",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_06_bonk.mp3",
+   "name": "Bonk",
+   "ru": "Бонк",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_07_coin.mp3",
+   "name": "Coin",
+   "ru": "Монетка",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_08_crystal.mp3",
+   "name": "Crystal",
+   "ru": "Кристалл",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_09_pluck.mp3",
+   "name": "Pluck",
+   "ru": "Щипок",
+   "category": "Hit"
+  },
+  {
+   "file": "hit_10_headshot.mp3",
+   "name": "Headshot",
+   "ru": "Хедшот",
+   "category": "Hit"
+  }
  ]
 }

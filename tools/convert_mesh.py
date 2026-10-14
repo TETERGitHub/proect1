@@ -138,7 +138,7 @@ def node_matrix(node):
     return M
 
 
-def meshes_from_gltf(path, by_bone=False):
+def meshes_from_gltf(path, by_bone=False, skip=None, anim=None):
     gltf, buffers = read_gltf(path)
     base = pathlib.Path(path).parent
     mats = gltf.get("materials", [])
@@ -164,10 +164,43 @@ def meshes_from_gltf(path, by_bone=False):
             out[key] = m
         return out[key]
 
+    # optional pose from an animation's first keyframe (some models rest "exploded" and are assembled by their animation)
+    if anim is not None and gltf.get("animations"):
+        an = gltf["animations"][min(anim, len(gltf["animations"]) - 1)]
+        for ch in an["channels"]:
+            tgt = ch["target"]
+            if "node" not in tgt or tgt.get("path") not in ("translation", "rotation", "scale"):
+                continue
+            smp = an["samplers"][ch["sampler"]]
+            vals = accessor(gltf, buffers, smp["output"])
+            node = gltf["nodes"][tgt["node"]]
+            node.pop("matrix", None)
+            node[tgt["path"]] = [float(v) for v in vals[0]]
+    # world matrices of every node first: skinned meshes are posed by their joints, not by their own node
+    world = {}
+
+    def walk(ni, parent):
+        world[ni] = parent @ node_matrix(gltf["nodes"][ni])
+        for c in gltf["nodes"][ni].get("children", []):
+            walk(c, world[ni])
+
+    scene0 = gltf["scenes"][gltf.get("scene", 0)] if gltf.get("scenes") else {"nodes": list(range(len(gltf["nodes"])))}
+    for n in scene0["nodes"]:
+        walk(n, np.eye(4))
+
+    def skin_matrices(node):
+        sk = gltf["skins"][node["skin"]]
+        joints = sk["joints"]
+        ibm = accessor(gltf, buffers, sk["inverseBindMatrices"]).reshape(-1, 4, 4).transpose(0, 2, 1) if "inverseBindMatrices" in sk else np.tile(np.eye(4), (len(joints), 1, 1))
+        return np.stack([world.get(j, np.eye(4)) @ ibm[k] for k, j in enumerate(joints)])
+
     def visit(ni, parent, pbone=None):
         node = gltf["nodes"][ni]
         M = parent @ node_matrix(node)
         bone = (bone_of(node.get("name")) or pbone) if by_bone else None
+        if skip and re.search(skip, node.get("name", ""), re.I):
+            print("  skipped node %r (and its children)" % node.get("name"))
+            return
         if "mesh" in node:
             for prim in gltf["meshes"][node["mesh"]]["primitives"]:
                 if prim.get("mode", 4) != 4:
@@ -178,12 +211,26 @@ def meshes_from_gltf(path, by_bone=False):
                 nrm = accessor(gltf, buffers, attrs["NORMAL"]) if "NORMAL" in attrs else None
                 uv = accessor(gltf, buffers, attrs["TEXCOORD_0"]) if "TEXCOORD_0" in attrs else np.zeros((len(pos), 2))
                 idx = accessor(gltf, buffers, prim["indices"]).astype(np.int64).reshape(-1) if "indices" in prim else np.arange(len(pos))
-                P = (np.c_[pos, np.ones(len(pos))] @ M.T)[:, :3]
-                if nrm is None:
-                    nn = np.zeros_like(P)
+                if "skin" in node and "JOINTS_0" in attrs and "WEIGHTS_0" in attrs:
+                    # rest pose of a skinned mesh: sum of weight * (joint world @ inverse bind) per vertex
+                    J = accessor(gltf, buffers, attrs["JOINTS_0"]).astype(np.int64)
+                    Wt = accessor(gltf, buffers, attrs["WEIGHTS_0"])
+                    Wt = Wt / np.maximum(Wt.sum(axis=1, keepdims=True), 1e-9)
+                    SM = skin_matrices(node)
+                    VM = np.einsum("vk,vkij->vij", Wt, SM[J])  # per-vertex blended matrix
+                    P = np.einsum("vij,vj->vi", VM, np.c_[pos, np.ones(len(pos))])[:, :3]
+                    if nrm is None:
+                        nn = np.zeros_like(P)
+                    else:
+                        nn = np.einsum("vij,vj->vi", VM[:, :3, :3], nrm)
+                        nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
                 else:
-                    nn = nrm @ np.linalg.inv(M[:3, :3]).T
-                    nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
+                    P = (np.c_[pos, np.ones(len(pos))] @ M.T)[:, :3]
+                    if nrm is None:
+                        nn = np.zeros_like(P)
+                    else:
+                        nn = nrm @ np.linalg.inv(M[:3, :3]).T
+                        nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
                 m = material_mesh(prim.get("material"), bone)
                 off = len(m.pos)
                 m.pos = np.vstack([m.pos, P]); m.nrm = np.vstack([m.nrm, nn]); m.uv = np.vstack([m.uv, uv[:, :2]])
@@ -377,6 +424,9 @@ def main():
     ap.add_argument("--length", type=float, default=0, help="longest side in studs (default: gun 2.8, knife 3.0, costume 5.5, accessory 3.0)")
     ap.add_argument("--as-is", action="store_true", help="keep the file's scale (1 unit = 1 stud) and use its origin as the grip / root point "
                     "(for models exported by docs/PROMPT_VS_MODELS.md); without it the model is scaled to --length and held at its centre")
+    ap.add_argument("--skip", default="", help="regular expression: nodes whose name matches are left out with their children "
+                    "(stands, signs, extra copies in a showcase scene)")
+    ap.add_argument("--anim-pose", type=int, default=None, help="pose the model as in the first keyframe of animation N (0 = first)")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
     ap.add_argument("--credit", default="", help="author / title / licence text kept next to the model")
@@ -390,7 +440,7 @@ def main():
         raise SystemExit("no such file: %s" % src)
     ext = src.suffix.lower()
     by_bone = a.kind == "char" and a.group == "costume"
-    meshes = meshes_from_gltf(src, by_bone) if ext in (".glb", ".gltf") else meshes_from_obj(src) if ext == ".obj" else None
+    meshes = meshes_from_gltf(src, by_bone, a.skip or None, a.anim_pose) if ext in (".glb", ".gltf") else meshes_from_obj(src) if ext == ".obj" else None
     if meshes is None:
         raise SystemExit("unsupported format %s (use .glb, .gltf or .obj; for .fbx / .blend export glTF or OBJ from Blender first)" % ext)
     meshes = [m for m in meshes if len(m.faces)]

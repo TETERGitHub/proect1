@@ -474,7 +474,11 @@ function M.install()
 		end,
 	})
 	local function UDim2New(sx, ox, sy, oy) return { X = { Scale = sx or 0, Offset = ox or 0 }, Y = { Scale = sy or 0, Offset = oy or 0 }, kind = "UDim2" } end
-	local function color(r, g, b) return { R = r, G = g, B = b, r = r, g = g, b = b, kind = "Color3" } end
+	local function color(r, g, b)
+		local c = { R = r, G = g, B = b, r = r, g = g, b = b, kind = "Color3" }
+		c.Lerp = function(a, o, f) return color(a.R + (o.R - a.R) * f, a.G + (o.G - a.G) * f, a.B + (o.B - a.B) * f) end
+		return c
+	end
 	GLOBALS = {
 		game = game,
 		workspace = game.Workspace,
@@ -493,6 +497,7 @@ function M.install()
 			Angles = function() return makeCFrame(0, 0, 0) end,
 			lookAt = function(a, b) local c = makeCFrame(a.x, a.y, a.z); c.LookVector = (b - a).Unit; return c end,
 			identity = makeCFrame(0, 0, 0),
+			fromMatrix = function(pos) return makeCFrame(pos.x, pos.y, pos.z) end, -- translation-only like the rest of the mock
 		},
 		TweenInfo = { new = function(t, style, dir) return { Time = t, EasingStyle = style, EasingDirection = dir } end },
 		ColorSequence = { new = function(...) return { kind = "ColorSequence", ... } end },

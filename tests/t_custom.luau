@@ -421,7 +421,7 @@ local function fakeFiles(files)
 	return function(name) return api[name] end
 end
 T.test("the owner's sound files are intact", "base64 decodes to the recorded size, mp3 header, measured duration", function()
-	T.eq(#PackData, 8)
+	T.eq(#PackData, 18)
 	local seen = {}
 	for _, e in ipairs(PackData) do
 		T.falsy(seen[e.file], e.file); seen[e.file] = true
@@ -437,7 +437,7 @@ T.test("bundled sounds are written once and reported when impossible", "install 
 	local files = {}
 	T.fresh({ lookup = fakeFiles(files) }); Pack._reset()
 	local n, problems = Pack.installAll()
-	T.eq(n, 8); T.eq(#problems, 0)
+	T.eq(n, 18); T.eq(#problems, 0)
 	T.eq(#files["MM2Hub/sounds/neverlose.mp3"], PackData[7].bytes)
 	files["MM2Hub/sounds/neverlose.mp3"] = nil; Pack._reset()
 	T.truthy(Pack.ensure("neverlose.mp3")); T.truthy(files["MM2Hub/sounds/neverlose.mp3"] ~= nil)
@@ -450,7 +450,7 @@ T.test("both roles see the bundled list and keep separate selections", "same sou
 	local files = {}
 	T.fresh({ lookup = fakeFiles(files) }); Pack._reset()
 	local m, s = KillSounds.library("murderer"), KillSounds.library("sheriff")
-	T.eq(#m, 8); T.eq(#s, 8); T.truthy(m[1].builtin and m[1].duration > 0)
+	T.eq(#m, 18); T.eq(#s, 18); T.truthy(m[1].builtin and m[1].duration > 0)
 	T.truthy(KillSounds.pick("murderer", "file:glass_shatter.mp3"))
 	T.eq(Settings.get("ksound.sheriffPick"), "")
 	T.truthy(KillSounds.pick("sheriff", "file:neverlose.mp3"))
@@ -566,6 +566,34 @@ T.test("an executor without getcustomasset reports it and leaves nothing behind"
 	local m, err = Meshes.build("gun", "awp")
 	T.eq(m, nil); T.truthy(string.find(err, "getcustomasset", 1, true), tostring(err))
 	Mock.uninstall()
+end)
+
+T.suite("Aura")
+T.test("the aura is built on your character and removed completely", "on, parts toggle, off, unload", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local Aura = import("features/Aura")
+	local cam = game.Workspace.CurrentCamera
+	T.eq(Aura.status(), "off")
+	Settings.set("aura.enabled", true); frames(5)
+	T.eq(Aura.status(), "on")
+	local folder = cam:FindFirstChild("AuraVFX")
+	T.truthy(folder ~= nil, "parts live under the local camera")
+	local n = #folder:GetChildren()
+	T.truthy(n > 100, n .. " parts")
+	Settings.set("aura.chains", false); frames(2)
+	T.eq(#folder:GetChildren(), n - 36, "the 36 chain links are removed")
+	Settings.set("aura.preset", "Inferno"); Settings.set("aura.wingScale", 1.3); frames(2)
+	T.truthy(cam:FindFirstChild("AuraVFX") ~= nil, "rebuilt for a new wing size")
+	Settings.set("aura.enabled", false); frames(2)
+	T.eq(cam:FindFirstChild("AuraVFX"), nil, "switched off: nothing left")
+	Settings.set("aura.enabled", true); frames(2)
+	T.truthy(cam:FindFirstChild("AuraVFX") ~= nil)
+	done(h)
+	T.eq(cam:FindFirstChild("AuraVFX"), nil, "unload removes it")
+	return n .. " parts"
 end)
 
 T.suite("Game audio")

@@ -258,6 +258,21 @@ function F.frame(parent, props, bindings)
 	return f
 end
 
+-- fitText(inst, base): a single-line text shrinks (down to 70 %, at least 9 px) instead of being cut when a translation is longer
+-- than its box. Roblox does this with TextScaled + UITextSizeConstraint; the normal size stays the maximum.
+local function fitText(inst, base)
+	inst.TextScaled = true
+	local c = Instance.new("UITextSizeConstraint")
+	Theme.bind(c, "MaxTextSize", function()
+		return math.floor(Theme.textSize(base) + 0.5)
+	end)
+	Theme.bind(c, "MinTextSize", function()
+		return math.max(9, math.floor(Theme.textSize(base) * 0.7))
+	end)
+	c.Parent = inst
+end
+F.fitText = fitText
+
 -- label(parent, text, opts{size,bold,token,align,wrap,size2d})
 function F.label(parent, text, opts)
 	opts = opts or {}
@@ -278,6 +293,9 @@ function F.label(parent, text, opts)
 		return Theme.font(opts.bold)
 	end)
 	Theme.bind(l, "TextColor3", opts.token or "text")
+	if not opts.wrap then
+		fitText(l, base)
+	end
 	l.Parent = parent
 	return l
 end
@@ -468,6 +486,7 @@ function F.button(parent, text, onClick, style, dim, maid)
 	Theme.bind(b, "TextSize", function()
 		return Theme.textSize(13)
 	end)
+	fitText(b, 13)
 	Theme.bind(b, "Font", function()
 		return Theme.font(true)
 	end)

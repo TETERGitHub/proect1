@@ -29,10 +29,16 @@ FONT_FILES = {
 _font_cache = {}
 
 
+MONTSERRAT = "/usr/share/fonts/truetype/montserrat/Montserrat-%s.ttf"
+
+
 def font_for(name: str, size: float):
-    key = ("black" if "Black" in name else "bold" if "Bold" in name else "medium" if "Medium" in name else "regular", int(round(size * SS)))
+    weight = "black" if "Black" in name else "bold" if "Bold" in name else "medium" if "Medium" in name else "regular"
+    fam = "montserrat" if "Montserrat" in name else "inter"
+    key = (weight, int(round(size * SS)), fam)
     if key not in _font_cache:
-        for path in FONT_FILES[key[0]] + ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]:
+        files = ([MONTSERRAT % weight.capitalize()] if fam == "montserrat" else []) + FONT_FILES[weight]
+        for path in files + ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]:
             try:
                 _font_cache[key] = ImageFont.truetype(path, max(6, key[1]))
                 break
@@ -455,6 +461,27 @@ def scene_background(w, h):
     return img
 
 
+def fit_scaled(n: N):
+    """TextScaled + UITextSizeConstraint like Roblox: the largest size <= MaxTextSize that fits the box (single line)."""
+    for k in n.kids:
+        if not k.is_gui():
+            continue
+        if k.cls in ("TextLabel", "TextButton", "TextBox") and k.get("TextScaled") is True and k.w > 0 and k.h > 0:
+            cons = (k.mods.get("UITextSizeConstraint") or [None])[0]
+            mx = float(cons.get("MaxTextSize", 100)) if cons else 100.0
+            mn = float(cons.get("MinTextSize", 1)) if cons else 1.0
+            pl, ptp, pr, pb = padding(k, k.w, k.h)
+            size = min(mx, (k.h - ptp - pb) / 1.18)
+            text = str(k.get("Text", "") or "")
+            while size > mn:
+                f = font_for(enum_name(k.get("Font"), "GothamMedium"), size)
+                if f.getlength(text) / SS <= k.w - pl - pr:
+                    break
+                size -= 0.5
+            k.p["TextSize"] = max(mn, size)
+        fit_scaled(k)
+
+
 def render(snapshot: dict, out_path: pathlib.Path):
     vw, vh = snapshot["viewport"]
     base = scene_background(int(vw), int(vh))
@@ -472,6 +499,7 @@ def render(snapshot: dict, out_path: pathlib.Path):
         for k in wrapper.kids:
             if k.is_gui():
                 absolutize(k, 0, 0)
+        fit_scaled(wrapper)
         ks = sorted(gui, key=lambda k: (k.get("ZIndex", 1), k.order))
         for k in ks:
             paint(k, pt, None)

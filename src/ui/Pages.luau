@@ -168,6 +168,7 @@ local function buildInterface(page)
 	section(page, "Behaviour", { "ui.compact", "ui.lockPosition", "ui.showTooltips", "ui.showLauncher", "ui.showFpsBadge", "ui.notifications", "ui.notifyDuration" })
 	page:section("Language")
 	page:enum({ key = "ui.language" })
+	page:enum({ key = "ui.font" })
 	page:note("Window position and size are saved automatically with your profile state.", "textDim", 30)
 end
 
@@ -278,6 +279,18 @@ local function buildLighting(page)
 	page:note("All effects are local to your screen. Blur and bloom switch off automatically in the low load profile.", "textDim", 40)
 end
 
+local function buildAura(page)
+	local Aura = import("features/Aura")
+	section(page, "Aura", { "aura.enabled", "aura.preset", "aura.intensity" })
+	section(page, "Parts", { "aura.wings", "aura.wingScale", "aura.halo", "aura.circle", "aura.chains", "aura.particles" })
+	section(page, "Colours", { "aura.rainbow", "aura.customColors", "aura.primary", "aura.secondary" })
+	infoLine(page, "Status", function()
+		return Aura.status()
+	end)
+	page:note("Built on your client only: other players do not see it. Switching it off or unloading the hub removes every part of it.", "textDim", 40)
+	resetButton(page, "Aura")
+end
+
 -- registerAll(): registers every page with the window in navigation order.
 function Pages.registerAll()
 	local Game = import("ui/PagesGame")
@@ -295,6 +308,7 @@ function Pages.registerAll()
 		{ "customgun", "gun", Custom.gun, "Your own sheriff gun: models, colours, materials, preview and presets." },
 		{ "customknife", "knife", Custom.knife, "Your own murderer knife: models, colours, materials, preview and presets." },
 		{ "customchar", "person", Custom.char, "Costumes and accessories on your own avatar, with a safe preview." },
+		{ "aura", "star", buildAura, "Wings, halo, rune circle, chains and sparkles on your own character." },
 		{ "killmurderer", "knife", Custom.murderer, "The sound for a confirmed kill as murderer. Independent of the sheriff sound." },
 		{ "killsheriff", "gun", Custom.sheriff, "The sound for a confirmed kill as sheriff. Independent of the murderer sound." },
 		{ "music", "music", Game.music, "Your own playlist, played on your client." },
