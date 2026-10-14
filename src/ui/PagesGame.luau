@@ -328,13 +328,13 @@ function G.music(page)
 			F.beginDrag(upd)
 		end
 	end))
-	local controls = F.frame(card, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromOffset(220, 34) })
+	local controls = F.frame(card, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.fromOffset(220, 46) })
 	F.list(controls, 14, true).HorizontalAlignment = Enum.HorizontalAlignment.Center
 	local playBtn
-	local prev = F.iconButton(controls, "skip", Music.previous, 32, page.maid); prev.LayoutOrder = 1
+	local prev = F.iconButton(controls, "skip", Music.previous, 38, page.maid, "text"); prev.LayoutOrder = 1
 	local prevIcon = prev:FindFirstChildOfClass("Frame"); if prevIcon then prevIcon.Rotation = 180 end
-	playBtn = F.iconButton(controls, "play", Music.toggle, 36, page.maid, "accent"); playBtn.LayoutOrder = 2
-	local nextBtn = F.iconButton(controls, "skip", Music.next, 32, page.maid); nextBtn.LayoutOrder = 3
+	playBtn = F.iconButton(controls, "play", Music.toggle, 46, page.maid, "accentText", false, "accent"); playBtn.LayoutOrder = 2
+	local nextBtn = F.iconButton(controls, "skip", Music.next, 38, page.maid, "text"); nextBtn.LayoutOrder = 3
 	local function fmt(s) return Tools.formatTime(s) end
 	local handle = Perf.every("ui.music", 4, function()
 		if not visible("music") then

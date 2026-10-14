@@ -585,31 +585,32 @@ function F.flashButton(btn, kind)
 end
 
 -- iconButton(parent, iconName, onClick, px, maid, token, danger): borderless round icon button with hover and press states
-function F.iconButton(parent, iconName, onClick, px, maid, token, danger)
-	maid = maid or ctx.maid
+function F.iconButton(parent, iconName, onClick, px, maid, token, danger, fill)
+maid = maid or ctx.maid
 	px = px or 28
 	local b = Instance.new("TextButton")
 	b.AutoButtonColor = false
 	b.Text = ""
 	b.BorderSizePixel = 0
 	b.Size = UDim2.fromOffset(px, px)
-	Theme.bind(b, "BackgroundColor3", danger and "bad" or "highlight")
-	b.BackgroundTransparency = 1
+	Theme.bind(b, "BackgroundColor3", fill or (danger and "bad" or "highlight"))
+	b.BackgroundTransparency = fill and 0 or 1
 	F.pillCorner(b)
 	local icon = Icons.draw(b, iconName, math.floor(px * 0.6), token or "textDim")
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	b.Parent = parent
 	Motion.pressable(b, maid, 0.08)
-	local rest = danger and 0.82 or 0.9
+	local rest = fill and 0.12 or (danger and 0.82 or 0.9)
+	local idle = fill and 0 or 1
 	maid:Give(b.MouseEnter:Connect(function()
 		Motion.tween(b, { BackgroundTransparency = rest }, Motion.D.fast, "smooth")
 	end))
 	maid:Give(b.MouseLeave:Connect(function()
-		Motion.tween(b, { BackgroundTransparency = 1 }, Motion.D.std, "smooth")
+		Motion.tween(b, { BackgroundTransparency = idle }, Motion.D.std, "smooth")
 	end))
 	maid:Give(b.MouseButton1Down:Connect(function()
-		Motion.tween(b, { BackgroundTransparency = rest - 0.1 }, Motion.D.fast, "smooth")
+		Motion.tween(b, { BackgroundTransparency = fill and 0.25 or rest - 0.1 }, Motion.D.fast, "smooth")
 	end))
 	maid:Give(b.Activated:Connect(function()
 		click()

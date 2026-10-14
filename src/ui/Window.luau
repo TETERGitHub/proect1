@@ -750,6 +750,35 @@ end
 
 local NAV_H, NAV_GAP, NAV_HEAD = 36, 2, 24
 
+-- layoutNav(compact): position group headers and nav rows. The compact sidebar (icons only) drops the headers and
+-- keeps a small gap between groups instead.
+local function layoutNav(compact)
+	local y = 0
+	for gi, group in ipairs(navGroups()) do
+		local head = w.navHeads[gi]
+		if head then
+			head.Visible = not compact
+			if compact then
+				y += (gi == 1 and 0 or 8)
+			else
+				head.Position = UDim2.fromOffset(10, y + (gi == 1 and 4 or 10))
+				y += (gi == 1 and 4 or 10) + NAV_HEAD - 6
+			end
+		end
+		for _, id in ipairs(group[2]) do
+			local b = w.navButtons[id]
+			if b then
+				b.Position = UDim2.fromOffset(0, y)
+			end
+			y += NAV_H + NAV_GAP
+		end
+	end
+	w.navInner.Size = UDim2.new(1, 0, 0, y + 4)
+	if w.current and w.navButtons[w.current] then
+		movePill(w.current, false)
+	end
+end
+
 local function buildSidebar(maid)
 	local side = F.surface(w.window, "rail", { name = "Sidebar", radius = "none", edge = false, props = { Position = UDim2.fromOffset(0, 53), Size = UDim2.new(0, SIDEBAR_W, 1, -53), ZIndex = 2 } })
 	w.sidebar = side
@@ -824,7 +853,8 @@ local function buildSidebar(maid)
 	end
 	inner.Size = UDim2.new(1, 0, 0, y + 4)
 	inner.AutomaticSize = Enum.AutomaticSize.None
-end
+	layoutNav(false)
+	end
 
 
 local function buildResize(maid)
@@ -1112,9 +1142,11 @@ function Window.start(ctx)
 				l.Visible = not compact
 			end
 		end
-		for _, head in ipairs(w.navHeads) do
-			head.Visible = not compact
+		if w.navCompact ~= compact then
+			w.navCompact = compact
+			layoutNav(compact)
 		end
+		w.searchBox.PlaceholderText = compact and I18n.tr("Search") or I18n.tr(I18n.t("search.placeholder"))
 		w.titleLabel.Visible = width > 700
 		w.titleDivider.Visible = width > 700
 		w.searchBox.Size = UDim2.new(0, compact and 150 or 250, 0, 32)

@@ -83,8 +83,9 @@ end
 -- DataList: pooled rows with a title, sub-line, right-hand value and up to four icon buttons.
 -- spec = {rowHeight, maxRows, buttons = { {icon, tip, fn(item)} }}
 local function dataList(page, spec)
-	local holder = F.frame(page.content, { LayoutOrder = page:nextOrder(), AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0) })
-	F.list(holder, 5)
+	-- one card holds the rows; hairlines separate them (see Page:openGroup for the same idea on settings pages)
+	local holder = F.surface(page.content, "card", { name = "List", props = { LayoutOrder = page:nextOrder(), AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(1, 0, 0, 0), Visible = false } })
+	F.list(holder, 0)
 	local height = spec.rowHeight or 46
 	local buttons = spec.buttons or {}
 	local pool = Pool.new({
@@ -92,12 +93,9 @@ local function dataList(page, spec)
 			local row = Instance.new("Frame")
 			row.BorderSizePixel = 0
 			row.Size = UDim2.new(1, 0, 0, height)
-			Theme.bind(row, "BackgroundColor3", "bg2")
-			Theme.bind(row, "BackgroundTransparency", function()
-				return Theme.isGlass() and 0.15 or 0
-			end)
-			F.corner(row, -2)
-			F.stroke(row, "stroke", 1, 0.8)
+			row.BackgroundTransparency = 1
+			local div = F.frame(row, { Name = "Divider", Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -28, 0, 1) }, { BackgroundColor3 = "stroke" })
+			div.BackgroundTransparency = 0.72
 			local rightPad = 12 + #buttons * 30
 			local title = F.label(row, "", { size = 13, bold = true, dim = UDim2.new(1, -rightPad - 100, 0, 18) })
 			title.Name = "Title"
@@ -146,6 +144,7 @@ local function dataList(page, spec)
 			end
 			local row = pool:Acquire()
 			row.LayoutOrder = i
+			row.Divider.Visible = i > 1
 			-- raw items carry technical text (task names, log lines, keys) that must stay as written
 			local tr = item.raw and function(t) return t end or I18n.tr
 			row.Title.Text = tr(item.title or "")
@@ -171,9 +170,10 @@ local function dataList(page, spec)
 			row.Parent = holder
 			table.insert(active, row)
 			table.insert(rowMaids, m)
-		end
-	end
-	page.maid:Give(release)
+			end
+			holder.Visible = #active > 0
+			end
+			page.maid:Give(release)
 	page.maid:Give(function()
 		pool:Clear()
 	end)

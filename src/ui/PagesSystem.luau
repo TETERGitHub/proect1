@@ -242,7 +242,8 @@ function S.keys(page)
 	end))
 	refresh()
 	section(page, "Input", { "input.enabled", "input.ignoreTyping" })
-	page:section("Bindings  (click a box, then press a key · Esc cancels)")
+	page:section("Bindings")
+	page:note("Click a key box, then press the new key. Esc cancels.", "textDim", 20)
 	for _, b in ipairs(Input.list()) do
 		page:keybind({ actionId = b.id })
 	end

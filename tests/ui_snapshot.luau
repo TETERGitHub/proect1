@@ -129,6 +129,21 @@ local function runJob(job)
 		Mock.uninstall()
 		return
 	end
+	if job.keycard then
+		local KeyCard = import("ui/KeyCard")
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "KeyCardShot"
+		gui.Parent = game.__services.CoreGui
+		local card = KeyCard.build(gui, { title = "MM2 Hub", prompt = "Enter your licence key to start the hub.", placeholder = "MM2H-XXXXX-XXXXX-...", button = "Activate", busy = "Checking...", onSubmit = function() end })
+		if job.keycard == "error" then card.box.Text = "MM2H-0406N-KMFQ9"; card.setStatus("This key has expired.", "error")
+		elseif job.keycard == "busy" then card.box.Text = "MM2H-0406N-KMFQ9-NCZR9"; card.setBusy(true)
+		elseif job.keycard == "ok" then card.box.Text = "MM2H-0406N-KMFQ9-NCZR9"; card.setStatus("Key accepted. 12 days left.", "ok") end
+		local trees = {}
+		for _, g in ipairs(game.__services.CoreGui:GetChildren()) do table.insert(trees, node(g)) end
+		print("@@SNAP " .. job.name .. " " .. Json.encode({ viewport = vp, trees = trees }))
+		Mock.uninstall()
+		return
+	end
 	local h = Hub.run({ skipLicense = true })
 	Settings.set("ui.animSpeed", 0)
 	if job.language then I18n.set(job.language); Window.relocalize() end

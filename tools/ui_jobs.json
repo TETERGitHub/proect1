@@ -120,6 +120,38 @@
    "page": "dashboard",
    "language": "en",
    "setup": "minimized"
+  },
+  {
+   "name": "keycard_idle",
+   "keycard": "idle",
+   "viewport": [
+    900,
+    520
+   ]
+  },
+  {
+   "name": "keycard_error",
+   "keycard": "error",
+   "viewport": [
+    900,
+    520
+   ]
+  },
+  {
+   "name": "keycard_busy",
+   "keycard": "busy",
+   "viewport": [
+    900,
+    520
+   ]
+  },
+  {
+   "name": "keycard_ok",
+   "keycard": "ok",
+   "viewport": [
+    900,
+    520
+   ]
   }
  ]
 }

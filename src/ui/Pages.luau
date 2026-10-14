@@ -48,6 +48,7 @@ local function buildDashboard(page)
 	gl.CellPadding = UDim2.fromOffset(8, 8)
 	gl.SortOrder = Enum.SortOrder.LayoutOrder
 	gl.Parent = grid
+	-- (the dot sits in the button's left padding, hence the negative offset)
 	-- the first three are switches: they show their real state (filled accent + a filled dot when on, plain + an
 	-- empty ring when off), so the state never depends on colour alone
 	local quick = {
@@ -65,7 +66,9 @@ local function buildDashboard(page)
 		end, "secondary", UDim2.fromOffset(100, 40), page.maid)
 		b.LayoutOrder = i
 		if q[3] then
-			local dot = F.frame(b, { Name = "StateDot", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.5, 0), Size = UDim2.fromOffset(9, 9), ZIndex = 3 })
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			F.padding(b, 32, 0, 8, 0)
+			local dot = F.frame(b, { Name = "StateDot", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, -20, 0.5, 0), Size = UDim2.fromOffset(9, 9), ZIndex = 3 })
 			F.pillCorner(dot)
 			local ring = F.stroke(dot, "text", 1.5, 0.2)
 			page.maid:Give(Settings.observe(q[3], function(on)
@@ -250,36 +253,24 @@ local function buildCrosshair(page)
 end
 
 local function buildCamera(page)
-	page:action({
-		label = "Reset camera",
-		desc = "Resets every camera setting and restores the original zoom limits, FOV and mouse sensitivity.",
-		text = "Reset",
-		style = "danger",
-		onClick = function()
-			Actions.run("camera.reset")
-			notify("Camera", "Camera reset.", "success")
-		end,
-	})
+	page:addHeaderAction("Reset camera", function()
+		Actions.run("camera.reset")
+		notify("Camera", "Camera reset.", "success")
+	end, "danger", 124)
 	section(page, "Zoom", { "camera.zoomEnabled", "camera.zoomSpeed", "camera.minZoom", "camera.maxZoom", "camera.rememberZoom", "camera.preferredZoom" })
 	section(page, "View", { "camera.mode", "camera.fovEnabled", "camera.fov", "camera.smoothing" })
 	section(page, "Mouse", { "camera.sensitivityEnabled", "camera.sensitivity" })
 	section(page, "Effects", { "camera.bobIntensity", "camera.ownOpacity", "camera.disableEffects" })
-	section(page, "Ghost - local invisibility (your screen only)", { "ghost.enabled", "ghost.opacity", "ghost.fadeTime", "ghost.includeAccessories", "ghost.includeFace", "ghost.includeTools", "ghost.hideName", "ghost.restoreOnDeath" })
+	section(page, "Local invisibility", { "ghost.enabled", "ghost.opacity", "ghost.fadeTime", "ghost.includeAccessories", "ghost.includeFace", "ghost.includeTools", "ghost.hideName", "ghost.restoreOnDeath" })
 	page:note("Ghost fades your character on your own screen only. Roblox does not replicate LocalTransparencyModifier, so every other player still sees you and can hit you normally. While Ghost is on it takes over the own-character opacity setting above.", "textDim", 62)
 	page:note("Camera features write standard Roblox properties. Some games re-apply their own camera values; the hub keeps re-applying what you enabled, and restores originals when you switch a feature off or unload.", "textDim", 56)
 end
 
 local function buildLighting(page)
-	page:action({
-		label = "Reset graphics",
-		desc = "Resets all lighting settings and restores the original Lighting values.",
-		text = "Reset",
-		style = "danger",
-		onClick = function()
-			Actions.run("lighting.reset")
-			notify("Environment", "Graphics reset.", "success")
-		end,
-	})
+	page:addHeaderAction("Reset graphics", function()
+		Actions.run("lighting.reset")
+		notify("Environment", "Graphics reset.", "success")
+	end, "danger", 132)
 	section(page, "Time & brightness", { "lighting.timePreset", "lighting.brightnessEnabled", "lighting.brightness" })
 	section(page, "Colour correction", { "lighting.colorEnabled", "lighting.filter", "lighting.saturation", "lighting.contrast", "lighting.exposure", "lighting.tint" })
 	section(page, "Blur", { "lighting.blurEnabled", "lighting.blurSize" })

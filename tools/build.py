@@ -83,7 +83,7 @@ def build(with_tests: bool, license_secret_hex: str = "", require_license: bool 
 
 def build_loader(server_url: str) -> pathlib.Path:
     """dist/Loader.lua: the small licensed-build client (no signing secret, no hub code)."""
-    wanted = ["core/Hash", "core/Codec", "core/Json", "core/PayloadCipher", "core/LicenseText"]
+    wanted = ["core/Hash", "core/Codec", "core/Json", "core/PayloadCipher", "core/LicenseText", "ui/KeyCard"]
     mods = {name: src for name, src in collect(ROOT / "src").items() if name in wanted}
     loader = collect(ROOT / "loader", "loader/")
     mods["loader/Loader"] = loader["loader/Loader"]

@@ -131,8 +131,8 @@ local LEVELS = {
 	rail = { token = "bg1", solid = 0.10, glass = 0.5 },
 	card = { token = "bg2", solid = 0.06, glass = 0.45 },
 	control = { token = "bg3", solid = 0.0, glass = 0.32 },
-	popover = { token = "bg1", solid = 0.0, glass = 0.1 },
-	modal = { token = "bg1", solid = 0.0, glass = 0.06 },
+	popover = { token = "bg1", solid = 0.0, glass = 0.07 },
+	modal = { token = "bg1", solid = 0.0, glass = 0.015 },
 	toast = { token = "bg1", solid = 0.02, glass = 0.12 },
 }
 

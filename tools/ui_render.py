@@ -106,8 +106,8 @@ def padding(n: N, w, h):
     return l, t, r, b
 
 
-def text_lines(n: N, width: float):
-    text = str(n.get("Text", "") or "")
+def text_lines(n: N, width: float, text=None):
+    text = str(n.get("Text", "") or "") if text is None else text
     size = float(n.get("TextSize", 14))
     f = font_for(enum_name(n.get("Font"), "GothamMedium"), size)
     wrapped = n.get("TextWrapped") is True
@@ -412,7 +412,7 @@ def draw_text(n: N, pt: Painter, text, clip, alpha, placeholder):
     f = font_for(enum_name(n.get("Font"), "GothamMedium"), size)
     pl, ptp, pr, pb = padding(n, n.w, n.h)
     aw = n.w - pl - pr
-    lines, tw, th = text_lines(n, aw if n.get("TextWrapped") is True else 0)
+    lines, tw, th = text_lines(n, aw if n.get("TextWrapped") is True else 0, text)
     col = color(n.get("PlaceholderColor3" if placeholder else "TextColor3"), (0, 0, 0))
     a = (1 - float(n.get("TextTransparency", 0))) * alpha
     xa = enum_name(n.get("TextXAlignment"), "Center")
@@ -493,8 +493,9 @@ def collect_issues(n: N, issues, vw, vh, path=""):
             f = font_for(enum_name(k.get("Font"), "GothamMedium"), size)
             lines, tw, th = text_lines(k, k.w if k.get("TextWrapped") is True else 0)
             pl, pt_, pr, pb = padding(k, k.w, k.h)
-            if tw > k.w - pl - pr + 1 and enum_name(k.get("TextTruncate")) != "AtEnd":
-                issues.append(f"text wider than box: {here} '{str(k.get('Text'))[:30]}' {tw:.0f}>{k.w - pl - pr:.0f}")
+            if tw > k.w - pl - pr + 1:
+                kind = "truncated" if enum_name(k.get("TextTruncate")) == "AtEnd" else "overflows"
+                issues.append(f"text {kind}: {here.split('/')[-3:]} '{str(k.get('Text'))[:40]}' {tw:.0f}>{k.w - pl - pr:.0f}")
             if th > k.h - pt_ - pb + 2 and k.h > 0:
                 issues.append(f"text taller than box: {here} '{str(k.get('Text'))[:30]}' {th:.0f}>{k.h - pt_ - pb:.0f}")
         if k.cls == "TextButton" and 0 < min(k.w, k.h) < 20 and k.get("Active", True) is not False:

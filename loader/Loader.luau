@@ -128,6 +128,7 @@ function Loader.run(deps)
 
 	local handle = { running = false, hub = nil, stopped = false, pingFailures = 0 }
 	local busy = false -- an activation is in flight (the server call can take seconds)
+	local ui = nil -- handle returned by deps.prompt: { busy(bool), fail(message), close() } (all optional)
 
 	local function stop(reason)
 		if handle.stopped then
@@ -196,11 +197,31 @@ function Loader.run(deps)
 		return true
 	end
 
-	local function attempt(keyText)
+	local attempt
+
+	-- ask(err): show the key prompt. A prompt that returned a handle is reused (its message is replaced and its
+	-- button released); a prompt without one is simply opened again, as before.
+	local function ask(err)
+		if ui and type(ui.fail) == "function" then
+			pcall(ui.fail, err)
+			return
+		end
+		local ok, h = pcall(deps.prompt, function(text)
+			attempt(text)
+		end, err)
+		if ok and type(h) == "table" then
+			ui = h
+		end
+	end
+
+	function attempt(keyText)
 		if busy or handle.running or handle.stopped then
 			return false, "already running"
 		end
 		busy = true
+		if ui and type(ui.busy) == "function" then
+			pcall(ui.busy, true)
+		end
 		local session, err = Loader.activate(deps, keyText)
 		local ok = false
 		if session then
@@ -210,11 +231,14 @@ function Loader.run(deps)
 			end
 		end
 		busy = false
-		if not ok then
+		if ok then
+			if ui and type(ui.close) == "function" then
+				pcall(ui.close)
+			end
+			ui = nil
+		else
 			handle.lastError = err
-			pcall(deps.prompt, function(text)
-				attempt(text)
-			end, err)
+			ask(err)
 		end
 		return ok, err
 	end
@@ -224,9 +248,12 @@ function Loader.run(deps)
 		attempt(stored)
 		return handle
 	end
-	deps.prompt(function(text)
+	local ok, h = pcall(deps.prompt, function(text)
 		attempt(text)
 	end, nil)
+	if ok and type(h) == "table" then
+		ui = h
+	end
 	return handle
 end
 

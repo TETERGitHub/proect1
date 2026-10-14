@@ -124,7 +124,10 @@ local function rebuild()
 			b.BackgroundTransparency = 1 - Settings.get("ui.screenButtonOpacity")
 			Theme.bind(b, "BackgroundColor3", "bg1")
 			F.pillCorner(b)
-			local ring = F.stroke(b, "stroke", 2, 0.3)
+			-- glass disc: the user's opacity setting stays in charge; the ring is a quiet edge when off, an accent ring when on
+			local ring = F.stroke(b, "stroke", 1, 0.5)
+			local sheen = F.sheen(b, math.floor(size * 0.55))
+			F.pillCorner(sheen)
 			local icon = Icons.draw(b, Buttons.iconFor(feat), math.floor(size * 0.5), "text")
 			icon.AnchorPoint = Vector2.new(0.5, 0.5)
 			icon.Position = UDim2.fromScale(0.5, 0.5)
@@ -174,8 +177,8 @@ function Buttons.refreshRings()
 	for _, r in pairs(state.rings) do
 		local on = Buttons.isOn(r.feat)
 		Theme.bind(r.ring, "Color", on and "accent" or "stroke")
-		r.ring.Transparency = on and 0 or 0.3
-		r.ring.Thickness = on and 3 or 2
+		r.ring.Transparency = on and 0 or 0.5
+		r.ring.Thickness = on and 2.5 or 1
 		Icons.recolor(r.icon, on and "accent" or "text")
 	end
 end

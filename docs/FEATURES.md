@@ -207,7 +207,7 @@ Status meaning:
 | 2 | Ghost collisions | Коллизии-призраки | env | `setting: antifling.noCollide` | Relies on the client simulating your character; a game that re-enables collisions each frame can undo it. |
 | 3 | Fling detection logic | Логика обнаружения флинга | tested | `features/AntiFlingLogic:evaluate` |  |
 
-## Settings schema (191 keys)
+## Settings schema (193 keys)
 
 | Key | Type | Default | Range / options | Module |
 |---|---|---|---|---|
@@ -215,6 +215,8 @@ Status meaning:
 | `ui.useThemeAccent` | bool | true |  | Interface |
 | `ui.accent` | color | rgb(110,120,255) |  | Interface |
 | `ui.opacity` | number | 0.96 | 0.5..1 step 0.01 | Interface |
+| `ui.glass` | number | 0.7 | 0..1 step 0.05 | Interface |
+| `ui.reduceEffects` | bool | false |  | Interface |
 | `ui.scale` | number | 1 | 0.7..1.5 step 0.05 | Interface |
 | `ui.animSpeed` | number | 1 | 0..2 step 0.1 | Interface |
 | `ui.cornerRadius` | number | 8 | 0..16 step 1 | Interface |
