@@ -469,9 +469,6 @@ local function buildSearchPage()
 	chip(I18n.t("search.all"), "all", nil)
 	chip(I18n.t("search.active"), "active", nil)
 	chip(I18n.t("search.favorites"), "favorites", nil)
-	for letter, name in pairs(Registry.CATEGORIES) do
-		page.maid:Give(function() end)
-	end
 	local letters = {}
 	for letter in pairs(Registry.CATEGORIES) do
 		table.insert(letters, letter)

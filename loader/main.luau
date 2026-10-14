@@ -45,6 +45,10 @@ end
 
 local function prompt(onSubmit, lastError)
 	local parent = (hui and hui()) or game:GetService("CoreGui")
+	local stale = parent:FindFirstChild("MM2HubKey")
+	if stale then
+		stale:Destroy() -- a second run of the loader must not stack key windows
+	end
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "MM2HubKey"
 	gui.ResetOnSpawn = false
@@ -134,9 +138,21 @@ return Loader.run({
 		end
 	end,
 	prompt = prompt,
-	uid = game:GetService("Players").LocalPlayer.UserId,
+	uid = (function()
+		-- LocalPlayer can still be nil when the script is injected very early
+		local players = game:GetService("Players")
+		local me = players.LocalPlayer
+		for _ = 1, 100 do
+			if me then
+				break
+			end
+			task.wait(0.1)
+			me = players.LocalPlayer
+		end
+		return me and me.UserId or 0
+	end)(),
 	notify = notify,
-	clock = os.clock,
+	clock = os.time, -- wall clock: os.clock is process CPU time and would let a term run longer than it should
 	spawn = task.spawn,
 	wait = task.wait,
 	log = function(text)

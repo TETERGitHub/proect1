@@ -16,6 +16,25 @@ local PayloadCipher = import("core/PayloadCipher")
 
 local Loader = {}
 
+-- Dependency contract (see the header). Checked once in run() so a missing function is named, not a nil call.
+local REQUIRED = { "request", "loadstring", "readKey", "writeKey", "prompt", "notify", "clock", "spawn", "wait" }
+
+-- Refusals that end the licence for good. Everything else a server may say (rate limit, malformed request,
+-- anything unknown) is treated as transient so one bad minute never unloads a paying user's hub.
+local FATAL = { "revoked", "expired", "invalid key", "bound to another", "not valid yet" }
+
+local function isFatal(message)
+	local text = string.lower(tostring(message))
+	for _, needle in ipairs(FATAL) do
+		if string.find(text, needle, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+Loader.isFatal = isFatal
+
 local function log(deps, text, ...)
 	if deps.log then
 		pcall(deps.log, string.format(text, ...))
@@ -30,17 +49,17 @@ local function post(deps, path, body)
 		Body = Json.encode(body),
 	})
 	if not ok then
+		log(deps, "http: request failed: %s", tostring(res))
 		return nil, "could not reach the licence server"
 	end
 	-- executors differ: Body/body, StatusCode/status_code/Status; take whichever is a string
-	local body = type(res) == "table" and (res.Body or res.body or res.Response or res.response) or (type(res) == "string" and res or nil)
-	if type(body) ~= "string" or body == "" then
+	local text = type(res) == "table" and (res.Body or res.body or res.Response or res.response) or (type(res) == "string" and res or nil)
+	if type(text) ~= "string" or text == "" then
 		local code = type(res) == "table" and (res.StatusCode or res.status_code or res.Status or res.status) or "?"
 		log(deps, "http: no body (status %s, success %s)", tostring(code), tostring(type(res) == "table" and (res.Success or res.success)))
 		return nil, "empty response from the licence server"
 	end
-	res = { Body = body }
-	local data = Json.decode(res.Body)
+	local data = Json.decode(text)
 	if type(data) ~= "table" then
 		return nil, "licence server sent an unreadable response"
 	end
@@ -60,14 +79,19 @@ function Loader.activate(deps, keyText)
 		log(deps, "step 2/5 FAILED: %s", tostring(err))
 		return nil, err
 	end
-	if not data.ok then
+	if data.ok ~= true then
 		log(deps, "step 2/5 server refused the key: %s", tostring(data.error))
 		return nil, tostring(data.error or "key rejected")
 	end
-	log(deps, "step 2/5 server accepted the key (payload %d chars base64)", #tostring(data.payload))
-	local nonce = Codec.b64decode(tostring(data.nonce))
-	local cipher = Codec.b64decode(tostring(data.payload))
-	if not nonce or not cipher or #nonce ~= 12 or type(data.tag) ~= "string" then
+	if type(data.payload) ~= "string" or type(data.nonce) ~= "string" or type(data.tag) ~= "string" then
+		log(deps, "step 2/5 FAILED: answer lacks payload/nonce/tag")
+		return nil, "malformed payload from the licence server"
+	end
+	log(deps, "step 2/5 server accepted the key (payload %d chars base64)", #data.payload)
+	local nonce = Codec.b64decode(data.nonce)
+	local cipher = Codec.b64decode(data.payload)
+	if not nonce or not cipher or #nonce ~= 12 then
+		log(deps, "step 3/5 FAILED: payload is not valid base64 or the nonce has the wrong size")
 		return nil, "malformed payload from the licence server"
 	end
 	log(deps, "step 3/5 decrypting %d bytes (can take a few seconds on phones)", #cipher)
@@ -78,16 +102,30 @@ function Loader.activate(deps, keyText)
 	end
 	log(deps, "step 4/5 compiling %d bytes of hub code", #source)
 	local fn, lerr = deps.loadstring(source)
-	if not fn then
+	if type(fn) ~= "function" then
 		log(deps, "step 4/5 FAILED: %s", tostring(lerr))
 		return nil, "hub code failed to compile: " .. tostring(lerr)
 	end
-	return { canonical = canonical, fn = fn, expires = data.expires, serverNow = data.now, startedAt = deps.clock() }
+	-- a wrongly typed term must not reach the heartbeat (comparing it would kill that thread)
+	local expires = type(data.expires) == "number" and data.expires or nil
+	local serverNow = type(data.now) == "number" and data.now or nil
+	return { canonical = canonical, fn = fn, expires = expires, serverNow = serverNow, startedAt = deps.clock() }
 end
 
 -- run(deps) -> handle. Prompts for a key when none is stored or the stored one is refused.
+-- handle: running, stopped, hub, session, lastError, pingFailures, stop(reason)
 function Loader.run(deps)
-	local handle = { running = false, hub = nil, stopped = false }
+	for _, name in ipairs(REQUIRED) do
+		if type(deps[name]) ~= "function" then
+			error("loader: missing dependency '" .. name .. "' (function expected)", 2)
+		end
+	end
+	if type(deps.serverUrl) ~= "string" or deps.serverUrl == "" then
+		error("loader: missing dependency 'serverUrl' (string expected)", 2)
+	end
+
+	local handle = { running = false, hub = nil, stopped = false, pingFailures = 0 }
+	local busy = false -- an activation is in flight (the server call can take seconds)
 
 	local function stop(reason)
 		if handle.stopped then
@@ -95,12 +133,44 @@ function Loader.run(deps)
 		end
 		handle.stopped = true
 		handle.running = false
-		if handle.hub and type(handle.hub) == "table" and type(handle.hub.unload) == "function" then
-			pcall(handle.hub.unload)
+		local hub = handle.hub
+		if type(hub) == "table" and type(hub.unload) == "function" then
+			local ok, err = pcall(hub.unload)
+			if not ok then
+				log(deps, "unload failed: %s", tostring(err))
+			end
 		end
-		deps.notify("Licence", reason)
+		pcall(deps.notify, "Licence", reason)
 	end
 	handle.stop = stop
+
+	local function heartbeat(session)
+		while handle.running and not handle.stopped do
+			deps.wait(deps.heartbeat or 300)
+			if not handle.running or handle.stopped then
+				break
+			end
+			if session.expires and session.serverNow and session.serverNow + (deps.clock() - session.startedAt) >= session.expires then
+				stop("Your key has expired.")
+				break
+			end
+			local data, err = post(deps, "/v1/ping", { key = session.canonical, uid = deps.uid })
+			if data and data.ok == false and isFatal(data.error) then
+				stop("Licence refused: " .. tostring(data.error))
+				break
+			elseif data then
+				handle.pingFailures = 0
+				if data.ok == false then
+					log(deps, "ping: transient refusal ignored: %s", tostring(data.error))
+				end
+			else
+				-- network trouble is tolerated (the local term check above still applies) but counted and logged
+				handle.pingFailures += 1
+				handle.lastError = err
+				log(deps, "ping failed (%d in a row): %s", handle.pingFailures, tostring(err))
+			end
+		end
+	end
 
 	local function start(session)
 		local ok, hub = pcall(session.fn)
@@ -112,60 +182,44 @@ function Loader.run(deps)
 		handle.hub = hub
 		handle.running = true
 		handle.session = session
-		deps.writeKey(session.canonical)
-		-- heartbeat: server re-check plus local term enforcement
+		handle.pingFailures = 0
+		pcall(deps.writeKey, session.canonical)
 		deps.spawn(function()
-			while handle.running and not handle.stopped do
-				deps.wait(deps.heartbeat or 300)
-				if not handle.running or handle.stopped then
-					break
-				end
-				local elapsed = deps.clock() - session.startedAt
-				if session.expires and session.serverNow and session.serverNow + elapsed >= session.expires then
-					stop("Your key has expired.")
-					break
-				end
-				local data, err = post(deps, "/v1/ping", { key = session.canonical, uid = deps.uid })
-				if data and data.ok == false then
-					stop("Licence refused: " .. tostring(data.error))
-					break
-				end
-				-- network errors are tolerated (the local term check above still applies)
-				if not data and err then
-					handle.lastError = err
-				end
-			end
+			heartbeat(session)
 		end)
 		return true
 	end
 
-	local function attempt(keyText, lastError)
+	local function attempt(keyText)
+		if busy or handle.running or handle.stopped then
+			return false, "already running"
+		end
+		busy = true
 		local session, err = Loader.activate(deps, keyText)
-		if not session then
-			if deps.prompt then
-				deps.prompt(function(text)
-					attempt(text, nil)
-				end, err)
+		local ok = false
+		if session then
+			ok, err = start(session)
+			if not ok then
+				pcall(deps.notify, "Hub", err)
 			end
-			handle.lastError = err
-			return false, err
 		end
-		local ok, serr = start(session)
+		busy = false
 		if not ok then
-			handle.lastError = serr
-			deps.notify("Hub", serr)
+			handle.lastError = err
+			pcall(deps.prompt, function(text)
+				attempt(text)
+			end, err)
 		end
-		return ok, serr
+		return ok, err
 	end
 
 	local stored = deps.readKey()
-	if stored and stored ~= "" then
-		local ok = attempt(stored, nil)
-		-- a refused stored key already opened the prompt via attempt()
+	if type(stored) == "string" and stored ~= "" then
+		attempt(stored)
 		return handle
 	end
 	deps.prompt(function(text)
-		attempt(text, nil)
+		attempt(text)
 	end, nil)
 	return handle
 end

@@ -19,12 +19,8 @@ local Tools = import("features/Tools")
 local Registry = import("core/Registry")
 local Version = import("core/Version")
 local Env = import("core/Env")
-local Actions = import("core/Actions")
-local Notify = import("core/Notify")
 local Sounds = import("features/Sounds")
 local Window = import("ui/Window")
-local Services = import("core/Services")
-local Search = import("core/Search")
 local I18n = import("core/I18n")
 
 local notify, visible, auto, section, resetButton, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.resetButton, Kit.dataList, Kit.infoLine

@@ -237,7 +237,6 @@ function Buttons.start(ctx)
 			rebuild()
 		end
 	end))
-	ctx.maid:Give(Settings.observe("state.buttonPos", function() end))
 	rebuild()
 	Logger.info("ScreenButtons", "ready (%d pinned)", Buttons.count())
 end

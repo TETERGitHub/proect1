@@ -23,6 +23,10 @@ function I18n.languages()
 	return out
 end
 
+-- tr() result cache; declared before set() so a language change clears this table, not a global
+local cache = {}
+local cacheSize = 0
+
 function I18n.set(lang)
 	if not Strings[lang] then
 		return false, "unknown language: " .. tostring(lang)
@@ -63,8 +67,6 @@ end
 -- (numbers, symbols, key names) is returned as is; anything else that has no translation is recorded in
 -- I18n.misses() so a test can prove coverage instead of guessing.
 
-local cache = {}
-local cacheSize = 0
 local trMisses = {}
 
 local function needsTranslation(text)

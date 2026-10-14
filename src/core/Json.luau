@@ -44,7 +44,15 @@ local function encodeValue(v, out, depth)
 		if v % 1 == 0 and math.abs(v) < 1e15 then
 			out[#out + 1] = string.format("%d", v)
 		else
-			out[#out + 1] = string.format("%.14g", v)
+			-- shortest representation that reads back as the same double (0.35 stays "0.35")
+			local text = string.format("%.15g", v)
+			if tonumber(text) ~= v then
+				text = string.format("%.16g", v)
+				if tonumber(text) ~= v then
+					text = string.format("%.17g", v)
+				end
+			end
+			out[#out + 1] = text
 		end
 	elseif t == "string" then
 		out[#out + 1] = escapeString(v)
@@ -153,7 +161,7 @@ local function parseString(s, i)
 		elseif string.byte(c) < 32 then
 			fail(j, "control character in string")
 		else
-			local run = string.match(s, '^[^"\\%c]+', j)
+			local run = string.match(s, '^[^"\\\0-\31]+', j)
 			out[#out + 1] = run
 			j += #run
 		end
@@ -161,18 +169,34 @@ local function parseString(s, i)
 end
 
 local function parseNumber(s, i)
-	local text = string.match(s, "^-?%d+%.?%d*[eE]?[+-]?%d*", i)
-	if not text or text == "" then
+	-- strict JSON grammar: -? (0 | [1-9]d*) (. d+)? ([eE] [+-]? d+)?
+	local text = string.match(s, "^-?%d+", i)
+	if not text then
 		fail(i, "bad number")
 	end
 	if string.match(text, "^-?0%d") then
 		fail(i, "leading zero in number")
 	end
-	local n = tonumber(text)
-	if not n then
-		fail(i, "bad number")
+	local stop = i + #text
+	local frac = string.match(s, "^%.%d+", stop)
+	if frac then
+		text ..= frac
+		stop += #frac
+	elseif string.sub(s, stop, stop) == "." then
+		fail(i, "digits required after the decimal point")
 	end
-	return n, i + #text
+	local exp = string.match(s, "^[eE][+-]?%d+", stop)
+	if exp then
+		text ..= exp
+		stop += #exp
+	elseif string.match(s, "^[eE]", stop) then
+		fail(i, "digits required in the exponent")
+	end
+	local n = tonumber(text)
+	if not n or n ~= n or n == math.huge or n == -math.huge then
+		fail(i, "number out of range")
+	end
+	return n, stop
 end
 
 function parseValue(s, i, depth)
@@ -182,7 +206,7 @@ function parseValue(s, i, depth)
 	i = skip(s, i)
 	local c = string.sub(s, i, i)
 	if c == "{" then
-		local obj = {}
+		local obj, seen = {}, {}
 		i = skip(s, i + 1)
 		if string.sub(s, i, i) == "}" then
 			return obj, i + 1
@@ -200,9 +224,10 @@ function parseValue(s, i, depth)
 			end
 			local value
 			value, i = parseValue(s, i + 1, depth + 1)
-			if obj[key] ~= nil then
+			if seen[key] then
 				fail(i, "duplicate key '" .. key .. "'")
 			end
+			seen[key] = true
 			if value ~= Json.Null then
 				obj[key] = value
 			end
@@ -254,6 +279,9 @@ end
 function Json.decode(text)
 	if type(text) ~= "string" then
 		return nil, "input is not a string"
+	end
+	if string.sub(text, 1, 3) == "\239\187\191" then
+		text = string.sub(text, 4) -- UTF-8 byte order mark
 	end
 	local ok, value, nextPos = pcall(parseValue, text, 1, 0)
 	if not ok then

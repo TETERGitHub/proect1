@@ -65,7 +65,7 @@ function Actions.run(id, ...)
 	if not ok then
 		Logger.error("Actions", "%s failed: %s", id, tostring(res))
 	end
-	Actions.Ran:Fire(id, ok, ok and nil or tostring(res))
+	Actions.Ran:Fire(id, ok, if ok then nil else tostring(res))
 	return ok, res
 end
 

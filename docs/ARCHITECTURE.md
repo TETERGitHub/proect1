@@ -20,3 +20,13 @@ Design rules
 - **No Roblox access at load time** (`core/Services` is lazy), so every module can be imported and tested without a game.
 - **Restore what you change**: camera, lighting, collisions, transparency, mouse icon and name-tag values are captured before use and restored on disable or unload.
 - **Layers are never conflated** in the hitbox lab: visual hitbox (cosmetic), physical geometry (real collisions between local parts), server registration (not available - stated in the UI).
+
+## Bundle module system
+
+`tools/build.py` wraps every file in `src/` as a function and emits a tiny loader (`__modules`, `__cache`, `__loading`, `__import`). Semantics, pinned by `server/tests/test_build.py` (runs on the Luau CLI, skipped when it is missing):
+
+- a module runs once; its result is cached; a module returning nothing is cached as `true`;
+- a circular import raises `circular import: <name>`;
+- a module that errors while loading is **unmarked** (`__loading` is cleared with `pcall`), so a retry reports the real error again instead of a bogus circular import;
+- an unknown name raises `module not found: <name>`.
+`src/` is the only source of truth; `dist/*.lua` are generated and git-ignored.

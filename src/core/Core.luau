@@ -186,7 +186,7 @@ local function stopOne(m)
 	if i then
 		table.remove(startOrder, i)
 	end
-	setState(m, "stopped", ok and nil or tostring(err))
+	setState(m, "stopped", if ok then nil else tostring(err))
 	return ok
 end
 

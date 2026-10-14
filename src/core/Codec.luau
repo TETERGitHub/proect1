@@ -59,6 +59,10 @@ function Codec.b64decode(text: string): (string?, string?)
 				vals[#vals + 1] = v
 			end
 		end
+		-- canonical form: the unused low bits before padding must be zero, so each byte string has one spelling
+		if (pad == 2 and vals[2] % 16 ~= 0) or (pad == 1 and vals[3] % 4 ~= 0) then
+			return nil, "non-canonical base64 padding bits"
+		end
 		local n = vals[1] * 262144 + vals[2] * 4096 + vals[3] * 64 + vals[4]
 		local b1 = n // 65536
 		local b2 = (n // 256) % 256

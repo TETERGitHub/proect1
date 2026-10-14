@@ -31,10 +31,6 @@ local function s(name)
 	return Settings.get("training." .. name)
 end
 
-local function vecTable(v)
-	return { x = v.X, y = v.Y, z = v.Z }
-end
-
 local function playerRoot()
 	local p = Services.Players.LocalPlayer
 	local c = p and p.Character

@@ -12,8 +12,6 @@ local Hash = import("core/Hash")
 
 local PayloadCipher = {}
 
-local B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-
 local function group(raw)
 	local parts = {}
 	for i = 1, #raw, 5 do
@@ -65,9 +63,12 @@ end
 
 -- decrypt(canonicalKey, nonce, cipher, tagHex) -> plaintext | nil, err
 function PayloadCipher.decrypt(canonical, nonce, cipher, tagHex)
+	if type(canonical) ~= "string" or type(nonce) ~= "string" or #nonce ~= 12 or type(cipher) ~= "string" or type(tagHex) ~= "string" then
+		return nil, "payload authentication failed (malformed arguments)"
+	end
 	local k = PayloadCipher.deriveKey(canonical, nonce)
 	local tag = string.sub(Hash.hex(Hash.hmacSha256(k, nonce .. cipher)), 1, 32)
-	if not Hash.equal(tag, string.lower(tagHex or "")) then
+	if not Hash.equal(tag, string.lower(tagHex)) then
 		return nil, "payload authentication failed (wrong key or tampered data)"
 	end
 	return keystreamXor(k, cipher)

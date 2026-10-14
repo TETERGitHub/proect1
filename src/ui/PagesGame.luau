@@ -5,18 +5,15 @@
 local import = ...
 local Kit = import("ui/PageKit")
 local F = import("ui/Framework")
-local Theme = import("ui/Theme")
 local Settings = import("core/Settings")
 local Perf = import("core/Perf")
 local Actions = import("core/Actions")
-local Schema = import("data/Schema")
 local Training = import("features/Training")
 local TargetSelect = import("features/TargetSelect")
 local Drone = import("features/Drone")
 local Cosmetics = import("features/Cosmetics")
 local Music = import("features/Music")
 local Sounds = import("features/Sounds")
-local Sources = import("features/Sources")
 local Tools = import("features/Tools")
 
 local notify, visible, auto, section, resetButton, dataList, infoLine = Kit.notify, Kit.visible, Kit.auto, Kit.section, Kit.resetButton, Kit.dataList, Kit.infoLine

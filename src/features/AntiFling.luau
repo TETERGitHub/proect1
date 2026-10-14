@@ -15,7 +15,6 @@ local Services = import("core/Services")
 local Notify = import("core/Notify")
 local Logic = import("features/AntiFlingLogic")
 local Signal = import("core/Signal")
-local Logger = import("core/Logger")
 
 local AntiFling = {}
 

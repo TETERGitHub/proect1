@@ -11,7 +11,6 @@ local Sources = import("features/Sources")
 local Playlist = import("features/Playlist")
 local Sounds = import("features/Sounds")
 local Services = import("core/Services")
-local Perf = import("core/Perf")
 local Signal = import("core/Signal")
 local Notify = import("core/Notify")
 local Logger = import("core/Logger")
@@ -113,10 +112,6 @@ function Music.clearPlaylist()
 end
 
 -- Playback ---------------------------------------------------------------------------------------------------------------
-
-local function sound()
-	return state and state.sound
-end
 
 local function resolve(entry)
 	if entry.invalid then

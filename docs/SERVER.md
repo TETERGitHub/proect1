@@ -38,7 +38,21 @@ Does **not** make it unbreakable:
 - a modified loader can skip the heartbeat (the local term check in the loader can also be patched); a leaked key can be revoked but already-dumped code cannot be recalled;
 - the server must be run over HTTPS and kept up to date; you are responsible for its availability, hosting and abuse handling.
 
-Tested: the Python server logic and HTTP layer (`python3 -m unittest discover -s server/tests`, 12 tests) and the Luau loader flow against Python-encrypted vectors (`tests/t_license.luau`). **Not tested against a real executor or a live deployment.**
+Tested: the Python server logic and HTTP layer (`python3 -m unittest discover -s server/tests`, 19 tests; the 4 module-loader tests need the Luau CLI and are skipped without it) and the Luau loader flow against Python-encrypted vectors (`tests/t_license.luau`). **Not tested against a real executor or a live deployment.**
+
+## Loader behaviour (what the audit pinned down by tests)
+
+- Dependencies are checked up front; a missing one raises `loader: missing dependency '<name>'`.
+- Executor response shapes differ: `Body`/`body`/`Response`, a bare string and `nil` are all handled; the console line `[MM2Hub] http: no body (status …)` shows what the executor returned.
+- A second activation while one is running or in flight is ignored, so the hub can never start twice.
+- Heartbeat: only a definite refusal (revoked, expired, invalid key, bound to another account, not valid yet) unloads the hub. A rate limit, a malformed request or an unknown message is logged and ignored. Network failures are counted in `handle.pingFailures` and logged; the local term check keeps running, so an offline hub still stops when its term ends.
+- A wrongly typed `expires`/`now` from the server is ignored instead of killing the heartbeat thread.
+- `unload` and `notify` errors are contained; `stop()` is idempotent.
+- The loader clock is `os.time()` (wall clock), not `os.clock()` (process CPU time).
+
+## Payload cipher: honest assessment
+
+`core/PayloadCipher` is a home-made encrypt-then-MAC construction (SHA-256 counter keystream + truncated HMAC-SHA256 tag, one key `k` for both roles). Properties checked by tests: the tag is verified before any decryption; every single-byte change, truncation or other nonce is refused; Luau output is byte-identical to Python. Weaknesses that remain and are **not** fixed because they need a coordinated change of server and every distributed Loader: no version byte, no key separation between keystream and MAC (HKDF with separate labels would be cleaner), a 128-bit truncated tag, and security that depends on the server never repeating a nonce (it draws 12 random bytes per request). It is adequate against casual tampering; it is not a substitute for a reviewed AEAD, and anyone who holds a valid key can always decrypt their own payload, because the client must.
 
 Executors must provide an HTTP request function (`request`/`http_request`/`syn.request`/…) and `loadstring`; the loader tells the user when they are missing.
 

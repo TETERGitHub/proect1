@@ -40,8 +40,12 @@ local function __import(name)
 		error("circular import: " .. name, 2)
 	end
 	__loading[name] = true
-	local result = fn(__import)
+	-- a failing module must not stay marked as loading, or a retry would report a bogus circular import
+	local ok, result = pcall(fn, __import)
 	__loading[name] = nil
+	if not ok then
+		error(result, 0)
+	end
 	if result == nil then
 		result = true
 	end

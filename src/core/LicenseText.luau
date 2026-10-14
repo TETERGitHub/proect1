@@ -82,6 +82,12 @@ LicenseText.plural = plural
 
 -- remaining(seconds) -> "29 дней 23 ч 59 мин" / "5 минут 3 с" / "срок истёк"
 function LicenseText.remaining(seconds)
+	if type(seconds) ~= "number" or seconds ~= seconds then
+		return "срок истёк"
+	end
+	if seconds == math.huge then
+		return "без ограничения срока"
+	end
 	seconds = math.floor(seconds)
 	if seconds <= 0 then
 		return "срок истёк"

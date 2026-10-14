@@ -16,7 +16,6 @@ local Settings = import("core/Settings")
 local Perf = import("core/Perf")
 local Services = import("core/Services")
 local Maid = import("core/Maid")
-local Logger = import("core/Logger")
 
 local Ghost = {}
 
