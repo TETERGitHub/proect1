@@ -1,6 +1,6 @@
 --!nonstrict
 -- Russian-interface tests. The coverage test drives the whole UI in Russian (every page, every button, popups,
--- notifications, the drone HUD, search) and fails on any visible English text that has no translation.
+-- notifications, search) and fails on any visible English text that has no translation.
 local import = ...
 local T = import("tests/Framework")
 local Mock = import("tests/mock_roblox")
@@ -35,7 +35,7 @@ T.test("translations keep placeholders intact", "every pattern template accepts 
 end)
 T.test("number and name patterns translate", "dynamic texts become Russian", function()
 	I18n.set("ru")
-	T.eq(I18n.tr("70 studs/s"), "70 студ/с"); T.eq(I18n.tr("ALT 39"), "ВЫС 39"); T.eq(I18n.tr("2 of 5 in FOV"), "2 из 5 в зоне FOV")
+	T.eq(I18n.tr("2 of 5 in FOV"), "2 из 5 в зоне FOV")
 	T.eq(I18n.tr("Saved 'Alt'"), "Сохранён профиль «Alt»"); T.eq(I18n.tr("Target 3"), "Мишень 3")
 	T.eq(I18n.tr("Dummy: off-screen"), "Манекен: вне экрана")
 	T.eq(I18n.tr("Orbit -> HubLabHitbox.Position"), "Орбита → HubLabHitbox.Position")

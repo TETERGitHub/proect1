@@ -25,7 +25,7 @@ Platform.presets = {
 }
 
 -- Features pinned to the screen by default on touch devices (feature ids from the catalogue).
-Platform.defaultPins = { "xh.enable", "train.range", "train.drone", "perf.low", "win.toggle" }
+Platform.defaultPins = { "xh.enable", "train.range", "perf.low", "win.toggle" }
 
 -- detect(touch, keyboard, viewportX, viewportY) -> "phone" | "tablet" | "desktop"
 function Platform.detect(touch, keyboard, vx, vy)

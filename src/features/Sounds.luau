@@ -1,5 +1,5 @@
 --!nonstrict
--- features/Sounds: user-configurable sound slots (gun shot, knife swing, hit, kill, drone engine,
+-- features/Sounds: user-configurable sound slots (gun shot, knife swing, hit, kill,
 -- interface click). Each slot plays a sound from an asset id or a file the user placed in
 -- MM2Hub/sounds/. No audio is bundled and no Roblox default sounds are used: a slot without a
 -- source stays silent. Playback is local-only.

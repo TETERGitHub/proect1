@@ -39,7 +39,6 @@ end
 local function registerActions(h)
 	local Window = import("ui/Window")
 	local Training = import("features/Training")
-	local Drone = import("features/Drone")
 	local Camera = import("features/Camera")
 	local Lighting = import("features/Lighting")
 	local Music = import("features/Music")
@@ -76,7 +75,6 @@ local function registerActions(h)
 	A("selectaim.reset", "Reset target", "Clears the selected test target.", Select.reset, { "target" })
 	A("selectaim.next", "Next target", "Selects the next test target (switches to Manual mode).", function() Select.next() end, { "target", "switch" })
 	A("selectaim.prev", "Previous target", "Selects the previous test target (switches to Manual mode).", function() Select.previous() end, { "target", "switch" })
-	A("drone.toggle", "Launch / land drone", "Starts or ends the FPV drone flight.", Drone.toggle, { "fpv", "shahed", "fly" })
 	A("music.toggle", "Play / pause music", "Toggles the music player.", Music.toggle, { "song", "playlist" })
 	A("music.next", "Next track", "Skips to the next track.", Music.next)
 	A("tools.stopwatchToggle", "Start / stop stopwatch", "Toggles the stopwatch.", Tools.stopwatchToggle, { "timer" })
@@ -95,7 +93,6 @@ local function registerActions(h)
 	Input.bind("window.prevTab", "PageUp", { hubOnly = true })
 	Input.bind("window.focusSearch", "Slash", { hubOnly = true })
 	Input.bind("crosshair.toggle", "None")
-	Input.bind("drone.toggle", "None")
 	Input.bind("selectaim.select", "None")
 	Input.bind("selectaim.lock", "None")
 	Input.bind("selectaim.reset", "None")
@@ -158,7 +155,6 @@ local function registerModules(h)
 		{ "camera", "features/Camera", { "services" } },
 		{ "lighting", "features/Lighting", { "services" } },
 		{ "training", "features/Training", { "services", "sounds" } },
-		{ "drone", "features/Drone", { "services", "training", "window" } },
 		{ "cosmetics", "features/Cosmetics", { "services" } },
 		{ "music", "features/Music", { "services" } },
 		{ "screenbuttons", "ui/ScreenButtons", { "services" } },

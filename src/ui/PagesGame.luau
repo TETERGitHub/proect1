@@ -1,5 +1,5 @@
 --!nonstrict
--- ui/PagesGame: pages for the gameplay-side features: training range, drone, cosmetics, music, sounds.
+-- ui/PagesGame: pages for the gameplay-side features: training range, cosmetics, music, sounds.
 -- Depends on: PageKit, Framework, Theme, Settings, Perf, Actions and the feature modules.
 
 local import = ...
@@ -10,7 +10,6 @@ local Perf = import("core/Perf")
 local Actions = import("core/Actions")
 local Training = import("features/Training")
 local TargetSelect = import("features/TargetSelect")
-local Drone = import("features/Drone")
 local Cosmetics = import("features/Cosmetics")
 local Music = import("features/Music")
 local Sounds = import("features/Sounds")
@@ -46,7 +45,7 @@ function G.training(page)
 		update(4, s.reaction and string.format("%d ms", s.reaction * 1000 + 0.5) or "—")
 	end)
 	page.maid:Give(handle.Cancel)
-	page:note("The range is a sandbox: targets and the dummy exist only on your screen and never interact with other players. Click targets to score; the drone page can fly into the dummy.", "textDim", 52)
+	page:note("The range is a sandbox: targets and the dummy exist only on your screen and never interact with other players. Click targets to score.", "textDim", 52)
 	buttonRow(page, {
 		{ text = "Reset stats", fn = Training.resetStats },
 		{ text = "Clear everything", fn = function() Actions.run("training.clear") end, style = "danger" },
@@ -246,42 +245,6 @@ function G.defence(page)
 	resetButton(page, "AntiFling")
 	section(page, "Anti-fling", { "antifling.enabled", "antifling.maxSpeed", "antifling.angularLimit", "antifling.noCollide", "antifling.notify" })
 	buttonRow(page, { { text = "Reset counter", fn = AntiFling.resetCounter } })
-end
-
--- Drone -------------------------------------------------------------------------------------------------------------------
-
-function G.drone(page)
-	local card = page:card(132)
-	F.padding(card, 18, 14, 18, 14)
-	local title = F.label(card, "FPV loitering drone", { size = 17, bold = true })
-	local desc = F.label(card, "Third-person flight, dot reticle. Impacts work on the local training dummy and targets only: Fling pushes them, Eliminate removes them (Murderer role in the sandbox).", { size = 12, token = "textDim", wrap = true, dim = UDim2.new(1, -170, 0, 48), valign = Enum.TextYAlignment.Top })
-	desc.Position = UDim2.fromOffset(0, 26)
-	local controls = F.label(card, "W/S pitch · A/D turn · Space/Shift throttle · X exit   (touch: on-screen stick)", { size = 11, token = "textDim", dim = UDim2.new(1, -170, 0, 16) })
-	controls.Position = UDim2.new(0, 0, 1, -34)
-	local launch
-	launch = F.button(card, "Launch", function()
-		if Drone.isFlying() then
-			Drone.land()
-		else
-			local ok, err = Drone.launch()
-			if not ok then
-				notify("Drone", tostring(err), "error")
-			end
-		end
-	end, "filled", UDim2.fromOffset(130, 44), page.maid)
-	launch.AnchorPoint = Vector2.new(1, 0.5)
-	launch.Position = UDim2.new(1, 0, 0.5, 0)
-	page.maid:Give(Drone.Changed:Connect(function(flying)
-		launch.Text = flying and "Land" or "Launch"
-	end))
-	buttonRow(page, {
-		{ text = "Spawn training dummy", fn = function() Actions.run("training.spawnDummy") end, width = 200 },
-		{ text = "Enable practice targets", fn = function() Settings.set("training.enabled", true, "ui") end, width = 200 },
-	})
-	section(page, "Impact", { "drone.mode", "drone.simRole", "drone.flingForce" })
-	section(page, "Flight", { "drone.speed", "drone.turnRate", "drone.invertPitch", "drone.worldCollision" })
-	section(page, "Camera & HUD", { "drone.camDistance", "drone.camHeight", "drone.showHud", "drone.trail", "drone.engineSound" })
-	page:note("Simulated role is a setting of the sandbox only; it does not read or change your real MM2 role. Map geometry crashes the drone and respawns it at launch height.", "textDim", 52)
 end
 
 -- Cosmetics ----------------------------------------------------------------------------------------------------------------------

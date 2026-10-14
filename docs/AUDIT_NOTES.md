@@ -31,7 +31,7 @@ changed nothing observable were each judged:
 * reset / clear / stop buttons with nothing to reset (`Reset stats`, `Reset counters`, `Reset counter`, `Clear log`, stopwatch
   `Start/Lap/Reset` text-only changes, `Previous/Next/Reset` target selection with no targets): **correct no-ops**;
 * `Enable practice targets` when the range is already on, built-in model picks (`neon`, `blade`) when already selected: **correct**;
-* dropdown triggers (`drone.mode`, `cosmetics.charAttach`) open a popover the harness does not observe: **not verified here**;
+* dropdown triggers (`cosmetics.charAttach`) open a popover the harness does not observe: **not verified here**;
 * three music buttons and the now-playing row with an empty or paused player: **not verified here**.
 
 Value controls (sliders, colour swatches, key capture) cannot be driven by a plain click; they are covered by the settings contract
@@ -77,5 +77,3 @@ or executor lets the write stick, or that another script does not overwrite it. 
 4. **98 settings without a behavioural test.** Next: one assertion per setting group in the owning feature's test file.
 5. **Real-environment verification** (an executor run, TLS, phone layout) can only be done by running `Loader.lua` yourself and
    sending the `[MM2Hub]` console lines.
-6. The competitor-style drone that flies into **other players** to kill or fling them is intentionally not implemented; the drone
-   only affects local practice targets.

@@ -506,3 +506,41 @@ T.test("every setting survives valid, extreme and invalid values", "no exception
 	h.unload(); Mock.uninstall()
 	T.eq(table.concat(problems, "\n"), "")
 end)
+
+T.suite("Module restart (audit)")
+T.test("every module can be restarted from Diagnostics", "restart returns ok, module runs again, no duplicate GUI, unload still clean", function()
+	T.fresh(); Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	for _ = 1, 3 do Perf.frame(1 / 30) end
+	local problems = {}
+	for _, row in ipairs(Core.status()) do
+		local ok, err = Core.restart(row.name)
+		if not ok then table.insert(problems, row.name .. ": " .. tostring(err)) end
+		for _ = 1, 3 do Perf.frame(1 / 30) end
+		if Core.moduleState(row.name) ~= "running" then table.insert(problems, row.name .. " not running after restart: " .. tostring(Core.moduleState(row.name))) end
+	end
+	local guis = 0
+	for _, c in ipairs(game.__services.CoreGui:GetChildren()) do if c.Name == "MM2Hub" then guis += 1 end end
+	if guis ~= 1 then table.insert(problems, "MM2Hub ScreenGui count = " .. guis) end
+	h.unload()
+	if #game.__services.CoreGui:GetChildren() ~= 0 then table.insert(problems, "GUI left after unload: " .. #game.__services.CoreGui:GetChildren()) end
+	Mock.uninstall()
+	T.eq(table.concat(problems, "\n"), "")
+end)
+
+T.suite("Removed features (audit)")
+T.test("old saves and favourites that mention the removed drone do not break anything", "unknown keys / ids are ignored, UI and buttons still build", function()
+	T.fresh(); Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local report = Settings.applyMap({ ["drone.speed"] = 90, ["drone.mode"] = "Fling", ["crosshair.size"] = 14 }, "profile", "test", false)
+	T.eq(Settings.get("crosshair.size"), 14, "known keys of the same save still apply")
+	T.truthy(report ~= nil)
+	Settings.set("state.favorites", { "train.drone", "xh.enable" }, "test")
+	Settings.set("ui.screenButtons", true)
+	Window.navigate("dashboard"); for _ = 1, 6 do Perf.frame(1 / 30) end
+	local ok, err = pcall(function() Window.relocalize() end)
+	T.truthy(ok, tostring(err))
+	for _ = 1, 6 do Perf.frame(1 / 30) end
+	T.eq(Core.moduleState("window"), "running"); T.eq(Core.moduleState("screenbuttons"), "running")
+	h.unload(); Mock.uninstall()
+end)

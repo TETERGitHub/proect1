@@ -10,7 +10,7 @@ main ─▶ app/Hub ─▶ core/Core (modules, deps, restart)      core/Settings
                     ├ services  (RenderStepped → Perf.frame; the only per-frame pump)
                     ├ input     (core/Input ─ UserInputService)
                     ├ window    (ui/Window + Pages + Framework + Theme + Motion + Icons)
-                    └ crosshair camera lighting training drone cosmetics music sounds screenbuttons antifling selectaim ghost
+                    └ crosshair camera lighting training cosmetics music sounds screenbuttons antifling selectaim ghost
 ```
 
 Design rules

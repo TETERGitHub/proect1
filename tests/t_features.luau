@@ -2,7 +2,6 @@
 local import = ...
 local T = import("tests/Framework")
 local Layout = import("features/CrosshairLayout")
-local DM = import("features/DroneMath")
 local TL = import("features/TrainingLogic")
 local Sources = import("features/Sources")
 local Playlist = import("features/Playlist")
@@ -36,63 +35,6 @@ T.test("spread helper clamps", "0..amount", function()
 	T.eq(Layout.spread(0, 16, 8), 0); T.eq(Layout.spread(32, 16, 8), 8); T.eq(Layout.spread(8, 16, 8), 4); T.eq(Layout.spread(5, 0, 8), 0)
 end)
 
-T.suite("DroneMath")
-local params = { cruise = 70, turnRate = 1.6 }
-local function fly(state, input, seconds)
-	for _ = 1, math.floor(seconds * 60) do DM.step(state, input, 1 / 60, params) end
-end
-T.test("accelerates to cruise and moves forward (-Z)", "speed ~ cruise, z decreases", function()
-	local s = DM.newState(0, 50, 0, 0)
-	fly(s, { turn = 0, pitch = 0, throttle = 0 }, 3)
-	T.truthy(math.abs(s.speed - 70) < 0.5, tostring(s.speed)); T.truthy(s.z < -100); T.truthy(math.abs(s.x) < 1e-6)
-end)
-T.test("throttle limits", "speed stays in [0.4, 1.5] x cruise", function()
-	local s = DM.newState(0, 50, 0, 0)
-	fly(s, { turn = 0, pitch = 0, throttle = 1 }, 6); T.truthy(math.abs(s.speed - 105) < 0.5, tostring(s.speed))
-	fly(s, { turn = 0, pitch = 0, throttle = -1 }, 6); T.truthy(math.abs(s.speed - 28) < 0.5, tostring(s.speed))
-end)
-T.test("left turn changes heading toward -X and banks", "x decreases, roll set", function()
-	local s = DM.newState(0, 50, 0, 0)
-	fly(s, { turn = 1, pitch = 0, throttle = 0 }, 1)
-	T.truthy(s.x < -5, tostring(s.x)); T.truthy(s.roll > 0.5)
-end)
-T.test("pitch is clamped", "|pitch| <= 70 deg", function()
-	local s = DM.newState(0, 50, 0, 0)
-	fly(s, { turn = 0, pitch = 1, throttle = 0 }, 4)
-	T.truthy(math.abs(s.pitch - DM.MAX_PITCH) < 1e-6); T.truthy(s.y > 50)
-end)
-T.test("never leaves finite range under long flight", "no NaN/inf", function()
-	local s = DM.newState(0, 50, 0, 0)
-	for i = 1, 20000 do DM.step(s, { turn = math.sin(i / 50), pitch = math.cos(i / 70), throttle = math.sin(i / 90) }, 1 / 60, params) end
-	for _, k in ipairs({ "x", "y", "z", "yaw", "pitch", "roll", "speed" }) do T.truthy(s[k] == s[k] and math.abs(s[k]) < 1e7, k) end
-end)
-T.test("huge dt is clamped", "frame hitch cannot teleport", function()
-	local s = DM.newState(0, 50, 0, 0); s.speed = 70
-	DM.step(s, { turn = 0, pitch = 0, throttle = 0 }, 5, params)
-	T.truthy(math.abs(s.z) <= 70 * 0.1 + 1e-6)
-end)
-T.test("minimum altitude", "floor respected", function()
-	local s = DM.newState(0, 6, 0, 0)
-	local p = { cruise = 70, turnRate = 1.6, minY = 5 }
-	for _ = 1, 300 do DM.step(s, { turn = 0, pitch = -1, throttle = 0 }, 1 / 60, p) end
-	T.truthy(s.y >= 5 - 1e-9)
-end)
-T.test("sweep hit prevents tunnelling", "fast pass through small sphere detected", function()
-	T.truthy(DM.sweepHit(0, 0, 10, 0, 0, -10, 0, 0, 0, 1))
-	T.falsy(DM.sweepHit(0, 0, 10, 0, 0, -10, 5, 0, 0, 1))
-	T.truthy(DM.sweepHit(1, 1, 1, 1, 1, 1, 1, 1, 1.5, 1), "zero-length segment")
-end)
-T.test("chase camera sits behind", "camera behind heading", function()
-	local s = DM.newState(0, 50, 0, 0)
-	local cx, cy, cz = DM.chaseCamera(s, 20, 5)
-	T.truthy(cz > 15 and cy > 50)
-end)
-T.test("impact vector", "along heading with upward bias", function()
-	local s = DM.newState(0, 50, 0, 0)
-	local x, y, z = DM.impactVector(s, 100, 0.5)
-	T.truthy(z < -90 and y > 40)
-end)
-
 T.suite("TrainingLogic")
 T.test("layout", "count targets, spread across arc at distance", function()
 	local pts = TL.layout(5, 35, function() return 0.5 end)
@@ -122,11 +64,6 @@ T.test("stats", "accuracy, reaction, reset", function()
 	T.eq(s.shots, 3); T.eq(s.hits, 2); T.truthy(math.abs(s:accuracy() - 2 / 3) < 1e-9)
 	T.truthy(math.abs(s:averageReaction() - 0.3) < 1e-9); T.eq(s.best, 0.2)
 	s:reset(); T.eq(s.shots, 0); T.eq(s:averageReaction(), nil); T.eq(s:accuracy(), 0)
-end)
-T.test("eliminate only for Murderer role", "Fling always ok; Eliminate gated", function()
-	T.truthy(TL.canEliminate("Fling", "Innocent")); T.truthy(TL.canEliminate("Eliminate", "Murderer"))
-	local ok, why = TL.canEliminate("Eliminate", "Sheriff"); T.falsy(ok); T.truthy(why)
-	T.falsy((TL.canEliminate("Eliminate", "Innocent")))
 end)
 T.test("velocity clamp", "speed limit applied", function()
 	local x, y, z = TL.clampVelocity(300, 0, 400, 100)
@@ -289,51 +226,6 @@ T.test("every filter and time preset is well-formed", "tint 0-255, clocks 0-24",
 		for _, c in ipairs(f.tint) do T.truthy(c >= 0 and c <= 255, name) end
 	end
 	for name, t in pairs(LM.times) do T.truthy(t.clock >= 0 and t.clock < 24, name) end
-end)
-
-local ShahedSpec = import("data/ShahedSpec")
-T.suite("ShahedSpec")
-T.test("model spec is valid", "positive sizes, known shapes/materials, unique names, symmetric wings", function()
-	local names, count, left, right, spin, glow = {}, 0, 0, 0, 0, 0
-	local shapes = { Block = true, Ball = true, Cylinder = true }
-	for _, p in ipairs(ShahedSpec.parts) do
-		T.falsy(names[p.name], "dup " .. p.name); names[p.name] = true
-		T.truthy(shapes[p.shape], p.name)
-		for _, v in ipairs(p.size) do T.truthy(v > 0, p.name .. " size") end
-		for _, c in ipairs(p.color) do T.truthy(c >= 0 and c <= 255, p.name .. " colour") end
-		T.eq(#p.pos, 3); T.eq(#p.rot, 3)
-		if string.sub(p.name, 1, 5) == "WingL" then left += 1 end
-		if string.sub(p.name, 1, 5) == "WingR" then right += 1 end
-		if p.spin then spin += 1 end
-		if p.glow then glow += 1 end
-		count += 1
-	end
-	T.eq(left, right); T.truthy(left >= 12); T.eq(spin, 2); T.truthy(glow >= 3)
-	return count .. " parts"
-end)
-T.test("model stays within its stated envelope", "no part pokes out beyond length/wingspan", function()
-	for _, p in ipairs(ShahedSpec.parts) do
-		local ex = (p.shape == "Cylinder") and p.size[2] or p.size[1]
-		T.truthy(math.abs(p.pos[1]) + ex / 2 <= ShahedSpec.wingspan / 2 + 0.2, p.name .. " x")
-		T.truthy(math.abs(p.pos[3]) <= ShahedSpec.length / 2 + 1, p.name .. " z")
-	end
-end)
-T.test("delta wing has a straight trailing edge", "all strips end at the same z", function()
-	local ends = {}
-	for _, p in ipairs(ShahedSpec.parts) do
-		if string.sub(p.name, 1, 5) == "WingR" then table.insert(ends, p.pos[3] + p.size[3] / 2) end
-	end
-	for _, e in ipairs(ends) do T.truthy(math.abs(e - ends[1]) < 1e-6) end
-end)
-T.test("drone key axes", "WASD/arrows map to turn/pitch/throttle, invert flips pitch", function()
-	local DMx = import("features/DroneMath")
-	local t, p, th = DMx.axes({ A = true, W = true, Space = true })
-	T.eq(t, 1); T.eq(p, -1); T.eq(th, 1)
-	t, p, th = DMx.axes({ Right = true, Down = true, Shift = true })
-	T.eq(t, -1); T.eq(p, 1); T.eq(th, -1)
-	T.eq(select(2, DMx.axes({ W = true }, true)), 1)
-	t, p, th = DMx.axes({}); T.eq(t + p + th, 0)
-	t = DMx.axes({ A = true, D = true }); T.eq(t, 0)
 end)
 
 local AFL = import("features/AntiFlingLogic")

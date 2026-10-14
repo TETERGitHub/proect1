@@ -2,10 +2,9 @@
 -- features/Training: local-only practice range and physics stand.
 --   * Practice targets: spheres in front of you; click to hit; accuracy and reaction statistics.
 --   * Physics stand: a mannequin that can be launched (impulse, speed limit) or "eliminated".
--- Everything lives in a client-side Folder and never touches other players. The drone module
--- uses Training.collide / Training.impact to interact with these objects only.
+-- Everything lives in a client-side Folder and never touches other players.
 -- STATUS: implemented; verified against the mock layer only.
--- Depends on: Settings, Perf, Services, Signal, TrainingLogic, DroneMath, Sounds, Theme(colour).
+-- Depends on: Settings, Perf, Services, Signal, TrainingLogic, Sounds, Theme(colour).
 
 local import = ...
 local Settings = import("core/Settings")
@@ -13,7 +12,6 @@ local Perf = import("core/Perf")
 local Services = import("core/Services")
 local Signal = import("core/Signal")
 local TL = import("features/TrainingLogic")
-local DM = import("features/DroneMath")
 local HB = import("features/HitboxMath")
 local Geo = import("features/Geometry")
 local Sounds = import("features/Sounds")
@@ -53,7 +51,7 @@ end
 
 local function rotateY(x, z, yaw)
 	local c, sn = math.cos(yaw), math.sin(yaw)
-	-- rotation about +Y by yaw, matching DroneMath's "yaw 0 faces -Z, left positive"
+	-- rotation about +Y by yaw ("yaw 0 faces -Z, left positive")
 	return x * c + z * sn, -x * sn + z * c
 end
 
@@ -442,7 +440,7 @@ local function applyImpulse(d, ix, iy, iz)
 	d.torso.AssemblyAngularVelocity = Vector3.new(math.random(-12, 12), math.random(-12, 12), math.random(-12, 12))
 end
 
--- launch(): impulse from the stand settings (works without the drone)
+-- launch(): impulse from the stand settings
 function Training.launch()
 	local d = state and state.dummy
 	if not d then
@@ -738,66 +736,6 @@ function Training.targetList()
 		table.insert(out, { id = "LabHitbox", name = "Lab hitbox", part = state.lab.hitbox, alive = true })
 	end
 	return out
-end
-
--- Drone interface ------------------------------------------------------------------------------------------------------------
-
--- collide(ax,ay,az, bx,by,bz, radius) -> list of {kind, ref}. Segment is the drone's last step.
-function Training.collide(ax, ay, az, bx, by, bz, radius)
-	local hits = {}
-	if not state then
-		return hits
-	end
-	for _, t in ipairs(state.targets) do
-		if t.visible and not t.respawnAt and DM.sweepHit(ax, ay, az, bx, by, bz, t.pos.x, t.pos.y, t.pos.z, radius + s("targetSize") / 2) then
-			table.insert(hits, { kind = "target", ref = t })
-		end
-	end
-	local d = state.dummy
-	if d and not d.eliminated then
-		local p = d.torso.Position
-		if DM.sweepHit(ax, ay, az, bx, by, bz, p.X, p.Y, p.Z, radius + 2.2) then
-			table.insert(hits, { kind = "dummy", ref = d })
-		end
-	end
-	return hits
-end
-
--- impact(hit, mode, role, ix, iy, iz) -> ok, message
--- Fling: impulse on dummies, pops targets. Eliminate: only allowed for the Murderer role.
-function Training.impact(hit, mode, role, ix, iy, iz)
-	local allowed, why = TL.canEliminate(mode, role)
-	if not allowed then
-		return false, why
-	end
-	if hit.kind == "target" then
-		local t = hit.ref
-		emitBurst(t.part)
-		setTargetVisible(t, false)
-		t.respawnAt = os.clock() + 0.6
-		stats:kill()
-		Sounds.play("kill")
-		Training.Event:Fire("hit", t.index)
-		return true, "target hit"
-	end
-	local d = hit.ref
-	if mode == "Eliminate" then
-		d.eliminated = true
-		for _, part in ipairs(d.model:GetDescendants()) do
-			if part:IsA("BasePart") and part.Name ~= "Belt" then
-				part.Color = Color3.fromRGB(110, 60, 60)
-			end
-		end
-		applyImpulse(d, ix * 0.35, iy * 0.35, iz * 0.35)
-		Sounds.play("kill")
-		stats:kill()
-		Training.Event:Fire("eliminated")
-		return true, "dummy eliminated"
-	end
-	applyImpulse(d, ix, iy, iz)
-	Sounds.play("hit")
-	Training.Event:Fire("flung")
-	return true, "dummy flung"
 end
 
 -- Lifecycle ---------------------------------------------------------------------------------------------------------------------------

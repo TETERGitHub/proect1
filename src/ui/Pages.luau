@@ -1,7 +1,7 @@
 --!nonstrict
 -- ui/Pages: every page of the hub. Settings pages are generated from the schema so each control is
 -- bound to real state; pages with live data (dashboard, performance, diagnostics, music, tools,
--- configs, training, drone, cosmetics) add their own sections on top.
+-- configs, training, cosmetics) add their own sections on top.
 -- Depends on: Framework, Window, Theme, Motion, Icons, Settings, Config, Input, Actions, Notify, Perf,
 --   Recents, Registry, Version, Env, Diagnostics, Core, Logger, Maid, Pool, I18n and all feature modules.
 
@@ -51,7 +51,6 @@ local function buildDashboard(page)
 	local quick = {
 		{ "Crosshair", "crosshair.toggle" },
 		{ "Training range", "training.toggle" },
-		{ "FPV drone", "drone.toggle" },
 		{ "Low load profile", "lowprofile.toggle" },
 		{ "Save profile", "config.save" },
 		{ "Minimise", "window.minimize" },
@@ -285,7 +284,6 @@ function Pages.registerAll()
 		{ "lighting", "sun", buildLighting },
 		{ "training", "bolt", Game.training },
 		{ "defence", "shield", Game.defence },
-		{ "drone", "drone", Game.drone },
 		{ "cosmetics", "shirt", Game.cosmetics },
 		{ "music", "music", Game.music },
 		{ "sounds", "speaker", Game.sounds },

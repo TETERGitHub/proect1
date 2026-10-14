@@ -229,21 +229,6 @@ add(with("input", "Input", {
 	bool("input.ignoreTyping", true, "Ignore while typing", "Hotkeys do nothing while a text box is focused."),
 }))
 
-add(with("drone", "Drone", {
-	enum("drone.mode", "Fling", { "Fling", "Eliminate" }, "Impact effect", "What happens to a training dummy the drone touches. 'Eliminate' needs the simulated role Murderer."),
-	enum("drone.simRole", "Murderer", { "Innocent", "Sheriff", "Murderer" }, "Simulated role", "Role used by the training sandbox. Only Murderer may use Eliminate. Does not read or change your real MM2 role."),
-	num("drone.speed", 70, 20, 150, 5, "Cruise speed", "Forward speed in studs per second."),
-	num("drone.turnRate", 1.6, 0.5, 3, 0.1, "Turn rate", "Maximum turn rate in radians per second."),
-	num("drone.camDistance", 22, 8, 60, 1, "Camera distance", "Chase camera distance behind the drone."),
-	num("drone.camHeight", 6, 0, 20, 1, "Camera height", "Chase camera height above the drone."),
-	num("drone.flingForce", 90, 10, 300, 5, "Fling force", "Impulse applied to a dummy on impact."),
-	bool("drone.showHud", true, "Dot reticle & HUD", "Shows the dot reticle and speed/altitude readout while flying."),
-	bool("drone.trail", true, "Exhaust trail", "Glowing trail behind the drone."),
-	bool("drone.engineSound", true, "Engine hum", "Plays a looping engine sound if a sound source is configured on the Sounds page."),
-	bool("drone.worldCollision", true, "World collisions", "The drone crashes into map geometry and respawns at its launch point. Turn off to fly through walls."),
-	bool("drone.invertPitch", false, "Invert pitch", "Pull back to climb when on."),
-}))
-
 add(with("cosmetics", "Cosmetics", {
 	bool("cosmetics.gunEnabled", false, "Gun skin", "Replaces the look of your gun tool. Visible only to you.", { master = true }),
 	{ key = "cosmetics.gunSource", type = "string", default = "proc:neon", maxLen = 120, label = "Gun model source", desc = "proc:<name>, asset:<id> or file:<name.rbxm>." },
@@ -286,7 +271,6 @@ local SOUND_SLOTS = {
 	{ "knifeSwing", "Knife swing", "Plays when you use your knife tool." },
 	{ "hit", "Hit", "Plays when you hit a training target." },
 	{ "kill", "Kill", "Plays when you eliminate a training target or dummy." },
-	{ "engine", "Drone engine", "Looping sound while flying the drone." },
 	{ "uiClick", "Interface click", "Plays when you press toggles and buttons in the hub." },
 }
 add(with("sounds", "Sounds", {

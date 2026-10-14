@@ -22,9 +22,9 @@ No closed-source code, private API or asset of any competitor was viewed, copied
 | Notifications | Corner toasts | Visible | Fixed duration, no queue limits | Queue with visible cap, per-level colours, pooled cards, spring animations |
 | Keybinds | Keybind component per feature | Familiar | Conflicts undetected, no typing guard | Central binding table, conflict detection, typing/focus guards, capture cancel on focus loss |
 | Search | Rare | - | - | Fuzzy-ish AND search, filters (active, favourites, category), `>` command palette |
-| Mobile | Often desktop-only | - | Tiny touch targets, no keyboard hotkeys | Device detection, compact preset, floating launcher, draggable on-screen feature buttons, touch drone controls |
+| Mobile | Often desktop-only | - | Tiny touch targets, no keyboard hotkeys | Device detection, compact preset, floating launcher, draggable on-screen feature buttons |
 | Cleanup | `:Destroy()` of the ScreenGui | - | Connections and loops leak on re-execute | Maid ownership everywhere, single scheduler, re-init detection, full restore of changed engine properties |
 
 ## Ideas deliberately **not** taken
-- Role/player ESP, hidden-information readouts, kill/fling of real players, silent aim: these change other people's game or expose data the game withholds, so they are excluded. The training range, dummy and drone sandbox cover the visible/physics side of those categories on your own objects.
+- Role/player ESP, hidden-information readouts, kill/fling of real players, silent aim: these change other people's game or expose data the game withholds, so they are excluded. The training range and dummy sandbox cover the visible/physics side of those categories on your own objects.
 - Remote asset scrapers / "load from random site" content lists: content comes only from asset ids or files the user supplies.

@@ -480,9 +480,9 @@ function S.help(page)
 		{ "Profiles", "Settings autosave to the active profile. Create, duplicate, rename or delete profiles on the Configs page; export gives a checksummed text string you can share and import elsewhere." },
 		{ "Hotkeys", "Open the Hotkeys page, click a key box and press the new key. Duplicate keys are refused unless you confirm moving them." },
 		{ "Crosshair, camera, environment", "Everything is local to your screen and reversible: switching a feature off, resetting a page or unloading the hub restores the original game values." },
-		{ "Training range & drone", "Targets, the dummy and the drone exist only on your client. They never affect other players. Drone impacts affect the dummy; the Eliminate mode requires the simulated Murderer role." },
+		{ "Training range", "Targets and the dummy exist only on your client. They never affect other players." },
 		{ "Cosmetics, music, sounds", "You supply the content: asset ids you can use, or files in MM2Hub/models, MM2Hub/music and MM2Hub/sounds. Nothing is downloaded from third-party sites." },
-		{ "Mobile", "Use the launcher button, the drawn stick for the drone, and the Interface page to raise text size or scale." },
+		{ "Mobile", "Use the launcher button and the Interface page to raise text size or scale." },
 		{ "Troubleshooting", "Open Diagnostics: module states, executor capabilities, recent warnings. Export the report and send it when asking for help." },
 	}
 	for _, t in ipairs(topics) do

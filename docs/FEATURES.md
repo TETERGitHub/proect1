@@ -1,6 +1,6 @@
 # Feature catalogue
 
-Generated from `src/data/Features.luau` by `python3 tools/gen_docs.py` - **132 features**: 57 `tested`, 60 `implemented`, 13 `env`, 2 `partial`.
+Generated from `src/data/Features.luau` by `python3 tools/gen_docs.py` - **131 features**: 57 `tested`, 59 `implemented`, 13 `env`, 2 `partial`.
 
 Status meaning:
 
@@ -197,8 +197,7 @@ Status meaning:
 | 12 | Target switching | Переключение целей | tested | `features/SelectLogic:cycle` |  |
 | 13 | Movement prediction | Прогноз положения мишени | tested | `features/SelectLogic:intercept` |  |
 | 14 | Select / lock / reset / switch keys | Клавиши выбора цели | implemented | `action: selectaim.next` |  |
-| 15 | FPV drone flight | FPV-дрон | implemented | `action: drone.toggle` |  |
-| 16 | Reset dummy | Сброс стенда | implemented | `action: training.resetDummy` |  |
+| 15 | Reset dummy | Сброс стенда | implemented | `action: training.resetDummy` |  |
 
 ## M. Defence
 
@@ -208,7 +207,7 @@ Status meaning:
 | 2 | Ghost collisions | Коллизии-призраки | env | `setting: antifling.noCollide` | Relies on the client simulating your character; a game that re-enables collisions each frame can undo it. |
 | 3 | Fling detection logic | Логика обнаружения флинга | tested | `features/AntiFlingLogic:evaluate` |  |
 
-## Settings schema (207 keys)
+## Settings schema (191 keys)
 
 | Key | Type | Default | Range / options | Module |
 |---|---|---|---|---|
@@ -351,18 +350,6 @@ Status meaning:
 | `tools.timerSound` | bool | true |  | Tools |
 | `input.enabled` | bool | true |  | Input |
 | `input.ignoreTyping` | bool | true |  | Input |
-| `drone.mode` | enum | Fling | Fling, Eliminate | Drone |
-| `drone.simRole` | enum | Murderer | Innocent, Sheriff, Murderer | Drone |
-| `drone.speed` | number | 70 | 20..150 step 5 | Drone |
-| `drone.turnRate` | number | 1.6 | 0.5..3 step 0.1 | Drone |
-| `drone.camDistance` | number | 22 | 8..60 step 1 | Drone |
-| `drone.camHeight` | number | 6 | 0..20 step 1 | Drone |
-| `drone.flingForce` | number | 90 | 10..300 step 5 | Drone |
-| `drone.showHud` | bool | true |  | Drone |
-| `drone.trail` | bool | true |  | Drone |
-| `drone.engineSound` | bool | true |  | Drone |
-| `drone.worldCollision` | bool | true |  | Drone |
-| `drone.invertPitch` | bool | false |  | Drone |
 | `cosmetics.gunEnabled` | bool | false |  | Cosmetics |
 | `cosmetics.gunSource` | string | proc:neon |  | Cosmetics |
 | `cosmetics.gunTool` | string | Gun |  | Cosmetics |
@@ -411,10 +398,6 @@ Status meaning:
 | `sounds.killSource` | string |  |  | Sounds |
 | `sounds.killVolume` | number | 0.8 | 0..1 step 0.05 | Sounds |
 | `sounds.killPitch` | number | 1 | 0.5..2 step 0.05 | Sounds |
-| `sounds.engineEnabled` | bool | false |  | Sounds |
-| `sounds.engineSource` | string |  |  | Sounds |
-| `sounds.engineVolume` | number | 0.8 | 0..1 step 0.05 | Sounds |
-| `sounds.enginePitch` | number | 1 | 0.5..2 step 0.05 | Sounds |
 | `sounds.uiClickEnabled` | bool | false |  | Sounds |
 | `sounds.uiClickSource` | string |  |  | Sounds |
 | `sounds.uiClickVolume` | number | 0.8 | 0..1 step 0.05 | Sounds |

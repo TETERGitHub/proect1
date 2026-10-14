@@ -108,18 +108,7 @@ function Stats:reset()
 	self.shots, self.hits, self.kills, self.reactionSum, self.reactionCount, self.best = 0, 0, 0, 0, 0, nil
 end
 
--- Impact rules (shared by the drone and the physics stand) ---------------------------
-
--- canEliminate(mode, role) -> ok, reason. Elimination is only allowed for the Murderer role.
-function TL.canEliminate(mode, role)
-	if mode ~= "Eliminate" then
-		return true
-	end
-	if role ~= "Murderer" then
-		return false, "Eliminate requires the Murderer role"
-	end
-	return true
-end
+-- Velocity limits ---------------------------------------------------------------------
 
 -- clampVelocity(vx,vy,vz,maxSpeed) -> vx,vy,vz
 function TL.clampVelocity(vx, vy, vz, maxSpeed)

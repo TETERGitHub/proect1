@@ -7,7 +7,7 @@ or images of other hubs are used (all icons, models and sounds are drawn/built o
 ## Boundaries (by design)
 - Everything runs on **your client** and changes only what **you** see. It does not reveal hidden information
   (such as other players' roles), does not fire at, push, fling or kill real players, and does not alter MM2's hit registration.
-- Training features (targets, dummy, drone impacts, hitbox lab, Select Aim) operate on **local test objects** only.
+- Training features (targets, dummy, hitbox lab, Select Aim) operate on **local test objects** only.
 - Ghost (local invisibility) is a visual effect on your own screen; Roblox does not replicate it.
 
 ## One-click setup on your PC (Windows)
@@ -30,8 +30,8 @@ Tools needed: the standalone [Luau](https://github.com/luau-lang/luau) CLI (`lua
 |---|---|
 | Core (events, cleanup, logging, settings, profiles, hotkeys, scheduler, search, diagnostics, lifecycle) | `src/core` |
 | UI (theme engine, drawn icons, animation, components, window, pages, on-screen buttons, phone preset) | `src/ui` |
-| Features (crosshair, camera, lighting, training range + hitbox lab + Select Aim, drone, cosmetics, music, sounds, ghost, anti-fling, tools) | `src/features` |
-| Data (settings schema, feature catalogue, themes, icons, drone model spec, strings) | `src/data` |
+| Features (crosshair, camera, lighting, training range + hitbox lab + Select Aim, cosmetics, music, sounds, ghost, anti-fling, tools) | `src/features` |
+| Data (settings schema, feature catalogue, themes, icons, strings) | `src/data` |
 | Licence keys, loader, server | `tools/keygen.py`, `loader/`, `server/`, [docs/LICENSE.md](docs/LICENSE.md), [docs/SERVER.md](docs/SERVER.md) |
 
 Documents: [FEATURES.md](docs/FEATURES.md) (119+ catalogued features with honest status), [TESTING.md](docs/TESTING.md)

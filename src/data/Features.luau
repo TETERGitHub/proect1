@@ -201,7 +201,6 @@ F("aim.logic", "L", "Target selection rules", "Правила выбора це�
 F("aim.cycle", "L", "Target switching", "Переключение целей", "tested", "f:features/SelectLogic:cycle", "Next / previous eligible target with wrap-around.")
 F("aim.predict", "L", "Movement prediction", "Прогноз положения мишени", "tested", "f:features/SelectLogic:intercept", "Intercept time and predicted position of a moving test target.")
 F("aim.keys", "L", "Select / lock / reset / switch keys", "Клавиши выбора цели", "implemented", "a:selectaim.next", "Rebindable hotkeys wired to the real selection state.")
-F("train.drone", "L", "FPV drone flight", "FPV-дрон", "implemented", "a:drone.toggle", "Third-person drone with a dot reticle; impacts affect the local dummy only.")
 F("train.reset", "L", "Reset dummy", "Сброс стенда", "implemented", "a:training.resetDummy", "Restores dummy position and velocity.")
 
 -- M. Defence (protects only the local player; never touches other players) -----------------

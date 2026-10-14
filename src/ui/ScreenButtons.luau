@@ -3,7 +3,7 @@
 -- Tap runs the feature (toggles a switch / runs an action) and the ring shows the on/off state;
 -- drag to move, positions are remembered. Icons are drawn from Frames. Buttons are rebuilt only
 -- when the favourites list, size or visibility change; state rings update through Settings observers.
--- Depends on: Framework, Theme, Icons, Motion, Settings, Recents, Registry, Actions, Env, Maid, Services, Drone.
+-- Depends on: Framework, Theme, Icons, Motion, Settings, Recents, Registry, Actions, Env, Maid, Services.
 
 local import = ...
 local F = import("ui/Framework")
@@ -23,7 +23,7 @@ local Buttons = {}
 
 local state = nil
 
-local CATEGORY_ICON = { crosshair = "target", camera = "camera", lighting = "sun", training = "bolt", drone = "drone", perf = "gauge", ui = "sliders", cosmetics = "shirt", music = "music", sounds = "speaker", tools = "wrench" }
+local CATEGORY_ICON = { crosshair = "target", camera = "camera", lighting = "sun", training = "bolt", perf = "gauge", ui = "sliders", cosmetics = "shirt", music = "music", sounds = "speaker", tools = "wrench" }
 local MAX_BUTTONS = 8
 
 -- iconFor(feature) -> icon name
@@ -33,9 +33,7 @@ function Buttons.iconFor(feat)
 	end
 	if feat.impl.kind == "action" then
 		local id = feat.impl.target
-		if string.find(id, "drone", 1, true) then
-			return "drone"
-		elseif string.find(id, "window", 1, true) then
+		if string.find(id, "window", 1, true) then
 			return "home"
 		elseif string.find(id, "music", 1, true) then
 			return "music"
@@ -101,7 +99,7 @@ local function rebuild()
 	end
 	st.buttons:Clean()
 	table.clear(st.rings)
-	if not Settings.get("ui.screenButtons") or st.hidden then
+	if not Settings.get("ui.screenButtons") then
 		st.holder.Visible = false
 		return
 	end
@@ -212,7 +210,7 @@ function Buttons.start(ctx)
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromScale(1, 1)
 	holder.Parent = gui
-	state = { gui = gui, holder = holder, buttons = Maid.new("screen-buttons"), rings = {}, hidden = false }
+	state = { gui = gui, holder = holder, buttons = Maid.new("screen-buttons"), rings = {} }
 	ctx.maid:Give(function()
 		if state then
 			state.buttons:Clean()
@@ -227,14 +225,6 @@ function Buttons.start(ctx)
 			Buttons.refreshRings()
 		elseif state and key == "ui.theme" then
 			Buttons.refreshRings()
-		end
-	end))
-	-- hide while flying the drone (it has its own HUD)
-	local Drone = import("features/Drone")
-	ctx.maid:Give(Drone.Changed:Connect(function(flying)
-		if state then
-			state.hidden = flying
-			rebuild()
 		end
 	end))
 	rebuild()
