@@ -201,13 +201,16 @@ local function buildCrosshair(page)
 	corner2.CornerRadius = UDim.new(0.5, 0)
 	corner2.Parent = parts.dot.frame
 	local images = CI.new(center)
+	local clock = 0
 	local function preview()
 		local function s(n)
 			return Settings.get("crosshair." .. n)
 		end
 		local cc = s("color")
-		if CI.has(s("design")) and CI.apply(images, { design = s("design"), size = math.min(s("imageSize"), 110), color = Color3.fromRGB(cc.r, cc.g, cc.b),
-			transparency = 1 - s("opacity"), outline = s("outline"), glow = s("glow") }) then
+		local col = s("rainbow") and Color3.fromHSV((clock * 0.15) % 1, 0.75, 1) or Color3.fromRGB(cc.r, cc.g, cc.b)
+		if CI.has(s("design")) and CI.apply(images, { design = s("design"), size = math.min(s("imageSize"), 110), color = col,
+			transparency = 1 - s("opacity"), outline = s("outline"), glow = s("glow"), time = clock, speed = s("animSpeed"),
+			rotation = (clock * s("spin")) % 360 }) then
 			for _, p in pairs(parts) do
 				p.frame.Visible = false
 			end
@@ -257,10 +260,19 @@ local function buildCrosshair(page)
 	for _, key in ipairs(Settings.keys({ category = "crosshair" })) do
 		page.maid:Give(Settings.observe(key, preview))
 	end
+	-- animated designs, spin and rainbow play in the preview too
+	local ticker = Perf.every("ui.xhpreview", 30, function(dt)
+		clock += dt
+		local d = Settings.get("crosshair.design")
+		if Settings.get("crosshair.rainbow") or (CI.has(d) and (CI.animated(d) or Settings.get("crosshair.spin") ~= 0)) then
+			preview()
+		end
+	end, { visual = true })
+	page.maid:Give(ticker.Cancel)
 	preview()
 	resetButton(page, "Crosshair")
-	section(page, "General", { "crosshair.enabled", "crosshair.hideCursor", "crosshair.design", "crosshair.color", "crosshair.opacity" })
-	section(page, "Drawn design", { "crosshair.imageSize", "crosshair.glow", "crosshair.spin", "crosshair.pulse" })
+	section(page, "General", { "crosshair.enabled", "crosshair.hideCursor", "crosshair.design", "crosshair.color", "crosshair.rainbow", "crosshair.opacity" })
+	section(page, "Drawn design", { "crosshair.imageSize", "crosshair.glow", "crosshair.spin", "crosshair.pulse", "crosshair.animSpeed" })
 	section(page, "Lines", { "crosshair.style", "crosshair.size", "crosshair.thickness", "crosshair.gap", "crosshair.centerDot", "crosshair.dotSize", "crosshair.outline" })
 	section(page, "Dynamic", { "crosshair.dynamic", "crosshair.dynamicAmount" })
 	section(page, "Position", { "crosshair.offsetX", "crosshair.offsetY" })

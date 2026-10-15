@@ -179,12 +179,12 @@
    "language": "ru",
    "settings": {
     "crosshair.enabled": true,
-    "crosshair.design": "Scope",
+    "crosshair.design": "Menacing",
     "crosshair.glow": true,
-    "crosshair.imageSize": 90,
+    "crosshair.imageSize": 110,
     "crosshair.color": {
-     "r": 120,
-     "g": 220,
+     "r": 150,
+     "g": 60,
      "b": 255
     }
    }

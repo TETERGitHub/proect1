@@ -19,7 +19,7 @@ local Crosshair = {}
 
 local KEYS = {
 	"enabled", "style", "size", "thickness", "gap", "color", "opacity", "centerDot", "dotSize",
-	"outline", "dynamic", "dynamicAmount", "offsetX", "offsetY", "hideCursor", "design", "imageSize", "spin", "pulse", "glow",
+	"outline", "dynamic", "dynamicAmount", "offsetX", "offsetY", "hideCursor", "design", "imageSize", "spin", "pulse", "glow", "animSpeed", "rainbow",
 }
 
 local state = nil
@@ -67,6 +67,9 @@ local function render(spread)
 	end
 	local c = s("color")
 	local color = Color3.fromRGB(c.r, c.g, c.b)
+	if s("rainbow") then
+		color = Color3.fromHSV((st.t * 0.15) % 1, 0.75, 1) -- every crosshair, lines or drawn, can cycle through the colours
+	end
 	local transparency = 1 - s("opacity")
 	local outline = s("outline")
 	st.root.Position = UDim2.new(0.5, s("offsetX"), 0.5, s("offsetY"))
@@ -75,6 +78,7 @@ local function render(spread)
 	if CI.has(design) and CI.apply(st.images, {
 		design = design, size = s("imageSize") + spread * 2, color = color, transparency = transparency, outline = outline,
 		glow = s("glow"), rotation = (st.t * s("spin")) % 360, scale = s("pulse") and (1 + 0.08 * math.sin(st.t * 5)) or 1,
+		time = st.t, speed = s("animSpeed"),
 	}) then
 		for _, e in pairs(st.elements) do
 			e.frame.Visible = false
@@ -200,8 +204,8 @@ function Crosshair.start(ctx)
 		local enabled = s("enabled")
 		st.t += dt
 		applyCursor()
-		if enabled and CI.has(s("design")) and (s("spin") ~= 0 or s("pulse")) then
-			st.dirty = true -- turning / pulsing design
+		if enabled and ((CI.has(s("design")) and (s("spin") ~= 0 or s("pulse") or CI.animated(s("design")))) or s("rainbow")) then
+			st.dirty = true -- turning / pulsing / animated design, rainbow colour
 		end
 		if enabled and s("dynamic") then
 			local speed, max = localSpeed()

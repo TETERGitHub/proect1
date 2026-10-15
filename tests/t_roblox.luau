@@ -156,6 +156,12 @@ T.test("drawn crosshair designs", "a design shows our texture (shape + outline +
 	end
 	Settings.set("crosshair.spin", 90); Settings.set("crosshair.pulse", true); frames(5)
 	T.truthy(Crosshair.elementCount() > 0)
+	for _, an in ipairs(CI.ANIMATED) do
+		Settings.set("crosshair.design", an.name); frames(2)
+		T.eq(Crosshair.elementCount(), FxKit.asset(an.file .. ".png") and 3 or 4, an.name)
+	end
+	Settings.set("crosshair.rainbow", true); frames(10)
+	T.truthy(Crosshair.elementCount() > 0)
 	Settings.set("crosshair.design", "Lines"); frames(2); T.eq(Crosshair.elementCount(), 4)
 	Settings.set("crosshair.enabled", false); frames(2); T.eq(Crosshair.elementCount(), 0)
 	shutdown(h)

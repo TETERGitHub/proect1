@@ -1370,7 +1370,14 @@
   "Scope": "Оптика",
   "Heart": "Серце",
   "Hide the game's crosshair": "Приховувати приціл гри",
-  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Поки увімкнено ваш приціл, приціл гри / значок миші приховано (повертається, коли відкриваєте меню або вимикаєте свій)."
+  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Поки увімкнено ваш приціл, приціл гри / значок миші приховано (повертається, коли відкриваєте меню або вимикаєте свій).",
+  "How fast the animated designs (Radar, Ripple, Lock-on, Orbit, Breathe, Menacing) play.": "Швидкість анімованих прицілів (Радар, Хвилі, Захоплення, Орбіта, Дихання, Menacing).",
+  "Rainbow colour": "Райдужний колір",
+  "The crosshair (any design) slowly cycles through all colours instead of the chosen one.": "Приціл (будь-який) плавно переливається всіма кольорами замість вибраного.",
+  "Radar": "Радар",
+  "Ripple": "Хвилі",
+  "Lock-on": "Захоплення цілі",
+  "Breathe": "Дихання"
  },
  "patterns": [
   [
@@ -1706,6 +1713,7 @@
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
   "TrollHub": true,
-  "X": true
+  "X": true,
+  "Menacing": true
  }
 }

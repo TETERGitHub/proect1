@@ -1370,7 +1370,14 @@
   "Scope": "Lunette",
   "Heart": "Cœur",
   "Hide the game's crosshair": "Masquer le réticule du jeu",
-  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Tant que votre réticule est actif, celui du jeu / l'icône de la souris est masqué (il revient quand vous ouvrez le menu ou coupez le vôtre)."
+  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Tant que votre réticule est actif, celui du jeu / l'icône de la souris est masqué (il revient quand vous ouvrez le menu ou coupez le vôtre).",
+  "How fast the animated designs (Radar, Ripple, Lock-on, Orbit, Breathe, Menacing) play.": "Vitesse des réticules animés (Radar, Ondes, Verrouillage, Orbite, Respiration, Menacing).",
+  "Rainbow colour": "Couleur arc-en-ciel",
+  "The crosshair (any design) slowly cycles through all colours instead of the chosen one.": "Le réticule (tout motif) passe lentement par toutes les couleurs au lieu de celle choisie.",
+  "Radar": "Radar",
+  "Ripple": "Ondes",
+  "Lock-on": "Verrouillage",
+  "Breathe": "Respiration"
  },
  "patterns": [
   [
@@ -1706,6 +1713,7 @@
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
   "TrollHub": true,
-  "X": true
+  "X": true,
+  "Menacing": true
  }
 }

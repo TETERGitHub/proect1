@@ -1370,7 +1370,14 @@
   "Scope": "Luneta",
   "Heart": "Coração",
   "Hide the game's crosshair": "Ocultar a mira do jogo",
-  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Enquanto a sua mira está ligada, a mira do jogo / o ícone do rato fica oculto (volta ao abrir o menu ou ao desligar a sua)."
+  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Enquanto a sua mira está ligada, a mira do jogo / o ícone do rato fica oculto (volta ao abrir o menu ou ao desligar a sua).",
+  "How fast the animated designs (Radar, Ripple, Lock-on, Orbit, Breathe, Menacing) play.": "Velocidade das miras animadas (Radar, Ondas, Travamento, Órbita, Respiração, Menacing).",
+  "Rainbow colour": "Cor arco-íris",
+  "The crosshair (any design) slowly cycles through all colours instead of the chosen one.": "A mira (qualquer design) passa lentamente por todas as cores em vez da escolhida.",
+  "Radar": "Radar",
+  "Ripple": "Ondas",
+  "Lock-on": "Travamento",
+  "Breathe": "Respiração"
  },
  "patterns": [
   [
@@ -1706,6 +1713,7 @@
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
   "TrollHub": true,
-  "X": true
+  "X": true,
+  "Menacing": true
  }
 }
