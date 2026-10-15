@@ -110,7 +110,7 @@ function FxKit.emitter(holder, tex, o)
 		end
 		em.LockedToPart = o.lock == true
 		if o.flipbook then
-			-- animated texture: a 4x4 grid of frames (fire.png), looping or a random frame per particle (smileys.png)
+			-- animated texture: a 4x4 grid of frames (fire.png), looping or a random frame per particle (trolls.png)
 			em.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
 			em.FlipbookMode = o.flipbook == "random" and Enum.ParticleFlipbookMode.Random or Enum.ParticleFlipbookMode.Loop
 			em.FlipbookFramerate = NumberRange.new(o.fps or 24)

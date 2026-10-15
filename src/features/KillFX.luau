@@ -783,9 +783,7 @@ function BUILD.Troll(fx)
 			particle(fx, bit, { pos = c, vel = (dir * (14 + rand() * 18) + v3(0, 16, 0)) * fx.k, spin = randUnit() * 12, gravity = -32, drag = 1.4,
 				life = 2.2 + rand() * 0.6, t0 = 0, t1 = 1, fadeFrom = 0.75, bounce = true })
 		end
-		emit(fx, c, "trolls", 10, { flipbook = "random",  size = { 1.2, 0.6 }, life = { 0.9, 1.4 }, speed = { 10, 20 }, accel = v3(0, -14, 0), drag = 1, light = 0, spin = { -200, 200 } })
-		emit(fx, c, "smileys", 16, { size = { 1.1, 0.6 }, life = { 0.9, 1.5 }, speed = { 10, 22 }, accel = v3(0, -14, 0), drag = 1, light = 0,
-			spin = { -200, 200 }, flipbook = "random" })
+		emit(fx, c, "trolls", 22, { flipbook = "random",  size = { 1.2, 0.6 }, life = { 0.9, 1.4 }, speed = { 10, 20 }, accel = v3(0, -14, 0), drag = 1, light = 0, spin = { -200, 200 } })
 		emit(fx, c, "star", 30, { size = { 1, 0 }, life = { 0.4, 0.8 }, speed = { 10, 24 }, drag = 2 })
 	end)
 	-- 3. a giant laughing Trollface rises over the spot with "Problem?" under it, then fades away

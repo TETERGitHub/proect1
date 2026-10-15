@@ -6,8 +6,7 @@
 * Imported meshes: not part of the repository. Each entry in your `MM2Hub/models/index.json` carries its own `credit` text; keep the author's
   attribution and licence terms.
 
-## Emoji (Troll aura and Troll kill effect)
+## Trollfaces (Troll aura and Troll kill effect)
 
-`assets/fx/smileys.png` is rendered from **Twemoji** graphics: Copyright 2019 Twitter, Inc and other contributors
-(maintained fork https://github.com/jdecked/twemoji), licensed **CC BY 4.0** (https://creativecommons.org/licenses/by/4.0/).
-Rendered from the original SVGs into a 4x4 grid by `tools/fetch_emoji.py`; not otherwise modified. Details: `assets/fx/EMOJI_CREDITS.txt`.
+`assets/trolls/*.jpg` (and `assets/fx/trolls.png`, the sticker sheet made from them by `tools/make_trolls.py`) are Trollface
+pictures supplied by the project owner; the owner is responsible for their use.

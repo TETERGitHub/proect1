@@ -1,4 +1,0 @@
-smileys.png: Twemoji graphics, Copyright 2019 Twitter, Inc and other contributors
-(github.com/jdecked/twemoji), licensed CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
-Rendered from the original SVGs at 120 px into a 4x4 grid; not otherwise modified.
-Emoji used (in grid order): U+1F602 U+1F923 U+1F60E U+1F480 U+1F608 U+1F921 U+1F621 U+1F911 U+1F976 U+1F61C U+1F92A U+1F60F U+1F5FF U+1F913 U+1F62D U+1F525

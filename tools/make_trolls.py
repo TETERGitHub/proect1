@@ -52,7 +52,8 @@ def main():
     sheet = Image.new("RGBA", (CELL * 4, CELL * 4), (0, 0, 0, 0))
     for i in range(16):
         sheet.paste(faces[i % len(faces)], ((i % 4) * CELL, (i // 4) * CELL))
-    sheet.save(ROOT / "assets" / "fx" / "trolls.png", optimize=True)
+    # mostly black and white line art (one red glint): 64 colours are plenty and keep the hub script small
+    sheet.quantize(colors=64, method=Image.Quantize.FASTOCTREE).convert("RGBA").save(ROOT / "assets" / "fx" / "trolls.png", optimize=True)
     print(len(faces), "trollfaces")
 
 

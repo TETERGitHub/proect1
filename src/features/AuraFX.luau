@@ -778,9 +778,9 @@ local function face(a, studs, fn, phase)
 	end)
 end
 
--- smiley(a, studs, fn, cell): one of our smiley faces (smileys.png, 4x4 grid of 128 px) on a billboard
+-- smiley(a, studs, fn, cell, sheet): one face from a 4x4 sticker sheet of 128 px cells (trolls.png) on a billboard
 local function smiley(a, studs, fn, cell, sheet)
-	local url = FxKit.asset(sheet or "smileys.png")
+	local url = FxKit.asset(sheet or "trolls.png")
 	if not url then
 		return
 	end
@@ -821,17 +821,15 @@ BUILD["Troll"] = function(a)
 	end, 0)
 	a:emit("troll", { rate = 4, size = { 0.9, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
 		spin = { -90, 90 }, t = { 0, 0.6 } }, "w", flat(a, 0.3))
-	-- an outer ring of our eight smileys turning the other way, and random smileys floating up
-	-- the outer ring alternates the owner's trollfaces (trolls.png) and emoji (smileys.png)
+	-- the outer ring: the owner's trollfaces (trolls.png), all different
 	orbit(a, 10, 4.6, 1.2, -0.6, function(i, fn)
 		smiley(a, 1.4, function(t, base)
 			return fn(t, base) + v3(0, sin(t * 2.6 + i) * 0.4 * a.s, 0)
-		end, i % 2 == 0 and (1 + (i // 2) % 5) or (i // 2) % 16, i % 2 == 0 and "trolls.png" or "smileys.png")
+		end, (i - 1) % 6, "trolls.png")
 	end)
 	a:emit("trolls", { rate = 4, size = { 0.9, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
 		spin = { -90, 90 }, t = { 0, 0.6 }, flipbook = "random" }, "w", flat(a, 0.3))
-	a:emit("smileys", { rate = 5, size = { 0.8, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
-		spin = { -90, 90 }, t = { 0, 0.6 }, flipbook = "random" }, "w", flat(a, 0.3))
+
 	a:emit("star", { rate = 10, size = { 0.6, 0 }, life = { 0.8, 1.4 }, speed = { 1, 3 } }, "w", function(t, base)
 		return base * at(a, 0, 2, 0)
 	end)
