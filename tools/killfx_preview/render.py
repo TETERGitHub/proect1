@@ -32,16 +32,46 @@ for i in range(14):
 CYL = np.array(CYL)
 CYLF = [tuple(range(14)), tuple(range(14, 28))[::-1]] + [(i, (i + 1) % 14, 14 + (i + 1) % 14, 14 + i) for i in range(14)]
 
+FX = S.parent.parent / "assets" / "fx"
+OBJS, TEX = {}, {}
+
+def obj(name):
+    if name not in OBJS:
+        vs, fs = [], []
+        for l in (FX / name).read_text().splitlines():
+            if l.startswith("v "):
+                vs.append(list(map(float, l.split()[1:4])))
+            elif l.startswith("f "):
+                fs.append(tuple(int(x.split("/")[0]) - 1 for x in l.split()[1:4]))
+        OBJS[name] = (np.array(vs), fs)
+    return OBJS[name]
+
+def tex(name):
+    if name not in TEX:
+        im = Image.open(FX / name).convert("LA")
+        TEX[name] = im
+    return TEX[name]
+
 def load(name):
-    frames = {}
+    frames, sprites = {}, {}
     for line in (S / f"{name}.txt").read_text().splitlines():
-        if not line.startswith("P "):
-            continue
         t = line.split()
-        n = int(t[1])
-        v = list(map(float, t[5:]))
-        frames.setdefault(n, []).append((t[2], t[3], t[4], v))
-    return frames
+        if line.startswith("P "):
+            n = int(t[1])
+            mesh = None
+            if "M" in t[5:]:
+                k = t.index("M", 5)
+                mesh = (t[k + 1], np.array(list(map(float, t[k + 2:k + 5]))))
+                t = t[:k]
+            v = list(map(float, t[5:]))
+            frames.setdefault(n, []).append((t[2], t[3], t[4], v, mesh))
+        elif line.startswith("S "):
+            n = int(t[1])
+            sprites.setdefault(n, []).append((t[2][3:], np.array(list(map(float, t[3:6]))), float(t[6]), float(t[7]),
+                np.array(list(map(float, t[8:11]))), float(t[11]), float(t[12]), int(t[13]), np.array(list(map(float, t[14:17])))))
+        elif line.startswith("F "):
+            frames.setdefault(int(t[1]), [])
+    return frames, sprites
 
 def background():
     img = Image.new("RGB", (W, H))
@@ -57,14 +87,28 @@ def background():
                 d.line([tuple(xy[0]), tuple(xy[1])], fill=(62, 66, 80), width=1)
     return img
 
-def frame_image(parts, bg):
-    img = bg.copy().convert("RGBA")
+def frame_image(parts, bg, sprites=()):
+    img = bg.copy().convert("RGB")  # RGB + an "RGBA" draw = real alpha blending
     glow = Image.new("RGB", (W, H))
     polys = []
-    for cls, shape, mat, v in parts:
+    for cls, shape, mat, v, mesh in parts:
         size = np.array(v[0:3]); pos = np.array(v[3:6]); m = np.array(v[6:15]).reshape(3, 3)
         col = np.array(v[15:18]); tr = v[18]
         neon = mat == "Neon"
+        if mesh is not None:
+            mv, mf = obj(mesh[0])
+            wv = (mv * mesh[1]) @ m.T + pos
+            xy, z = proj(wv)
+            if (z < 0.5).any(): continue
+            for face in mf:
+                pts = wv[list(face)]
+                nrm = np.cross(pts[1] - pts[0], pts[2] - pts[0]); ln = np.linalg.norm(nrm)
+                if ln < 1e-12: continue
+                nrm /= ln
+                if nrm @ (EYE - pts.mean(0)) < 0: nrm = -nrm   # meshes may be open/double sided
+                shade = 1.0 if neon else 0.35 + 0.65 * max(0, nrm @ LIGHT)
+                polys.append((z[list(face)].mean(), "poly", [tuple(xy[i]) for i in face], None, col * shade, tr, neon))
+            continue
         if shape == "Ball":
             (xy, z) = proj(pos[None])
             if z[0] < 0.5: continue
@@ -90,11 +134,46 @@ def frame_image(parts, bg):
             if nrm @ (EYE - ctr) <= 0: continue
             shade = 1.0 if neon else 0.35 + 0.65 * max(0, nrm @ LIGHT)
             polys.append((z[list(face)].mean(), "poly", [tuple(xy[i]) for i in face], None, col * shade, tr, neon))
+    for texname, pos, size, tr, col, light, rot, squash, vel in sprites:
+        (xy, z) = proj(pos[None])
+        if z[0] < 0.5 or size <= 0.01: continue
+        px = size / z[0] * FOC
+        polys.append((z[0], "sprite", (texname, xy[0], px, rot, squash, vel, pos), None, col, tr, light > 0.5))
     polys.sort(key=lambda p: -p[0])
     d = ImageDraw.Draw(img, "RGBA"); g = ImageDraw.Draw(glow)
     for z, kind, a, b, col, tr, neon in polys:
         c = tuple(int(255 * min(1, x)) for x in col)
         alpha = int(255 * (1 - tr))
+        if kind == "sprite":
+            texname, (x, y), px, rot, squash, vel, wpos = a
+            im = tex(texname)
+            w = h = max(2, int(px))
+            angle = rot
+            if squash and np.linalg.norm(vel) > 0.1:
+                # face the motion: stretch along the projected velocity
+                (xy2, _) = proj((wpos + vel * 0.03)[None])
+                dx, dy = xy2[0][0] - x, xy2[0][1] - y
+                w = max(2, int(px * (1 + min(3, math.hypot(dx, dy) / 3))))
+                angle = -math.degrees(math.atan2(dy, dx))
+            l, al = im.resize((w, h)).split()
+            spr = Image.merge("RGBA", (l, l, l, al)).rotate(angle, expand=True)
+            arr = np.asarray(spr, np.float32) / 255
+            rgb = arr[..., :3] * col[None, None, :] * 255
+            al = arr[..., 3] * (1 - tr)
+            x0, y0 = int(x - spr.width / 2), int(y - spr.height / 2)
+            xa, ya, xb, yb = max(0, x0), max(0, y0), min(W, x0 + spr.width), min(H, y0 + spr.height)
+            if xa >= xb or ya >= yb: continue
+            sub_rgb = rgb[ya - y0:yb - y0, xa - x0:xb - x0]; sub_a = al[ya - y0:yb - y0, xa - x0:xb - x0, None]
+            base_np = np.asarray(img, np.float32).copy()
+            region = base_np[ya:yb, xa:xb, :3]
+            if neon:
+                region += sub_rgb * sub_a
+            else:
+                region[:] = region * (1 - sub_a) + sub_rgb * sub_a
+            base_np[ya:yb, xa:xb, :3] = np.clip(region, 0, 255)
+            img = Image.fromarray(base_np[..., :3].astype(np.uint8), "RGB")
+            d = ImageDraw.Draw(img, "RGBA")
+            continue
         if kind == "ball":
             x, y = a
             box = (x - b, y - b, x + b, y + b)
@@ -113,10 +192,10 @@ FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв"}
 bg = background()
 for name in NAMES:
-    frames = load(name)
+    frames, sprites = load(name)
     imgs = []
     for n in sorted(frames):
-        im = frame_image(frames[n], bg)
+        im = frame_image(frames[n], bg, sprites.get(n, ()))
         ImageDraw.Draw(im).text((12, 10), NAMES[name], fill=(255, 255, 255), font=FONT)
         imgs.append(im)
     q = [im.convert("P", palette=Image.ADAPTIVE, colors=200) for im in imgs]

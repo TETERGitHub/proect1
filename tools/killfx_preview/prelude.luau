@@ -128,3 +128,74 @@ Inst.__newindex = function(t, k, v)
 	rawset(t, k, v)
 end
 Instance = { new = newInst }
+
+-- sequences, ranges and the particle emitter (Emit spawns simulated sprites into SPRITES)
+local function seq(kind, a, b)
+	if type(a) == "table" and a[1] ~= nil then return { _type = kind, points = a } end
+	return { _type = kind, points = { { Time = 0, Value = a }, { Time = 1, Value = b == nil and a or b } } }
+end
+NumberSequence = { new = function(a, b) return seq("NumberSequence", a, b) end }
+ColorSequence = { new = function(a, b) return seq("ColorSequence", a, b) end }
+NumberSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
+ColorSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
+NumberRange = { new = function(a, b) return { Min = a, Max = b or a } end }
+Vector2 = { new = function(x, y) return { X = x, Y = y } end }
+local rawTypeof = typeof
+typeof = function(v)
+	if type(v) == "table" and rawget(v, "_type") then return v._type end
+	if type(v) == "table" and getmetatable(v) == Cm then return "Color3" end
+	return rawTypeof(v)
+end
+SPRITES = {}
+methods.Emit = function(self, n)
+	local holder = self._parent
+	local cf = holder.CFrame
+	local up = Vector3.new(cf.m[2], cf.m[5], cf.m[8])
+	for _ = 1, n do
+		local sx, sy = math.rad(self.SpreadAngle.X), math.rad(self.SpreadAngle.Y)
+		local a1, a2 = (math.random() * 2 - 1) * sx, (math.random() * 2 - 1) * sy
+		local d = (cf.Rotation * CFrame.Angles(a1, 0, a2)) * Vector3.new(0, 1, 0)
+		local sp = self.Speed.Min + math.random() * (self.Speed.Max - self.Speed.Min)
+		table.insert(SPRITES, {
+			tex = self.Texture, pos = cf.p, vel = d * sp, acc = self.Acceleration or Vector3.new(0, 0, 0), drag = self.Drag or 0,
+			life = self.Lifetime.Min + math.random() * (self.Lifetime.Max - self.Lifetime.Min), age = 0,
+			size = self.Size, tr = self.Transparency, col = self.Color, light = self.LightEmission or 0,
+			rot = self.Rotation.Min + math.random() * (self.Rotation.Max - self.Rotation.Min),
+			spin = self.RotSpeed.Min + math.random() * (self.RotSpeed.Max - self.RotSpeed.Min), squash = self.Orientation ~= nil,
+			owner = holder,
+		})
+	end
+end
+local function sample(s, t)
+	local pts = s.points
+	for i = 1, #pts - 1 do
+		local a, b = pts[i], pts[i + 1]
+		if t <= b.Time then
+			local f = (t - a.Time) / math.max(1e-6, b.Time - a.Time)
+			if type(a.Value) == "number" then return a.Value + (b.Value - a.Value) * f end
+			return a.Value:Lerp(b.Value, f)
+		end
+	end
+	return pts[#pts].Value
+end
+function STEP_SPRITES(dt)
+	for i = #SPRITES, 1, -1 do
+		local p = SPRITES[i]
+		p.age += dt
+		if p.age >= p.life or p.owner._dead then
+			table.remove(SPRITES, i)
+		else
+			p.vel = (p.vel + p.acc * dt) * math.exp(-p.drag * dt)
+			p.pos = p.pos + p.vel * dt
+			p.rot += p.spin * dt
+		end
+	end
+end
+function DUMP_SPRITES(frame)
+	for _, p in ipairs(SPRITES) do
+		local f = p.age / p.life
+		local c = sample(p.col, f)
+		print(string.format("S %d %s %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.2f %.1f %d %.3f %.3f %.3f", frame, p.tex, p.pos.x, p.pos.y, p.pos.z,
+			sample(p.size, f), sample(p.tr, f), c.R, c.G, c.B, p.light, p.rot, p.squash and 1 or 0, p.vel.x, p.vel.y, p.vel.z))
+	end
+end

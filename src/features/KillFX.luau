@@ -7,7 +7,10 @@
 -- Sparkles / ParticleEmitter instances). LOCAL ONLY: the effect lives under your camera; the real body is hidden on YOUR screen
 -- (LocalTransparencyModifier) and a copy is animated - nothing about the other player changes for anyone else.
 -- STATUS: implemented; verified against the mock layer only (the look has not been checked in Roblox).
--- Depends on: Settings, Services, Perf, Logger, KillEvents.
+-- Own assets (tools/make_fx_assets.py -> data/FxPack): particle textures (glow, spark, smoke, flame, star, ring, arc) shown by
+-- ParticleEmitters, and meshes (ring, swirl, crystal, rock, flame) shown through SpecialMesh. They are written to MM2Hub/fx/ once and
+-- loaded with getcustomasset; an executor without that keeps the plain-part version of every effect (nothing is lost).
+-- Depends on: Settings, Services, Perf, Logger, KillEvents, Env, Codec, FxPack.
 
 local import = ...
 local Settings = import("core/Settings")
@@ -15,6 +18,9 @@ local Services = import("core/Services")
 local Perf = import("core/Perf")
 local Logger = import("core/Logger")
 local KillEvents = import("features/KillEvents")
+local Env = import("core/Env")
+local Codec = import("core/Codec")
+local FxPack = import("data/FxPack")
 
 local KillFX = {}
 
@@ -38,6 +44,32 @@ local function randUnit()
 	return v3(r * cos(th), z, r * sin(th))
 end
 
+-- Own assets ---------------------------------------------------------------------------------------------------------------------
+
+local assetUrls = {} -- file -> url | false
+
+-- asset(file) -> rbxasset url or nil (written to MM2Hub/fx/ on first use)
+function KillFX.asset(file)
+	if assetUrls[file] ~= nil then
+		return assetUrls[file] or nil
+	end
+	local e = FxPack[file]
+	local url = nil
+	if e and Env.persistent() and Env.has("getcustomasset") then
+		local path = Env.ROOT .. "/fx/" .. file
+		local have = Env.read(path)
+		if not have or #have ~= e.bytes then
+			local raw = Codec.b64decode(e.data)
+			if raw and #raw == e.bytes then
+				Env.write(path, raw)
+			end
+		end
+		url = Env.customAsset(path)
+	end
+	assetUrls[file] = url or false
+	return url
+end
+
 -- Parts --------------------------------------------------------------------------------------------------------------------------
 
 local function newPart(fx, shape, size, color, material, transparency)
@@ -59,6 +91,73 @@ local function newPart(fx, shape, size, color, material, transparency)
 	p.Transparency = transparency or 0
 	p.Parent = fx.folder
 	return p
+end
+
+-- meshPart(fx, mesh, size, color, material, transparency, fallbackShape) -> part: our own mesh (ring, swirl, crystal, rock, flame)
+-- on a part through a SpecialMesh; size is in studs. Without asset support it is the fallback primitive instead.
+local function meshPart(fx, mesh, size, color, material, transparency, fallbackShape)
+	local url = KillFX.asset(mesh .. ".obj")
+	if not url then
+		return newPart(fx, fallbackShape or "Block", size, color, material, transparency)
+	end
+	local p = newPart(fx, "Block", size, color, material, transparency)
+	local sm = Instance.new("SpecialMesh")
+	sm.Name = "FxMesh"
+	sm.MeshType = Enum.MeshType.FileMesh
+	sm.MeshId = url
+	sm.Scale = size
+	sm.Parent = p
+	return p
+end
+
+-- emit(fx, pos, tex, n, o): a burst of our own textured particles at pos. o: color (Color3 or ColorSequence), size {a, b},
+-- life {min, max}, speed {min, max}, spread (degrees), accel (Vector3), drag, light (0-1), rot {min, max}, spin {min, max},
+-- t {a, b} transparency, dir (Vector3, default up), squash (true = particles face their motion, for streaks)
+local function emit(fx, pos, tex, n, o)
+	local url = KillFX.asset(tex .. ".png")
+	n = math.floor(n * fx.detail + 0.5)
+	if not url or n <= 0 then
+		return nil
+	end
+	local ok, holder = pcall(function()
+		local h = Instance.new("Part")
+		h.Anchored, h.CanCollide, h.CanQuery, h.CanTouch, h.Transparency = true, false, false, false, 1
+		h.Size = Vector3.new(0.2, 0.2, 0.2)
+		local dir = o.dir or Vector3.new(0, 1, 0)
+		h.CFrame = CFrame.lookAt(pos, pos + dir) * CFrame.Angles(-math.pi / 2, 0, 0) -- emitter "up" (+Y) along dir
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = url
+		local col = o.color or Color3.fromRGB(255, 255, 255)
+		e.Color = typeof(col) == "ColorSequence" and col or ColorSequence.new(col)
+		local sz = o.size or { 1, 0 }
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, sz[1] * fx.k), NumberSequenceKeypoint.new(1, sz[2] * fx.k) })
+		local tr = o.t or { 0, 1 }
+		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, tr[1]), NumberSequenceKeypoint.new(1, tr[2]) })
+		local life = o.life or { 0.5, 1 }
+		e.Lifetime = NumberRange.new(life[1], life[2])
+		local sp = o.speed or { 5, 10 }
+		e.Speed = NumberRange.new(sp[1] * fx.k, sp[2] * fx.k)
+		e.SpreadAngle = Vector2.new(o.spread or 180, o.spread or 180)
+		e.Acceleration = (o.accel or Vector3.new(0, 0, 0)) * fx.k
+		e.Drag = o.drag or 0
+		e.LightEmission = o.light or 1
+		e.LightInfluence = 0
+		local rot, spin = o.rot or { 0, 360 }, o.spin or { -90, 90 }
+		e.Rotation = NumberRange.new(rot[1], rot[2])
+		e.RotSpeed = NumberRange.new(spin[1], spin[2])
+		if o.squash then
+			e.Orientation = Enum.ParticleOrientation.VelocityParallel
+		end
+		e.Rate = 0
+		e.Parent = h
+		h.Parent = fx.folder
+		e:Emit(n)
+		return h
+	end)
+	if ok then
+		fx.longest = math.max(fx.longest or 0, fx.age + (o.life and o.life[2] or 1))
+	end
+	return ok and holder or nil
 end
 
 -- particle(fx, part, opts): one moving piece. opts: pos, vel, rot (CFrame rotation), spin (Vector3 rad/s), gravity, drag,
@@ -256,6 +355,16 @@ local function ring(fx, centre, radius, color, life, thickness, tilt)
 	end
 end
 
+-- shock(fx, centre, d1, color, life, tilt): our ring mesh expanding (only when meshes can be loaded; the segment ring stays as well)
+local function shock(fx, centre, d1, color, life, tilt, t0)
+	if not KillFX.asset("ring.obj") then
+		return
+	end
+	local part = meshPart(fx, "ring", v3(1, 1, 1) * fx.k, color, Enum.Material.Neon, t0 or 0)
+	particle(fx, part, { pos = centre, rot = tilt or CFrame.new(), life = life, size0 = v3(1, 1, 1) * fx.k, size1 = v3(d1, d1 * 0.6, d1) * fx.k,
+		t0 = t0 or 0, t1 = 1, fadeFrom = 0.25 })
+end
+
 -- ball(fx, centre, d0, d1, color, life, t0): a glowing sphere that grows and fades (fireball layers, flashes)
 local function ball(fx, centre, d0, d1, color, life, t0, delay, material)
 	local part = newPart(fx, "Ball", v3(d0, d0, d0) * fx.k, color, material)
@@ -336,6 +445,8 @@ function BUILD.Lightning(fx)
 				rot = CFrame.Angles(PI / 2, 0, 0), life = 0.35, delay = i * 0.015, t0 = 0, t1 = 1, fadeFrom = 0.5 })
 		end
 		ball(fx, c, 3, 4.5, col, 0.45, 0.85)
+		emit(fx, c, "spark", 30, { color = col, size = { 0.5, 0.1 }, life = { 0.3, 0.5 }, speed = { 8, 16 }, spread = 25, squash = true })
+		emit(fx, sky, "smoke", 14, { color = Color3.fromRGB(36, 38, 52), size = { 6, 10 }, life = { 1.6, 2.2 }, speed = { 1, 3 }, light = 0, t = { 0.15, 1 }, spread = 180 })
 	end)
 	fx.shift = 0.45
 	-- 2. three strikes, each with a flash (0.45 - 0.65 s)
@@ -345,6 +456,7 @@ function BUILD.Lightning(fx)
 			bolt(fx, top, c + v3((rand() - 0.5) * 1.2, 0, (rand() - 0.5) * 1.2), i == 1 and white or col, 0.45, 0.32, true)
 			ball(fx, c, 1.5, 6, white, 0.16, 0.45)
 			ball(fx, sky, 6, 9, col, 0.2, 0.7) -- the cloud lights up
+			emit(fx, sky, "glow", 2, { color = col, size = { 14, 18 }, life = { 0.15, 0.25 }, speed = { 0, 0 } })
 		end)
 	end
 	at(fx, 0.12, function()
@@ -377,6 +489,13 @@ function BUILD.Lightning(fx)
 	-- 3. the charred body is torn into dozens of smouldering shards (0.77 s)
 	at(fx, 0.32, function()
 		fragment(fx, 5, Color3.fromRGB(28, 26, 30))
+		emit(fx, c, "glow", 3, { color = col, size = { 8, 16 }, life = { 0.25, 0.4 }, speed = { 0, 0 }, t = { 0.1, 1 } })
+		emit(fx, c, "arc", 12, { color = col, size = { 3, 5 }, life = { 0.15, 0.35 }, speed = { 2, 8 }, spin = { -300, 300 } })
+		emit(fx, c, "spark", 70, { color = ColorSequence.new(Color3.fromRGB(255, 255, 255), col), size = { 0.7, 0.1 }, life = { 0.4, 0.9 },
+			speed = { 25, 45 }, accel = v3(0, -50, 0), drag = 1, squash = true })
+		emit(fx, c, "smoke", 16, { color = Color3.fromRGB(40, 40, 48), size = { 3, 9 }, life = { 1.6, 2.6 }, speed = { 2, 5 }, accel = v3(0, 3, 0),
+			drag = 1, light = 0, t = { 0.25, 1 } })
+		shock(fx, v3(c.X, fx.floor + 0.3, c.Z), 26, col, 0.6)
 		release(fx, {
 			vel = function(pc)
 				local away = (pc.cf.Position - c)
@@ -429,9 +548,17 @@ function BUILD.Explosion(fx)
 		fragment(fx, 4, Color3.fromRGB(60, 40, 30))
 		ball(fx, c, 1, 16, Color3.fromRGB(255, 255, 255), 0.16, 0)
 		ball(fx, c, 2, 13, yellow, 0.45, 0)
-		ball(fx, c, 3, 17, orange, 0.65, 0.05)
-		ball(fx, c, 4, 21, red, 0.85, 0.25)
+		ball(fx, c, 3, 15, orange, 0.55, 0.35)
+		ball(fx, c, 4, 18, red, 0.6, 0.65)
 		ring(fx, v3(c.X, fx.floor + 0.3, c.Z), 26, orange, 0.7, 0.5)
+		shock(fx, v3(c.X, fx.floor + 0.3, c.Z), 34, orange, 0.7)
+		shock(fx, c, 22, yellow, 0.5, CFrame.Angles(PI / 2.3, 0, 0))
+		emit(fx, c, "glow", 4, { color = yellow, size = { 10, 20 }, life = { 0.2, 0.35 }, speed = { 0, 0 } })
+		emit(fx, c, "flame", 70, { color = ColorSequence.new({ ColorSequenceKeypoint.new(0, yellow), ColorSequenceKeypoint.new(0.4, orange),
+			ColorSequenceKeypoint.new(1, red) }), size = { 3.5, 7 }, life = { 0.45, 0.95 }, speed = { 10, 26 }, accel = v3(0, 12, 0), drag = 2.2,
+			rot = { -20, 20 }, spin = { -40, 40 }, t = { 0, 1 } })
+		emit(fx, c, "spark", 90, { color = ColorSequence.new(yellow, orange), size = { 0.8, 0.1 }, life = { 0.5, 1.1 }, speed = { 30, 55 },
+			accel = v3(0, -45, 0), drag = 0.8, squash = true })
 		ring(fx, c, 18, yellow, 0.5, 0.3, CFrame.Angles(PI / 2.3, 0, 0))
 		release(fx, {
 			vel = function(pc)
@@ -458,7 +585,8 @@ function BUILD.Explosion(fx)
 		-- rock and dirt chunks thrown up from the ground
 		for _ = 1, math.floor(18 * fx.detail) do
 			local sz = (0.3 + rand() * 0.6) * fx.k
-			local rock = newPart(fx, rand() < 0.5 and "Wedge" or "Block", v3(sz, sz * (0.6 + rand() * 0.6), sz), Color3.fromRGB(70 + rand(0, 30), 60, 52), Enum.Material.Slate)
+			local rock = meshPart(fx, "rock", v3(sz, sz * (0.6 + rand() * 0.6), sz), Color3.fromRGB(70 + rand(0, 30), 60, 52), Enum.Material.Slate, 0,
+				rand() < 0.5 and "Wedge" or "Block")
 			local dir = v3(rand() * 2 - 1, 0, rand() * 2 - 1)
 			dir = dir.Magnitude > 0.05 and dir.Unit or v3(1, 0, 0)
 			particle(fx, rock, {
@@ -482,6 +610,8 @@ function BUILD.Explosion(fx)
 	end
 	at(fx, 0.25, function()
 		smoke(fx, c, 14, Color3.fromRGB(50, 46, 44), 9, 2.6)
+		emit(fx, c, "smoke", 34, { color = Color3.fromRGB(46, 42, 40), size = { 4, 13 }, life = { 2, 3 }, speed = { 4, 10 }, accel = v3(0, 4, 0),
+			drag = 1.2, light = 0, t = { 0.15, 1 }, spin = { -30, 30 } })
 		smoke(fx, c + v3(0, 3, 0) * fx.k, 8, Color3.fromRGB(30, 28, 28), 12, 3)
 	end)
 	fx.duration = 3.2
@@ -510,6 +640,8 @@ function BUILD.Vaporize(fx)
 			size1 = v3(60, 2.6, 2.6) * fx.k, delay = 0.2,
 		})
 		ring(fx, v3(c.X, fx.floor + 0.2, c.Z), 9, col, 1.0, 0.3)
+		shock(fx, v3(c.X, fx.floor + 0.2, c.Z), 14, col, 1.0, nil, 0.2)
+		emit(fx, c, "glow", 2, { color = col, size = { 6, 10 }, life = { 0.6, 0.9 }, speed = { 0, 0 }, t = { 0.4, 1 } })
 	end)
 	at(fx, 0.35, function()
 		release(fx, {
@@ -534,6 +666,19 @@ function BUILD.Vaporize(fx)
 				})
 			end
 		end
+		emit(fx, c, "glow", 90, { color = col, size = { 0.7, 0 }, life = { 1, 2 }, speed = { 2, 6 }, accel = v3(0, 7, 0), spread = 50, drag = 0.5 })
+		emit(fx, c, "star", 30, { color = Color3.fromRGB(255, 255, 255), size = { 1.2, 0 }, life = { 0.5, 1.2 }, speed = { 1, 4 }, accel = v3(0, 4, 0),
+			spin = { -120, 120 } })
+		for r = 0, 2 do
+			at(fx, 0.35 + r * 0.22, function()
+				if not KillFX.asset("ring.obj") then
+					return
+				end
+				local rp = meshPart(fx, "ring", v3(4, 1, 4) * fx.k, Color3.fromRGB(255, 255, 255), Enum.Material.Neon, 0)
+				particle(fx, rp, { pos = v3(c.X, fx.floor + 0.3, c.Z), vel = v3(0, 7, 0) * fx.k, life = 1.1, size0 = v3(4, 1, 4) * fx.k,
+					size1 = v3(2, 1, 2) * fx.k, t0 = 0, t1 = 1, fadeFrom = 0.4 })
+			end)
+		end
 		-- dust motes drifting up
 		for _ = 1, math.floor(70 * fx.detail) do
 			local d = (0.12 + rand() * 0.16) * fx.k
@@ -556,6 +701,15 @@ function BUILD.BlackHole(fx)
 		-- the core and three tilted, spinning rings of glowing segments
 		local core = ball(fx, c, 0.5, 4.5, Color3.fromRGB(0, 0, 0), 1.4, 0, 0, Enum.Material.SmoothPlastic)
 		core.fadeFrom = 0.85
+		-- two counter-rotating spiral vortex meshes
+		if KillFX.asset("swirl.obj") then
+			for k = 0, 1 do
+				local sw = meshPart(fx, "swirl", v3(1, 1, 1) * fx.k, k == 0 and col or Color3.fromRGB(255, 200, 255), Enum.Material.Neon, 0.55)
+				particle(fx, sw, { pos = c, rot = CFrame.Angles(0.35 + k * 0.2, 0, 0.15), spin = v3(0, k == 0 and 7 or -5, 0), life = 1.45,
+					size0 = v3(2, 1, 2) * fx.k, size1 = v3(13 - k * 3, 1, 13 - k * 3) * fx.k, t0 = 0.55 + k * 0.15, t1 = 1, fadeFrom = 0.75 })
+			end
+		end
+		emit(fx, c, "glow", 3, { color = col, size = { 5, 8 }, life = { 1.2, 1.4 }, speed = { 0, 0 }, t = { 0.5, 1 } })
 		for r = 1, 3 do
 			local n = math.floor(18 * fx.detail) + 6
 			for i = 1, n do
@@ -599,6 +753,9 @@ function BUILD.BlackHole(fx)
 		ball(fx, c, 0.5, 4, Color3.fromRGB(255, 255, 255), 0.18, 0.1)
 		ring(fx, c, 14, col, 0.5, 0.3)
 		sparks(fx, c, 40, col, 30, 0.8, 0)
+		shock(fx, c, 20, col, 0.5)
+		emit(fx, c, "star", 40, { color = Color3.fromRGB(255, 220, 255), size = { 1.4, 0 }, life = { 0.4, 0.9 }, speed = { 15, 35 }, drag = 2 })
+		emit(fx, c, "glow", 2, { color = Color3.fromRGB(255, 255, 255), size = { 6, 12 }, life = { 0.15, 0.25 }, speed = { 0, 0 } })
 	end)
 	fx.duration = 2.6
 end
@@ -637,7 +794,7 @@ function BUILD.Shatter(fx)
 			local a = rand() * 2 * PI
 			local r = (1.6 + rand() * 2.6) * fx.k
 			local h = (2.5 + rand() * 3.5) * fx.k
-			local spike = newPart(fx, "Wedge", v3(0.8 * fx.k, 0.1, 1.3 * fx.k), ice, Enum.Material.Ice, 0.1)
+			local spike = meshPart(fx, "crystal", v3(0.8 * fx.k, 0.1, 1.3 * fx.k), ice, Enum.Material.Ice, 0.1, "Wedge")
 			local base = v3(c.X + cos(a) * r, fx.floor, c.Z + sin(a) * r)
 			particle(fx, spike, {
 				pos = base, rot = CFrame.lookAt(v3(0, 0, 0), v3(cos(a), 0, sin(a))) * CFrame.Angles(-0.35, 0, 0), life = 2.6, t0 = 0.1, t1 = 1,
@@ -661,7 +818,8 @@ function BUILD.Shatter(fx)
 		for _, pc in ipairs(fx.pieces) do
 			local sz = pc.part.Size
 			for j = 1, (fx.detail >= 1 and 3 or 2) do
-				local shard = newPart(fx, "Wedge", v3(sz.X * (0.4 + rand() * 0.3), sz.Y * (0.4 + rand() * 0.3), sz.Z * (0.4 + rand() * 0.3)), ice, Enum.Material.Ice, 0.15)
+				local shard = meshPart(fx, "crystal", v3(sz.X * (0.4 + rand() * 0.3), sz.Y * (0.4 + rand() * 0.3), sz.Z * (0.4 + rand() * 0.3)), ice,
+					Enum.Material.Ice, 0.15, "Wedge")
 				shard.CFrame = pc.cf * CFrame.new((rand() - 0.5) * sz.X * 0.5, (j - 2) * sz.Y * 0.3, (rand() - 0.5) * sz.Z * 0.5)
 				table.insert(shards, { part = shard, cf = shard.CFrame })
 			end
@@ -678,6 +836,11 @@ function BUILD.Shatter(fx)
 		})
 		sparks(fx, c, 34, Color3.fromRGB(235, 250, 255), 24, 0.7)
 		ring(fx, v3(c.X, fx.floor + 0.2, c.Z), 12, ice, 0.6, 0.3)
+		shock(fx, v3(c.X, fx.floor + 0.2, c.Z), 18, ice, 0.6)
+		emit(fx, c, "star", 45, { color = Color3.fromRGB(235, 250, 255), size = { 1, 0 }, life = { 0.5, 1.2 }, speed = { 8, 20 }, accel = v3(0, -10, 0),
+			spin = { -180, 180 } })
+		emit(fx, v3(c.X, fx.floor + 0.3, c.Z), "smoke", 20, { color = Color3.fromRGB(225, 240, 255), size = { 1.5, 4 }, life = { 1.2, 2 },
+			speed = { 5, 10 }, spread = 88, drag = 1.8, light = 0.2, t = { 0.72, 1 } })
 	end)
 	fx.duration = 3.2
 end
@@ -737,7 +900,12 @@ local function stepFx(fx, dt)
 					p.rot = p.rot * CFrame.Angles(p.spin.X * dt, p.spin.Y * dt, p.spin.Z * dt)
 				end
 				if p.size1 then
-					p.part.Size = p.size0:Lerp(p.size1, f)
+					local sz = p.size0:Lerp(p.size1, f)
+					p.part.Size = sz
+					local sm = p.part:FindFirstChild("FxMesh")
+					if sm then
+						sm.Scale = sz
+					end
 				end
 				local tf = f <= p.fadeFrom and 0 or (f - p.fadeFrom) / math.max(0.001, 1 - p.fadeFrom)
 				p.part.Transparency = p.t0 + (p.t1 - p.t0) * tf
@@ -757,7 +925,7 @@ local function stepFx(fx, dt)
 			end
 		end
 	end
-	if fx.age >= fx.duration and #fx.particles == 0 then
+	if fx.age >= fx.duration and fx.age >= (fx.longest or 0) and #fx.particles == 0 then
 		destroyFx(fx)
 	end
 end

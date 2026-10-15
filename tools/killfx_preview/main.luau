@@ -13,6 +13,10 @@ local stubs = {
 	["core/Perf"] = { every = function(_, _, fn) tick = fn; return { Cancel = function() end } end, isLow = function() return false end },
 	["core/Logger"] = { info = function() end, warn = function(_, f, ...) print("WARN " .. string.format(f, ...)) end },
 	["features/KillEvents"] = { Confirmed = { Connect = function() return {} end } },
+	["core/Env"] = { ROOT = "MM2Hub", persistent = function() return true end, has = function() return true end, read = function() return nil end,
+		write = function() return true end, customAsset = function(path) return "fx:" .. string.match(path, "[^/]+$") end },
+	["core/Codec"] = { b64decode = function(s) return s end },
+	["data/FxPack"] = setmetatable({}, { __index = function(_, k) return { bytes = 0, data = "" } end }),
 }
 local KillFX = KILLFX_MODULE(function(name) return stubs[name] end)
 KillFX.start({ maid = { Give = function() end } })
@@ -44,17 +48,21 @@ local function dump()
 		if p:IsA("BasePart") and p.Transparency < 0.995 then
 			local cf, s, c = p.CFrame, p.Size, p.Color
 			local m = cf.m
+			local sm = p:FindFirstChild("FxMesh")
+			local meshTag = sm and string.format(" M %s %.3f %.3f %.3f", string.sub(sm.MeshId, 4), sm.Scale.x, sm.Scale.y, sm.Scale.z) or ""
 			print(string.format("P %d %s %s %s %.3f %.3f %.3f %.3f %.3f %.3f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.3f %.3f %.3f %.3f",
 				frameNo, p.ClassName, tostring(p.Shape), tostring(p.Material), s.x, s.y, s.z, cf.p.x, cf.p.y, cf.p.z,
-				m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], c.R, c.G, c.B, p.Transparency))
+				m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], c.R, c.G, c.B, p.Transparency) .. meshTag)
 		end
 	end
+	DUMP_SPRITES(frameNo)
 	print("F " .. frameNo)
 end
 -- a few frames of the intact body first
 for _ = 1, 6 do dump(); frameNo += 1 end
 while not fx.done and frameNo < 160 do
 	tick(1 / 30)
+	STEP_SPRITES(1 / 30)
 	dump()
 	frameNo += 1
 end
