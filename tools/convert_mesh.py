@@ -610,6 +610,8 @@ def main():
     ap.add_argument("--anim-pose", type=int, default=None, help="pose the model as in the first keyframe of animation N (0 = first)")
     ap.add_argument("--auto-bones", action="store_true", help="costume only: cut the model into R15 body parts by position, so every "
                     "part follows its limb (arms raise with a held knife or gun, legs walk)")
+    ap.add_argument("--scale", type=float, default=1.0, help="extra size factor applied after --length / --as-is (e.g. 0.65 to shrink an "
+                    "--as-is model)")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
     ap.add_argument("--credit", default="", help="author / title / licence text kept next to the model")
@@ -633,6 +635,10 @@ def main():
     orient(meshes, a.forward, a.up)
     length = a.length or {"gun": 2.8, "knife": 3.0}.get(a.kind, 5.5 if a.group == "costume" else 3.0)
     size, k, origin = normalize(meshes, length, keep_scale=a.as_is)
+    if a.scale != 1.0:
+        for m in meshes:
+            m.pos = m.pos * a.scale
+        size, origin = size * a.scale, origin * a.scale
     if a.auto_bones:
         if a.kind != "char" or a.group != "costume":
             raise SystemExit("--auto-bones is for costumes (--kind char --group costume)")
