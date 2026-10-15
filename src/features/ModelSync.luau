@@ -123,7 +123,7 @@ end
 
 -- start(ctx): in the background, once, when the setting is on
 function ModelSync.start(ctx)
-	if not Settings.get("models.autoDownload") or not Launch.serverUrl then
+	if not Settings.get("custom.autoDownload") or not Launch.serverUrl then
 		return
 	end
 	local alive = true

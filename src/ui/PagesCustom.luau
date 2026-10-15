@@ -627,11 +627,28 @@ local function buildCustom(kind, label, intro)
 		else
 			page:section("Your imported models (real meshes)")
 			importGrids.all = modelGrid(page, kind, importIds(), preview)
-			page:note("Nothing imported yet? Convert a model you downloaded with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).", "textDim", 36)
+			page:note("Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).", "textDim", 36)
 			page:section("Simple built-in shapes (placeholders)")
 			modelGrid(page, kind, builtIn(nil), preview)
 		end
 		buttonStrip(page, {
+			{ text = "Download models", name = "DownloadModels", style = "tinted", width = 170, fn = function()
+				local Sync = import("features/ModelSync")
+				notify(label, "Checking the models on the key server...", "info")
+				task.spawn(function()
+					local n, err = Sync.sync(nil, function()
+						task.wait()
+					end)
+					if n then
+						for g, grid in pairs(importGrids) do
+							grid.set(importIds(g ~= "all" and g or nil))
+						end
+						notify(label, n > 0 and (n .. " model file(s) downloaded.") or "Models are up to date.", "success")
+					else
+						notify(label, "Models not downloaded: " .. tostring(err), "warn")
+					end
+				end)
+			end },
 			{ text = "Rescan imports", name = "RescanImports", style = "tinted", width = 150, fn = function()
 				local n, problems = Meshes.reload()
 				for g, grid in pairs(importGrids) do
@@ -654,6 +671,7 @@ local function buildCustom(kind, label, intro)
 		auto(page, Custom.key(kind, "glowAmount"))
 		auto(page, Custom.key(kind, "decor"))
 		auto(page, Custom.key(kind, "effects"))
+		auto(page, "custom.autoDownload")
 		auto(page, "custom.useMeshes")
 		fitSection(page, kind)
 		-- models made elsewhere (for example in Blender and uploaded to Roblox): the older single-source skin of the Cosmetics page

@@ -1377,9 +1377,31 @@
   "Radar": "Радар",
   "Ripple": "Хвилі",
   "Lock-on": "Захоплення цілі",
-  "Breathe": "Дихання"
+  "Breathe": "Дихання",
+  "Download models automatically": "Завантажувати моделі автоматично",
+  "When the hub was started with a key, the weapons, knives and characters are downloaded from the key server into MM2Hub/models/ (only missing or changed files). No copying by hand.": "Якщо хаб запущено з ключем, зброя, ножі та персонажі завантажуються з сервера ключів у MM2Hub/models/ (лише відсутні або змінені файли). Копіювати вручну не потрібно.",
+  "Download models": "Завантажити моделі",
+  "Checking the models on the key server...": "Перевіряю моделі на сервері ключів...",
+  "Models are up to date.": "Моделі вже актуальні.",
+  "Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).": "Поки нічого немає? З ключем моделі завантажуються самі (Завантажити моделі). Або сконвертуйте модель через tools/convert_mesh.py і скопіюйте результат у MM2Hub/models/ (див. docs/IMPORT_MODELS.md)."
  },
  "patterns": [
+  [
+   "^Models ready: (%d+) %(open the Custom pages to use them%)%.$",
+   "Моделей готово: %s (відкрийте сторінки «Свій ...», щоб вибрати)."
+  ],
+  [
+   "^Downloading (%d+) model files%.%.%.$",
+   "Завантажую файли моделей: %s..."
+  ],
+  [
+   "^Models not downloaded: (.+)$",
+   "Моделі не завантажено: %s"
+  ],
+  [
+   "^(%d+) model file%(s%) downloaded%.$",
+   "Завантажено файлів моделей: %s."
+  ],
   [
    "^(R%d+) rest pose: (%d+) pieces follow their body parts$",
    "поза спокою %s: %s деталей слідують за частинами тіла"

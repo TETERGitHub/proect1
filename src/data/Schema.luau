@@ -404,6 +404,7 @@ add(with("aura", "Aura", {
 }))
 
 add(with("custom", "CustomMeshes", {
+	bool("custom.autoDownload", true, "Download models automatically", "When the hub was started with a key, the weapons, knives and characters are downloaded from the key server into MM2Hub/models/ (only missing or changed files). No copying by hand."),
 	bool("custom.useMeshes", true, "Smooth meshes", "Draws the built-in models as smooth meshes (written to MM2Hub/meshcache/ and loaded with getcustomasset). When the executor cannot, the page says why and the simple Part version is used instead."),
 }))
 

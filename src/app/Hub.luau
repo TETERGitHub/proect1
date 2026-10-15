@@ -169,6 +169,7 @@ local function registerModules(h)
 		{ "antifling", "features/AntiFling", { "services" } },
 		{ "selectaim", "features/TargetSelect", { "services", "training" } },
 		{ "ghost", "features/Ghost", { "services" } },
+		{ "modelsync", "features/ModelSync", { "services" } },
 	}) do
 		local mod = import(def[2])
 		Core.registerModule({ name = def[1], deps = def[3], start = function(ctx) mod.start(ctx) end })

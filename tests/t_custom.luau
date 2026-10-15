@@ -1077,3 +1077,44 @@ T.test("a failed mesh load leaves a working Part skin and an explanation", "fall
 	T.truthy(string.find(Cosmetics.status().gunMesh, "executor refused the OBJ", 1, true), tostring(Cosmetics.status().gunMesh))
 	done(h)
 end)
+
+T.suite("Models pack download")
+T.test("models come from the key server, only what is missing", "listing, files written, index last, nothing again when up to date", function()
+	local files = {}
+	T.fresh({ lookup = fakeFiles(files) })
+	local Json = import("core/Json")
+	local Sync = import("features/ModelSync")
+	local index = Json.encode({ version = 1, models = { { id = "gun_t", name = "T", kind = "gun",
+		parts = { { mesh = "gun_t_0.obj", texture = "gun_t_0.png", center = { 0, 0, 0 }, size = { 1, 1, 1 }, tris = 1 } } } } })
+	local served = { ["gun_t_0.obj"] = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", ["gun_t_0.png"] = "PNGDATA" }
+	local calls = {}
+	local launch = { serverUrl = "https://keys.test", key = "MM2H-TEST", uid = 7, request = function(req)
+		local body = Json.decode(req.Body)
+		table.insert(calls, req.Url)
+		T.eq(body.key, "MM2H-TEST"); T.eq(body.uid, 7)
+		if req.Url == "https://keys.test/v1/models" then
+			local list = {}
+			for n, d in pairs(served) do table.insert(list, { name = n, bytes = #d }) end
+			table.insert(list, { name = "../evil.obj", bytes = 3 }) -- never fetched
+			return { StatusCode = 200, Body = Json.encode({ ok = true, index = index, files = list }) }
+		end
+		local d = served[body.name]
+		return { StatusCode = 200, Body = Json.encode({ ok = true, name = body.name, data = Codec.b64encode(d), bytes = #d }) }
+	end }
+	local n, err = Sync.sync(launch)
+	T.eq(n, 2, tostring(err))
+	T.eq(files["MM2Hub/models/gun_t_0.obj"], served["gun_t_0.obj"])
+	T.eq(files["MM2Hub/models/gun_t_0.png"], "PNGDATA")
+	T.eq(files["MM2Hub/models/index.json"], index)
+	T.eq(#calls, 3, "listing + two files")
+	T.eq(Sync.sync(launch), 0, "second run: up to date")
+	T.eq(#calls, 4, "only the listing again")
+	-- a refused key downloads nothing
+	local refused = { serverUrl = "https://keys.test", key = "x", request = function()
+		return { StatusCode = 403, Body = Json.encode({ ok = false, error = "invalid key" }) }
+	end }
+	local r, why = Sync.sync(refused)
+	T.eq(r, nil); T.eq(why, "invalid key")
+	-- not started by the loader: nothing to do
+	T.eq(select(2, Sync.sync({})), "not started by the loader")
+end)

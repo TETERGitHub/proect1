@@ -195,6 +195,12 @@ local exact = {
 	["Dashboard"] = "Главная",
 	["Dawn"] = "Рассвет",
 	["Decorative effects"] = "Декоративные эффекты",
+	["Download models automatically"] = "Скачивать модели автоматически",
+	["When the hub was started with a key, the weapons, knives and characters are downloaded from the key server into MM2Hub/models/ (only missing or changed files). No copying by hand."] = "Если хаб запущен с ключом, оружие, ножи и персонажи скачиваются с сервера ключей в MM2Hub/models/ (только недостающие или изменённые файлы). Копировать вручную не нужно.",
+	["Download models"] = "Скачать модели",
+	["Checking the models on the key server..."] = "Проверяю модели на сервере ключей...",
+	["Models are up to date."] = "Модели уже актуальны.",
+	["Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md)."] = "Пока ничего нет? С ключом модели скачиваются сами (Скачать модели). Или сконвертируйте модель через tools/convert_mesh.py и скопируйте результат в MM2Hub/models/ (см. docs/IMPORT_MODELS.md).",
 	["How fast the animated designs (Radar, Ripple, Lock-on, Orbit, Breathe, Menacing) play."] = "Скорость анимированных прицелов (Радар, Волны, Захват, Орбита, Дыхание, Menacing).",
 	["Rainbow colour"] = "Радужный цвет",
 	["The crosshair (any design) slowly cycles through all colours instead of the chosen one."] = "Прицел (любой) плавно переливается всеми цветами вместо выбранного.",
@@ -1274,6 +1280,10 @@ local exact = {
 }
 
 local patterns = {
+	{ "^(%d+) model file%(s%) downloaded%.$", "Скачано файлов моделей: %s." },
+	{ "^Models not downloaded: (.+)$", "Модели не скачаны: %s" },
+	{ "^Downloading (%d+) model files%.%.%.$", "Скачиваю файлы моделей: %s..." },
+	{ "^Models ready: (%d+) %(open the Custom pages to use them%)%.$", "Моделей готово: %s (откройте страницы «Свой ...», чтобы выбрать)." },
 	{ "^(R%d+) rest pose: (%d+) pieces follow their body parts$", "поза покоя %s: %s деталей следуют за частями тела" },
 	{ "^(R%d+) rest pose: (%d+) pieces follow their body parts, (%d+) attached to the root$", "поза покоя %s: %s деталей следуют за частями тела, %s привязаны к корню" },
 	{ "^simple parts: (.+)$", "простые детали: %s" },

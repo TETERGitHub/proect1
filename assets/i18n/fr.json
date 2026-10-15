@@ -1377,9 +1377,31 @@
   "Radar": "Radar",
   "Ripple": "Ondes",
   "Lock-on": "Verrouillage",
-  "Breathe": "Respiration"
+  "Breathe": "Respiration",
+  "Download models automatically": "Télécharger les modèles automatiquement",
+  "When the hub was started with a key, the weapons, knives and characters are downloaded from the key server into MM2Hub/models/ (only missing or changed files). No copying by hand.": "Si le hub a été lancé avec une clé, les armes, couteaux et personnages sont téléchargés depuis le serveur de clés dans MM2Hub/models/ (seulement les fichiers manquants ou modifiés). Rien à copier à la main.",
+  "Download models": "Télécharger les modèles",
+  "Checking the models on the key server...": "Vérification des modèles sur le serveur de clés...",
+  "Models are up to date.": "Les modèles sont à jour.",
+  "Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).": "Rien encore ? Avec une clé, les modèles se téléchargent seuls (Télécharger les modèles). Ou convertissez un modèle avec tools/convert_mesh.py et copiez le résultat dans MM2Hub/models/ (voir docs/IMPORT_MODELS.md)."
  },
  "patterns": [
+  [
+   "^Models ready: (%d+) %(open the Custom pages to use them%)%.$",
+   "Modèles prêts : %s (ouvrez les pages Personnaliser pour les utiliser)."
+  ],
+  [
+   "^Downloading (%d+) model files%.%.%.$",
+   "Téléchargement de %s fichiers de modèles..."
+  ],
+  [
+   "^Models not downloaded: (.+)$",
+   "Modèles non téléchargés : %s"
+  ],
+  [
+   "^(%d+) model file%(s%) downloaded%.$",
+   "Fichiers de modèles téléchargés : %s."
+  ],
   [
    "^(R%d+) rest pose: (%d+) pieces follow their body parts$",
    "pose de repos %s : %s pièces suivent leurs parties du corps"
