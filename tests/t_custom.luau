@@ -1464,6 +1464,16 @@ T.test("stop one module safely, presets change only their keys, reset levels", "
 		-- reset of a category returns the visual settings to defaults
 		Settings.resetCategory("crosshair")
 		T.truthy(Settings.isDefault("crosshair.thickness"))
+		-- page rebuilds do not pile up theme bindings: destroyed rows drop theirs
+		local Theme = import("ui/Theme")
+		local Window = import("ui/Window")
+		Window.navigate("perf"); Window.navigate("mobile")
+		local base = Theme.bindingCount()
+		for _ = 1, 4 do Window.navigate("perf"); Window.navigate("mobile") end
+		T.eq(Theme.bindingCount(), base, "bindings after page switches")
+		local f = Instance.new("Frame"); Theme.bind(f, "BackgroundColor3", "surface")
+		local c = Theme.bindingCount(); f:Destroy()
+		T.eq(Theme.bindingCount(), c - 1)
 	end)
 	h.unload(); Mock.uninstall()
 	T.truthy(ok, tostring(err))

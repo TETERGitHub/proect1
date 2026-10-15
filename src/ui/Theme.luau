@@ -292,6 +292,13 @@ function Theme.bind(inst, prop, source)
 	if not list then
 		list = {}
 		bindings[inst] = list
+		-- drop the bindings when the instance is destroyed; weak keys alone are not collected while the source
+		-- functions still reference the instance, so every rebuilt page would otherwise stay in each refresh
+		pcall(function()
+			inst.Destroying:Connect(function()
+				Theme.unbind(inst)
+			end)
+		end)
 	end
 	local b = { prop = prop, source = source, kind = type(source) == "function" and "fn" or "token" }
 	-- replace an earlier binding of the same property
