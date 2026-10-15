@@ -109,6 +109,12 @@ function FxKit.emitter(holder, tex, o)
 			em.Orientation = Enum.ParticleOrientation.VelocityParallel
 		end
 		em.LockedToPart = o.lock == true
+		if o.surface then
+			-- spawn on the surface of the holder box (size the holder like the body part): flames come off the skin, not its centre
+			em.Shape = Enum.ParticleEmitterShape.Box
+			em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+			em.EmissionDirection = Enum.NormalId.Top
+		end
 		em.Rate = o.rate or 0
 		em.Parent = holder
 		return em

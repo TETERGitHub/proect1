@@ -296,7 +296,7 @@ FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв", "Troll": "Тролль"}
 AURA_NAMES = {"InfernoCrown": "Огненная корона", "StormGod": "Бог грозы", "Galaxy": "Галактика", "FrostMonarch": "Ледяной монарх",
               "VoidWings": "Крылья пустоты", "Sakura": "Сакура", "Phoenix": "Феникс", "DragonSpirit": "Дух дракона",
-              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон", "Troll": "Тролль"}
+              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон", "Troll": "Тролль", "Burning": "Горение"}
 if "--auras" in sys.argv:
     EYE[:] = [11.0, 6.5, 14.0]; TARGET[:] = [0.0, 3.0, 0.0]
     f = TARGET - EYE; f /= np.linalg.norm(f)
@@ -304,7 +304,10 @@ if "--auras" in sys.argv:
     u = np.cross(r, f)
     bg = background()
     heroes = []
+    ONLY = next((a.split("=", 1)[1].split(",") for a in sys.argv if a.startswith("--only=")), None)
     for key, title in AURA_NAMES.items():
+        if ONLY and key not in ONLY:
+            continue
         frames, sprites = load("aura_" + key)
         trails, beams = LAST_FX["aura_" + key]
         imgs = []
@@ -320,11 +323,14 @@ if "--auras" in sys.argv:
     sheet = Image.new("RGB", (W * 3, H * ((len(heroes) + 2) // 3)))
     for i, im in enumerate(heroes):
         sheet.paste(im, ((i % 3) * W, (i // 3) * H))
-    sheet.save(S / "auras_sheet.png")
+    sheet.save(S / ("auras_sheet.png" if not ONLY else "auras_new.png"))
     sys.exit(0)
 
 bg = background()
+ONLY_K = next((a.split("=", 1)[1].split(",") for a in sys.argv if a.startswith("--only=")), None)
 for name in NAMES:
+    if ONLY_K and name not in ONLY_K:
+        continue
     frames, sprites = load(name)
     trails, beams = LAST_FX[name]
     imgs = []

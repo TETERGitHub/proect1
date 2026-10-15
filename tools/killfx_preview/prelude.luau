@@ -163,12 +163,23 @@ methods.Emit = function(self, n)
 	local cf = holder.CFrame
 	local up = Vector3.new(cf.m[2], cf.m[5], cf.m[8])
 	for _ = 1, n do
+		local origin = cf.p
+		if self.Shape ~= nil then
+			-- surface of the holder box: pick a face weighted by area, then a point on it
+			local sz = holder.Size
+			local hx, hy, hz = sz.x / 2, sz.y / 2, sz.z / 2
+			local axis = math.random(1, 3)
+			local sgn = math.random() < 0.5 and -1 or 1
+			local lx, ly, lz = (math.random() * 2 - 1) * hx, (math.random() * 2 - 1) * hy, (math.random() * 2 - 1) * hz
+			if axis == 1 then lx = sgn * hx elseif axis == 2 then ly = sgn * hy else lz = sgn * hz end
+			origin = cf * Vector3.new(lx, ly, lz)
+		end
 		local sx, sy = math.rad(self.SpreadAngle.X), math.rad(self.SpreadAngle.Y)
 		local a1, a2 = (math.random() * 2 - 1) * sx, (math.random() * 2 - 1) * sy
 		local d = (cf.Rotation * CFrame.Angles(a1, 0, a2)) * Vector3.new(0, 1, 0)
 		local sp = self.Speed.Min + math.random() * (self.Speed.Max - self.Speed.Min)
 		table.insert(SPRITES, {
-			tex = self.Texture, pos = cf.p, vel = d * sp, acc = self.Acceleration or Vector3.new(0, 0, 0), drag = self.Drag or 0,
+			tex = self.Texture, pos = origin, vel = d * sp, acc = self.Acceleration or Vector3.new(0, 0, 0), drag = self.Drag or 0,
 			life = self.Lifetime.Min + math.random() * (self.Lifetime.Max - self.Lifetime.Min), age = 0,
 			size = self.Size, tr = self.Transparency, col = self.Color, light = self.LightEmission or 0,
 			rot = self.Rotation.Min + math.random() * (self.Rotation.Max - self.Rotation.Min),

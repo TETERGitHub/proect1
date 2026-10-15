@@ -67,6 +67,9 @@ end
 
 function Aura:emit(tex, o, role, fn)
 	local h = FxKit.holder(self.folder)
+	if o.holderSize then
+		h.Size = o.holderSize
+	end
 	o.size = o.size and { o.size[1] * self.s, o.size[2] * self.s } or nil
 	o.speed = o.speed and { o.speed[1] * self.s, o.speed[2] * self.s } or nil
 	o.accel = o.accel and o.accel * self.s or nil
@@ -804,10 +807,14 @@ BUILD["Burning"] = function(a)
 			return bp.Parent and bp.CFrame or nil
 		end
 		-- tall licking flames (secondary at the base to primary at the tips), a hot inner core and a few embers
-		a:emit("flame", { rate = 9 + vol * 5, size = { 1.1 * math.max(sz.X, sz.Z), 0.15 }, life = { 0.35, 0.7 }, speed = { 1.5, 3.5 }, spread = 18,
-			accel = v3(0, 7, 0), drag = 1, t = { 0.15, 1 }, rot = { -15, 15 }, spin = { -30, 30 } }, "sp", follow)
+		local skin = sz * 1.05
+		a:emit("flame", { rate = 22 + vol * 10, size = { 1.9, 0.5 }, life = { 0.55, 1.0 }, speed = { 1, 2.5 },
+			spread = 15, accel = v3(0, 10, 0), drag = 1.2, t = { 0.05, 1 }, rot = { -15, 15 }, spin = { -30, 30 }, surface = true, holderSize = skin }, "sp", follow)
+		a:emit("flame", { rate = 10 + vol * 4, size = { 1.0, 0.2 }, life = { 0.3, 0.55 }, speed = { 0.5, 1.5 }, spread = 10, accel = v3(0, 8, 0),
+			t = { 0, 1 }, surface = true, holderSize = skin }, "s", follow)
 		a:emit("glow", { rate = 3 + vol, size = { 1.4 * math.max(sz.X, sz.Y), 0.4 }, life = { 0.25, 0.4 }, speed = { 0, 0.5 }, t = { 0.55, 1 } }, "s", follow)
-		a:emit("spark", { rate = 2 + vol, size = { 0.22, 0.04 }, life = { 0.6, 1.2 }, speed = { 3, 7 }, spread = 35, accel = v3(0, 4, 0), drag = 0.5, squash = true }, "s", follow)
+		a:emit("spark", { rate = 2 + vol, size = { 0.22, 0.04 }, life = { 0.6, 1.2 }, speed = { 3, 7 }, spread = 35, accel = v3(0, 4, 0), drag = 0.5, squash = true,
+			surface = true, holderSize = skin }, "s", follow)
 	end
 	-- dark smoke rolling off the top, a warm glow and scorch ring at your feet
 	a:emit("smoke", { rate = 8, size = { 1.6, 4.5 }, life = { 1.2, 2 }, speed = { 2, 4 }, spread = 20, accel = v3(0, 2, 0), light = 0, t = { 0.45, 1 } }, "d", function(t, base)
