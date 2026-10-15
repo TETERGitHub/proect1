@@ -64,6 +64,13 @@ local function registerActions(h)
 		A("murder.throw", "Practice throw", "Throws the simulated knife at the arena.", function() MT.throw() end, { "knife", "murderer" })
 		A("murder.stop", "Stop practice", "Stops auto swing, knives in flight and the replay at once.", function() MT.stop() end, { "murderer" })
 	end
+	do
+		local Lab = import("features/MovementLab")
+		A("move.record", "Record route on / off", "Starts recording your route into slot A (or B when A is full), or stops.", function()
+			if Lab.isRecording() then Lab.stopRecording() else Lab.startRecording(Lab.routeInfo("A") and "B" or "A") end
+		end, { "route", "path" })
+		A("emote.stop", "Stop emote", "Stops the emote on your character.", function() import("features/Emotes").stop() end, { "dance", "animation" })
+	end
 	A("esp.toggle", "Toggle ESP", "Turns ESP on or off (players only while in sight).", function() Settings.toggle("esp.enabled", "action") end, { "boxes", "names" })
 	A("crosshair.toggle", "Toggle crosshair", "Turns the custom crosshair on or off.", function() Settings.toggle("crosshair.enabled", "action") end, { "aim", "dot" })
 	A("lowprofile.toggle", "Toggle low load profile", "Halves update rates and disables heavy effects.", function() Settings.toggle("perf.lowProfile", "action") end, { "fps", "performance" })
@@ -180,6 +187,8 @@ local function registerModules(h)
 		{ "selectaim", "features/TargetSelect", { "services", "training" } },
 		{ "murder", "features/MurderTrainer", { "services", "training", "selectaim", "killsounds" } },
 		{ "esp", "features/ESP", { "services", "murder" } },
+		{ "movelab", "features/MovementLab", { "services" } },
+		{ "emotes", "features/Emotes", { "services" } },
 		{ "ghost", "features/Ghost", { "services" } },
 		{ "modelsync", "features/ModelSync", { "services" } },
 		{ "hitfx", "features/HitFX", { "services", "killsounds" } },

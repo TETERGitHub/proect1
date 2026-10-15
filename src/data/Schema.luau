@@ -413,6 +413,16 @@ add(with("murder", "MurderTrainer", {
 	num("murder.playbackSpeed", 1, 0.25, 3, 0.25, "Replay speed", "Playback speed of the replay."),
 }))
 
+add(with("move", "MovementLab", {
+	bool("move.speedometer", false, "Speedometer", "Your speed (and the top speed) under the crosshair, with dead-end, see-through and course notes."),
+	bool("move.showRoutes", true, "Show recorded routes", "Draws route A (blue) and route B (orange) as dots."),
+	num("move.checkpoints", 6, 3, 15, 1, "Course checkpoints", "How many checkpoints the course has."),
+	bool("move.deadEndWarning", true, "Dead-end warning", "Warns when most directions round you are blocked close by."),
+	num("move.deadEndDistance", 6, 3, 15, 0.5, "Dead-end distance", "How close a wall must be (studs) to count as blocking a direction."),
+	num("emote.speed", 1, 0.25, 3, 0.05, "Emote speed", "Playback speed of the emote."),
+	bool("emote.loop", false, "Loop emote", "Repeat the emote until you stop it."),
+}))
+
 add(with("mobile", "Mobile", {
 	enum("mobile.profile", "Custom", { "Custom", "Auto", "Ultra Low", "Balanced", "High" }, "Quality profile", "Ultra Low / Balanced / High set the hub's load settings together; Auto adapts them to your FPS; Custom keeps your own values."),
 	num("mobile.targetFps", 40, 20, 60, 1, "Target FPS", "Auto quality lowers the quality when the frame rate stays under this, and raises it after a long stretch well above it."),

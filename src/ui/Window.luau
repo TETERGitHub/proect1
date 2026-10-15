@@ -65,7 +65,7 @@ local NAV_GROUPS = {
 	{ "Hub", { "dashboard", "ui" } },
 	{ "Visuals", { "esp", "crosshair", "camera", "lighting", "cosmetics" } },
 	{ "Customize", { "customgun", "customknife", "customchar", "killfx", "hitfx", "watermark", "aura", "killmurderer", "killsheriff" } },
-	{ "Practice", { "training", "murder", "defence" } },
+	{ "Practice", { "training", "murder", "movement", "defence" } },
 	{ "Audio", { "music", "sounds", "gameaudio" } },
 	{ "System", { "mobile", "perf", "tools", "keys", "configs", "diagnostics", "help", "about" } },
 }

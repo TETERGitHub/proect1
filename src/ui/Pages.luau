@@ -361,6 +361,72 @@ local function buildEsp(page)
 	resetButton(page, "ESP")
 end
 
+local function buildMovement(page)
+	local Lab = import("features/MovementLab")
+	local Emotes = import("features/Emotes")
+	local function fmt(v, f)
+		return v and string.format(f, v) or "N/A"
+	end
+	local lines = {}
+	local function line(label, fn)
+		local update = infoLine(page, label, fn)
+		table.insert(lines, update)
+	end
+	page:section("Speed")
+	line("Speed / top", function() local st = Lab.status(); return st.running and string.format("%.1f / %.1f", st.speed, st.top) or "N/A" end)
+	line("WalkSpeed", function() local st = Lab.status(); return st.running and fmt(st.walkSpeed, "%.0f") or "N/A" end)
+	line("See-through", function() local st = Lab.status(); return st.running and (st.invisibleSince and string.format("%.0f s", st.invisibleSince) or "no") or "N/A" end)
+	line("Dead end nearby", function() local st = Lab.status(); return st.running and (st.deadEnd and "yes" or "no") or "N/A" end)
+	page:section("Routes")
+	line("Recording", function() local st = Lab.status(); return st.running and (st.recording or "no") or "N/A" end)
+	line("Route A length / time", function() local r = Lab.routeInfo("A"); return r and string.format("%.0f / %.1f s", r.length, r.duration) or "N/A" end)
+	line("Route B length / time", function() local r = Lab.routeInfo("B"); return r and string.format("%.0f / %.1f s", r.length, r.duration) or "N/A" end)
+	line("B vs A: distance / time", function() local c = Lab.compare(); return c and string.format("%.1f / %+.1f s", c.averageDistance, c.timeDifference) or "N/A" end)
+	for _, a in ipairs({
+		{ "Record route A", "Records your path until you stop.", "Record", function() Lab.startRecording("A") end },
+		{ "Record route B", "Records a second try to compare with A.", "Record", function() Lab.startRecording("B") end },
+		{ "Stop recording", "Ends the recording.", "Stop", function() Lab.stopRecording() end },
+		{ "Clear routes", "Removes both routes.", "Clear", function() Lab.clearRoutes() end },
+	}) do
+		page:action({ label = a[1], desc = a[2], text = a[3], onClick = a[4] })
+	end
+	page:section("Course")
+	line("Course", function() local c = Lab.courseInfo(); if not c.active then return "off" end; return string.format("%d / %d  %s", c.next, c.total, c.time and string.format("%.2f s", c.time) or "") end)
+	line("Best time / runs", function() local c = Lab.courseInfo(); return (c.best and string.format("%.2f s", c.best) or "N/A") .. " / " .. c.runs end)
+	page:action({ label = "Start course", desc = "Checkpoints in front of you; run through them in order.", text = "Start", onClick = function()
+		local ok, why = Lab.startCourse()
+		if not ok then notify("Movement", why, "warn") end
+	end })
+	page:action({ label = "Clear course", desc = "Removes the checkpoints.", text = "Clear", onClick = function() Lab.clearCourse() end })
+	page:section("Path to a point")
+	page:action({ label = "Set destination here", desc = "Remembers where you stand now.", text = "Set", onClick = function() Lab.setDestination() end })
+	page:action({ label = "Show path", desc = "Draws the walking route from here to the destination (Roblox path finding).", text = "Show", onClick = function()
+		local n, why = Lab.showPath()
+		notify("Movement", n and (n .. " waypoints") or why, n and "success" or "warn")
+	end })
+	page:action({ label = "Hide path", desc = "Removes the drawn path.", text = "Hide", onClick = function() Lab.clearPath() end })
+	section(page, "Options", { "move.speedometer", "move.showRoutes", "move.checkpoints", "move.deadEndWarning", "move.deadEndDistance" })
+	page:section("Emotes (your character)")
+	line("Playing", function() return Emotes.playing() or "none" end)
+	for _, e in ipairs(Emotes.LIST) do
+		page:action({ label = e.name, desc = "A standard Roblox R15 emote on your own character.", text = "Play", onClick = function()
+			local ok, why = Emotes.play(e.name)
+			if not ok then notify("Emotes", why, "warn") end
+		end })
+	end
+	page:action({ label = "Stop emote", desc = "Back to your normal animations.", text = "Stop", onClick = function() Emotes.stop() end })
+	section(page, "Emote options", { "emote.speed", "emote.loop" })
+	page:note("Recording and drawing only: nothing here walks or acts for you. Emotes play only on your own character and look like normal Roblox emotes to others.", "textDim", 36)
+	local h = Perf.every("ui.movement", 2, function()
+		if visible("movement") then
+			for _, f in ipairs(lines) do f() end
+		end
+	end)
+	page.maid:Give(h.Cancel)
+	for _, f in ipairs(lines) do f() end
+	resetButton(page, "MovementLab")
+end
+
 local function buildMurder(page)
 	local MT = import("features/MurderTrainer")
 	local function fmt(v, f)
@@ -519,6 +585,7 @@ function Pages.registerAll()
 		{ "crosshair", "target", buildCrosshair, "Draw your own crosshair on screen. Everything stays on your client." },
 		{ "camera", "camera", buildCamera, "Zoom, field of view, mouse sensitivity, camera mode and local invisibility." },
 		{ "lighting", "sun", buildLighting, "Time of day, colour correction, blur and bloom on your own screen." },
+		{ "movement", "bolt", buildMovement, "Your speed, route recording and comparison, a checkpoint course, a path to a point, dead-end warning and emotes." },
 		{ "murder", "bolt", buildMurder, "Murderer practice on test mannequins: swings, auto swing, knife throws with a predicted path, statistics, log and replay." },
 		{ "training", "bolt", Game.training, "A local practice range with targets, a dummy, a hitbox lab and the Select Aim selector." },
 		{ "defence", "shield", Game.defence, "Protect your own character from abnormal speed, spin and pushing." },

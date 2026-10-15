@@ -1353,3 +1353,77 @@ T.test("players only in line of sight, weapon in hand, mannequins with roles, cl
 	h.unload(); Mock.uninstall()
 	T.truthy(ok, tostring(err))
 end)
+
+T.suite("Movement lab and emotes")
+T.test("speed, routes A/B compared, course timing, path, dead end, see-through, emotes", "own character only; nothing acts for you", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local ok, err = pcall(function()
+		local Lab = import("features/MovementLab")
+		local Emotes = import("features/Emotes")
+		local root = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		local function walk(from, to, steps)
+			for i = 0, steps do
+				root.CFrame = CFrame.new(from:Lerp(to, i / steps))
+				Lab.tick(0.1)
+			end
+		end
+		-- routes: A straight, B one stud to the side and slower
+		T.truthy(Lab.startRecording("A"))
+		walk(Vector3.new(0, 3, 0), Vector3.new(0, 3, -20), 20)
+		Lab.stopRecording()
+		Lab.startRecording("B")
+		walk(Vector3.new(1, 3, 0), Vector3.new(1, 3, -20), 30)
+		Lab.stopRecording()
+		local a, b = Lab.routeInfo("A"), Lab.routeInfo("B")
+		T.truthy(math.abs(a.length - 20) < 0.5, "A length " .. a.length)
+		local c = Lab.compare()
+		T.truthy(math.abs(c.averageDistance - 1) < 0.2, "B runs 1 stud from A")
+		T.truthy(c.timeDifference > 0.5, "B slower")
+		-- course: checkpoints in order, timed, best time kept
+		root.CFrame = CFrame.new(0, 3, 0)
+		T.truthy(Lab.startCourse())
+		local info = Lab.courseInfo()
+		T.eq(info.next, 1)
+		for i = 1, info.total do
+			local cp = game.Workspace.CurrentCamera:FindFirstChild("MM2HubMovementLab"):FindFirstChild("Checkpoint" .. i)
+			root.CFrame = CFrame.new(cp.CFrame.Position)
+			Lab.tick(0.3)
+		end
+		info = Lab.courseInfo()
+		T.truthy(info.finished, "course finished"); T.truthy(info.best and info.best > 0); T.eq(info.runs, 1)
+		Lab.clearCourse()
+		-- path: no destination yet, then unavailable on the mock (no PathfindingService) - reported, not faked
+		local n, why = Lab.showPath()
+		T.eq(n, nil); T.eq(why, "set a destination first")
+		Lab.setDestination(); root.CFrame = CFrame.new(10, 3, 10)
+		n, why = Lab.showPath()
+		T.eq(n, nil); T.truthy(why == "path finding is unavailable here" or why == "no path to the destination")
+		-- dead end: every ray blocked -> warning; open space -> none
+		local real = game.Workspace.Raycast
+		game.Workspace.Raycast = function() return { Instance = game.Workspace, Position = Vector3.new() } end
+		T.eq(Lab.blockedDirections(), 8)
+		for _ = 1, 6 do Lab.tick(0.1) end
+		T.truthy(Lab.status().deadEnd)
+		game.Workspace.Raycast = real
+		for _ = 1, 6 do Lab.tick(0.1) end
+		T.falsy(Lab.status().deadEnd)
+		-- see-through: noticed from your own parts only
+		for _, p in ipairs(game.Players.LocalPlayer.Character:GetChildren()) do
+			if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then p.Transparency = 1 end
+		end
+		for _ = 1, 12 do Lab.tick(0.1) end
+		T.truthy(Lab.status().invisibleSince ~= nil)
+		T.truthy(Lab.speed() ~= nil)
+		-- emotes: refused clearly when the character cannot play them; stop is always safe
+		local okE, whyE = Emotes.play("Wave")
+		if not okE then T.truthy(type(whyE) == "string") end
+		Emotes.stop()
+		T.eq(Emotes.playing(), nil)
+		T.eq(select(2, Emotes.play("Nope")), "unknown emote")
+	end)
+	h.unload(); Mock.uninstall()
+	T.truthy(ok, tostring(err))
+end)
