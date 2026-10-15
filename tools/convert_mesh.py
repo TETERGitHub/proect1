@@ -77,7 +77,8 @@ def split_by_position(meshes):
             side = "Right" if xi > 0 else "Left"   # facing -Z, the avatar's right is +X
             if ti > 0.82:
                 names[i] = "Head"
-            elif abs(xi) > torso_half * 1.05 and ti > 0.33:
+            elif (abs(xi) > torso_half * 1.05 and ti > 0.33) or (abs(xi) > torso_half * 0.82 and 0.66 < ti <= 0.82):
+                # the shoulder cap belongs to the arm, so it lifts with it instead of staying behind as a flap
                 names[i] = side + ("UpperArm" if ti > 0.62 else "LowerArm" if ti > 0.47 else "Hand")
             elif ti > 0.58:
                 names[i] = "UpperTorso"
