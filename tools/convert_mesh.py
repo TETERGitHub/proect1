@@ -38,6 +38,7 @@ class Mesh:
         self.image = None
         self.color = (255, 255, 255)
         self.bone = None
+        self.vlabel = np.zeros(0, dtype=object)  # per vertex: R15 limb from skin weights ("" = torso/head, decided by height)
 
 
 # Roblox R15 body parts: a costume whose objects are named after them (Blender object = glTF node name, e.g. "LeftUpperArm" or
@@ -76,6 +77,215 @@ def find_grip(meshes, kind):
     band = rear[np.abs(rear[:, 2] - z) < 0.06 * L]
     y = band[:, 1].min() + 0.55 * (np.median(band[:, 1]) - band[:, 1].min()) if len(band) else low[:, 1].mean()
     return np.array([cx, y, z])
+
+
+def limb_of(joint_name):
+    """R15 limb a skeleton joint belongs to, from its name (Mixamo, Rigify, Valve biped, CC, Blender styles); "" for torso,
+    head and anything not recognised (those are split by height later)."""
+    n = re.sub(r"[_.\- ]?\d+$", "", (joint_name or "").lower())
+    n = re.sub(r"_end$", "", n)
+    side = ""
+    if re.search(r"(^|[_.\- ])(l|left)([_.\- ]|$)|left|\.l$|_l$|^l_", n):
+        side = "Left"
+    if re.search(r"(^|[_.\- ])(r|right)([_.\- ]|$)|right|\.r$|_r$|^r_", n):
+        side = "Right" if not side or "right" in n else side
+    if "rightarm" in n or "righthand" in n or "rightleg" in n or "rightfoot" in n or "rightupleg" in n or "rightforearm" in n:
+        side = "Right"
+    if "leftarm" in n or "lefthand" in n or "leftleg" in n or "leftfoot" in n or "leftupleg" in n or "leftforearm" in n:
+        side = "Left"
+    if not side:
+        return ""
+    if any(k in n for k in ("eye", "brow", "lid", "lip", "cheek", "jaw", "tongue", "teeth")):
+        return ""
+    if "toe" in n:
+        return side + "Foot"                         # BigToe/PinkyToe are feet, not fingers
+    if any(k in n for k in ("hand", "wrist", "palm", "finger", "f_index", "f_middle", "f_ring", "f_pinky", "thumb", "index", "middle", "ring", "pinky", "mid1", "mid2", "mid3")):
+        return side + "Hand"
+    if any(k in n for k in ("forearm", "lowarm", "lowerarm", "elbow", "lower_arm")):
+        return side + "LowerArm"
+    if any(k in n for k in ("toe", "foot", "ankle", "ball")):
+        return side + "Foot"
+    if any(k in n for k in ("calf", "shin", "lowleg", "lowerleg", "knee", "lower_leg")) or (re.search(r"leg($|[_.])", n) and "up" not in n and "thigh" not in n):
+        return side + "LowerLeg"
+    if any(k in n for k in ("thigh", "upleg", "upperleg", "upper_leg")):
+        return side + "UpperLeg"
+    if any(k in n for k in ("upperarm", "upper_arm", "uparm", "arm", "shoulder")):
+        return side + "UpperArm"
+    if "clavicle" in n:
+        return ""
+    return ""
+
+
+def split_by_skin(meshes):
+    """Cut skinned meshes into R15 parts: limbs from each vertex's strongest joint (limb_of), torso/head by height.
+    Head = above the shoulders (top of the upper arms), LowerTorso = below the midpoint between hips and shoulders."""
+    allp = np.vstack([m.pos for m in meshes])
+    lo, hi = allp.min(0), allp.max(0)
+    h = hi[1] - lo[1]
+    def ys(names):
+        pts = [m.pos[np.isin(m.vlabel, names)] for m in meshes if len(m.vlabel) == len(m.pos)]
+        pts = [p for p in pts if len(p)]
+        return np.vstack(pts)[:, 1] if pts else None
+    # some rigs name the arm/leg bones the other way round (e.g. "LowArm" next to the shoulder): judged by distance from the
+    # body's centre line, the "upper" part must be nearer the body than the "lower" one, otherwise they are swapped
+    cx = np.median(allp[:, 0])
+    for side in ("Left", "Right"):
+        for upper, lower, axis in (("UpperArm", "LowerArm", 0), ("UpperLeg", "LowerLeg", 1)):
+            def centre(name):
+                pts = [m.pos[m.vlabel == side + name] for m in meshes if len(m.vlabel) == len(m.pos)]
+                pts = [q for q in pts if len(q)]
+                return np.vstack(pts).mean(0) if pts else None
+            cu, cl = centre(upper), centre(lower)
+            if cu is None or cl is None:
+                continue
+            swap = abs(cu[0] - cx) > abs(cl[0] - cx) if axis == 0 else cu[1] < cl[1]
+            if swap:
+                for m in meshes:
+                    if len(m.vlabel) == len(m.pos):
+                        a_ = m.vlabel == side + upper
+                        b_ = m.vlabel == side + lower
+                        m.vlabel[a_], m.vlabel[b_] = side + lower, side + upper
+                print("  %s %s / %s were named the other way round: swapped" % (side.lower(), upper, lower))
+    arm = ys(["LeftUpperArm", "RightUpperArm"])
+    leg = ys(["LeftUpperLeg", "RightUpperLeg"])
+    shoulder = np.percentile(arm, 90) if arm is not None else lo[1] + h * 0.8
+    hip = np.percentile(leg, 95) if leg is not None else lo[1] + h * 0.45
+    neck = shoulder + h * 0.03
+    waist = (hip + shoulder) / 2
+    out = {}
+    for m in meshes:
+        lab = m.vlabel if len(m.vlabel) == len(m.pos) else np.array([""] * len(m.pos), dtype=object)
+        y = m.pos[:, 1]
+        full = np.where(lab != "", lab, np.where(y > neck, "Head", np.where(y < waist, "LowerTorso", "UpperTorso")))
+        tri = full[m.faces]
+        # majority per triangle (2 of 3), else the first vertex's part
+        pick = np.where(tri[:, 1] == tri[:, 2], tri[:, 1], tri[:, 0])
+        for b in np.unique(pick):
+            fs = m.faces[pick == b]
+            used, inv = np.unique(fs.reshape(-1), return_inverse=True)
+            n = Mesh("%s_%s" % (b, m.name))
+            n.pos, n.nrm, n.uv = m.pos[used], m.nrm[used], m.uv[used]
+            n.faces = inv.reshape(-1, 3)
+            n.image, n.color, n.bone = m.image, m.color, str(b)
+            out.setdefault((b, id(m)), n)
+    return list(out.values())
+
+
+def arms_down(meshes):
+    """T-pose / A-pose arms swung down beside the body: each arm (upper arm, lower arm, hand) is turned rigidly about its
+    shoulder so it points down and slightly out. Skipped for an arm that already hangs down."""
+    for side in ("Left", "Right"):
+        parts = [m for m in meshes if m.bone in (side + "UpperArm", side + "LowerArm", side + "Hand")]
+        ua = [m for m in parts if m.bone == side + "UpperArm"]
+        if not ua:
+            continue
+        up = np.vstack([m.pos for m in ua])
+        allp = np.vstack([m.pos for m in parts])
+        cx = np.median(np.vstack([m.pos for m in meshes])[:, 0])
+        inner = up[np.argsort(np.abs(up[:, 0] - cx))[:max(3, len(up) // 10)]]
+        pivot = np.array([inner[:, 0].mean(), np.percentile(up[:, 1], 80), inner[:, 2].mean()])
+        tip = allp[np.argmax(np.linalg.norm(allp - pivot, axis=1))]
+        d = tip - pivot
+        L = np.linalg.norm(d)
+        if L < 1e-6 or d[1] < -0.75 * L:
+            continue
+        out_sign = np.sign(d[0]) or 1
+        target = np.array([out_sign * 0.16, -1.0, 0.03])
+        a_, b_ = d / L, target / np.linalg.norm(target)
+        axis = np.cross(a_, b_)
+        sn = np.linalg.norm(axis)
+        if sn < 1e-6:
+            continue
+        axis /= sn
+        ang = np.arctan2(sn, np.dot(a_, b_))
+        K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+        Rm = np.eye(3) + np.sin(ang) * K + (1 - np.cos(ang)) * K @ K
+        for m in parts:
+            m.pos = (m.pos - pivot) @ Rm.T + pivot
+            if len(m.nrm):
+                m.nrm = m.nrm @ Rm.T
+        print("  %s arm lowered by %.0f degrees" % (side.lower(), np.degrees(ang)))
+
+
+def _rot(axis, ang):
+    K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+    return np.eye(3) + np.sin(ang) * K + (1 - np.cos(ang)) * K @ K
+
+
+def bend_arms_down(meshes):
+    """Unrigged T-pose: bend each arm down at the shoulder BEFORE the model is cut into parts. Every vertex turns about the
+    shoulder by a share of the angle that goes smoothly from 0 (inside the chest) to 1 (past the shoulder), so the surface stays
+    one piece -- no torn shoulders, no forearm left behind. Positions are in the hub's space (front -Z, up +Y, centred)."""
+    allp = np.vstack([m.pos for m in meshes])
+    lo, hi = allp.min(0), allp.max(0)
+    h = hi[1] - lo[1]
+    t = (allp[:, 1] - lo[1]) / h
+    ax = np.abs(allp[:, 0])
+    bins = np.arange(0.35, 0.92, 0.01)
+    mx = np.array([ax[(t > b - 0.008) & (t < b + 0.008)].max(initial=0) for b in bins])
+    k = int(np.argmax(mx))
+    W = mx[k]
+    base = np.median(mx[mx > 0])                      # the body's own half-width (most heights have no arm)
+    a_, b_ = k, k
+    while a_ > 0 and mx[a_ - 1] > 1.35 * base:
+        a_ -= 1
+    while b_ < len(bins) - 1 and mx[b_ + 1] > 1.35 * base:
+        b_ += 1
+    near = np.concatenate([mx[max(0, a_ - 6):a_], mx[b_ + 1:b_ + 7]])   # just above and below the arm: the shoulders/chest
+    near = near[near > 0]
+    if not len(near):
+        return False
+    x_sh = float(np.median(near))
+    if W < 1.45 * x_sh:
+        return False                                  # the arms are not out to the sides
+    y0, y1 = lo[1] + bins[a_] * h - 0.01 * h, lo[1] + bins[b_] * h + 0.01 * h
+    thick = max(y1 - y0, 0.04 * h)
+    blend = 0.45 * thick
+    for side in (1, -1):
+        arm = allp[(allp[:, 0] * side > x_sh * 1.15) & (allp[:, 1] > y0 - thick) & (allp[:, 1] < y1 + thick)]
+        if len(arm) < 10:
+            continue
+        pivot = np.array([side * x_sh * 0.9, (y0 + y1) / 2, np.median(arm[:, 2])])
+        tip = arm[np.argmax(arm[:, 0] * side)]
+        d = tip - pivot
+        L = np.linalg.norm(d)
+        target = np.array([side * 0.16, -1.0, 0.03])
+        u, v = d / L, target / np.linalg.norm(target)
+        axis = np.cross(u, v)
+        sn = np.linalg.norm(axis)
+        if sn < 1e-6:
+            continue
+        axis /= sn
+        ang = np.arctan2(sn, np.dot(u, v))
+        reach = max(W - x_sh * 0.9, 1e-6)
+        for m in meshes:
+            xs = m.pos[:, 0] * side
+            wx = np.clip((xs - (x_sh - blend)) / (2 * blend), 0, 1)
+            wx = wx * wx * (3 - 2 * wx)
+            # height: only the arm's own band (a hand may hang a little lower); a wide head or hat above it stays put
+            up_, dn_ = np.maximum(0, m.pos[:, 1] - y1), np.maximum(0, y0 - m.pos[:, 1])
+            wy = np.clip(1 - up_ / (0.5 * thick) - dn_ / thick, 0, 1)
+            far = (xs > x_sh + 2 * blend) & (up_ < 0.5 * thick) & (dn_ < 2 * thick)
+            w = wx * np.where(far, 1.0, wy)
+            # remember which limb each vertex is, measured along the straight arm (the cut by position can't tell a hanging
+            # hand from the hip next to it): upper arm, forearm, hand
+            if len(getattr(m, "armlab", ())) != len(m.pos):
+                m.armlab = np.full(len(m.pos), "", dtype=object)
+            frac = (xs - x_sh * 0.9) / reach
+            nm = "Right" if side > 0 else "Left"
+            lab = np.where(frac > 0.8, nm + "Hand", np.where(frac > 0.42, nm + "LowerArm", nm + "UpperArm"))
+            m.armlab = np.where(w > 0.5, lab, m.armlab)
+            sel = np.where(w > 1e-4)[0]
+            if not len(sel):
+                continue
+            nrm_ok = len(m.nrm) == len(m.pos)
+            for i in sel:  # per vertex: its own share of the turn
+                R = _rot(axis, ang * w[i])
+                m.pos[i] = (m.pos[i] - pivot) @ R.T + pivot
+                if nrm_ok:
+                    m.nrm[i] = m.nrm[i] @ R.T
+        print("  %s arm bent down by %.0f degrees at the shoulder" % ("right" if side > 0 else "left", np.degrees(ang)))
+    return True
 
 
 def split_by_position(meshes):
@@ -135,12 +345,24 @@ def split_by_position(meshes):
                 names[i] = "LowerTorso"
             else:
                 names[i] = side + ("UpperLeg" if ti > 0.27 else "LowerLeg" if ti > 0.07 else "Foot")
+        armlab = getattr(m, "armlab", None)
+        if armlab is not None and len(armlab) == len(m.pos):
+            # the arms were bent down here (bend_arms_down): each vertex already knows its limb; a face goes with the majority
+            fl = armlab[m.faces]
+            for i in range(len(fl)):
+                a0, a1, a2 = fl[i]
+                pick = a0 if a0 and (a0 == a1 or a0 == a2) else a1 if a1 and a1 == a2 else ""
+                if pick:
+                    names[i] = pick
+                elif str(names[i]).endswith(("Arm", "Hand")):
+                    ti = t[i]
+                    names[i] = "UpperTorso" if ti > 0.58 else "LowerTorso" if ti > 0.47 else ("Right" if x[i] > 0 else "Left") + ("UpperLeg" if ti > 0.27 else "LowerLeg")
         # keep only the part of each arm that is connected to its shoulder: stray bits of hip or thigh that happen to lie past the
         # gap are separate pieces of surface and go back to the torso or legs
         key = np.round(m.pos / max(h * 1e-4, 1e-6)).astype(np.int64)
         _, weld = np.unique(key, axis=0, return_inverse=True)
         weld = weld.reshape(-1)
-        for sd in ("Right", "Left"):
+        for sd in (() if armlab is not None and len(armlab) == len(m.pos) else ("Right", "Left")):
             arm = np.array([str(n).startswith(sd) and ("Arm" in n or n.endswith("Hand")) for n in names])
             idxs = np.where(arm)[0]
             if len(idxs) < 2:
@@ -278,7 +500,7 @@ def node_matrix(node):
     return M
 
 
-def meshes_from_gltf(path, by_bone=False, skip=None, anim=None):
+def meshes_from_gltf(path, by_bone=False, skip=None, anim=None, pose_arms_up=None):
     gltf, buffers = read_gltf(path)
     base = pathlib.Path(path).parent
     mats = gltf.get("materials", [])
@@ -329,6 +551,107 @@ def meshes_from_gltf(path, by_bone=False, skip=None, anim=None):
     for n in scene0["nodes"]:
         walk(n, np.eye(4))
 
+    # arms down through the SKELETON (pose_arms_up = the source's up axis): each upper-arm joint, with everything below it, is
+    # turned about the shoulder so the arm hangs down; skinning then bends the shoulder smoothly (no torn seams)
+    if pose_arms_up is not None and gltf.get("skins"):
+        upv = np.array(pose_arms_up, float)
+        parent_of = {}
+        for ni, nd in enumerate(gltf["nodes"]):
+            for c in nd.get("children", []):
+                parent_of[c] = ni
+        def depth(ni):
+            d = 0
+            while ni in parent_of:
+                ni, d = parent_of[ni], d + 1
+            return d
+        def descendants(ni):
+            out_, stack = [], [ni]
+            while stack:
+                x = stack.pop()
+                out_.append(x)
+                stack += gltf["nodes"][x].get("children", [])
+            return out_
+        joints = sorted({j for sk in gltf["skins"] for j in sk["joints"]})
+        for side in ("Left", "Right"):
+            ups = [j for j in joints if limb_of(gltf["nodes"][j].get("name", "")) == side + "UpperArm"]
+            hands = [j for j in joints if limb_of(gltf["nodes"][j].get("name", "")) == side + "Hand"]
+            if not ups or not hands or any(j not in world for j in ups + hands):
+                continue
+            sh = min(ups, key=depth)                 # the shoulder-most arm joint
+            hand = min(hands, key=depth)
+            pivot = world[sh][:3, 3]
+            d = world[hand][:3, 3] - pivot
+            L = np.linalg.norm(d)
+            if L < 1e-9 or np.dot(d / L, -upv) > 0.75:
+                continue                             # already hanging down
+            outw = d - np.dot(d, upv) * upv
+            outw = outw / max(np.linalg.norm(outw), 1e-9)
+            target = -upv + 0.16 * outw
+            a_, b_ = d / L, target / np.linalg.norm(target)
+            axis = np.cross(a_, b_); sn = np.linalg.norm(axis)
+            if sn < 1e-9:
+                continue
+            axis /= sn
+            ang = np.arctan2(sn, np.dot(a_, b_))
+            K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+            Rm = np.eye(4)
+            Rm[:3, :3] = np.eye(3) + np.sin(ang) * K + (1 - np.cos(ang)) * K @ K
+            T, Ti = np.eye(4), np.eye(4)
+            T[:3, 3], Ti[:3, 3] = pivot, -pivot
+            X = T @ Rm @ Ti
+            for j in descendants(sh):
+                if j in world:
+                    world[j] = X @ world[j]
+            print("  %s arm lowered by %.0f degrees through the skeleton" % (side.lower(), np.degrees(ang)))
+        # the right hand (the one that holds the tool) closes into a fist: every finger joint bends toward the palm, the
+        # thumb folds across; done joint by joint from the knuckles out, so the skin follows like a real grip
+        shoulders = {}
+        for side in ("Left", "Right"):
+            ups = [j for j in joints if limb_of(gltf["nodes"][j].get("name", "")) == side + "UpperArm" and j in world]
+            if ups:
+                shoulders[side] = world[min(ups, key=depth)][:3, 3]
+        hands = [j for j in joints if limb_of(gltf["nodes"][j].get("name", "")) == "RightHand" and j in world]
+        if hands and len(shoulders) == 2:
+            hand = min(hands, key=depth)
+            body = (shoulders["Left"] + shoulders["Right"]) / 2
+            finger_words = ("finger", "f_index", "f_middle", "f_ring", "f_pinky", "index", "middle", "ring", "pinky", "mid1", "mid2", "mid3", "thumb")
+            fingers = [j for j in descendants(hand) if j != hand and any(w in gltf["nodes"][j].get("name", "").lower() for w in finger_words)]
+            fingers.sort(key=depth)
+            curled = 0
+            for j in fingers:
+                name = gltf["nodes"][j].get("name", "").lower()
+                kids = [c for c in gltf["nodes"][j].get("children", []) if c in world]
+                pj = world[j][:3, 3]
+                if kids:
+                    fdir = world[kids[0]][:3, 3] - pj
+                elif j in parent_of and parent_of[j] in world:
+                    fdir = pj - world[parent_of[j]][:3, 3]
+                else:
+                    continue
+                if np.linalg.norm(fdir) < 1e-9:
+                    continue
+                fdir /= np.linalg.norm(fdir)
+                inward = body - world[hand][:3, 3]
+                inward -= np.dot(inward, upv) * upv
+                inward /= max(np.linalg.norm(inward), 1e-9)
+                axis = np.cross(fdir, inward)
+                if np.linalg.norm(axis) < 1e-6:
+                    continue
+                axis /= np.linalg.norm(axis)
+                ang = np.radians(35 if "thumb" in name else 62)
+                K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
+                Rm = np.eye(4)
+                Rm[:3, :3] = np.eye(3) + np.sin(ang) * K + (1 - np.cos(ang)) * K @ K
+                T, Ti = np.eye(4), np.eye(4)
+                T[:3, 3], Ti[:3, 3] = pj, -pj
+                X = T @ Rm @ Ti
+                for d in descendants(j):
+                    if d in world:
+                        world[d] = X @ world[d]
+                curled += 1
+            if curled:
+                print("  right hand closed into a fist (%d finger joints bent)" % curled)
+
     def skin_matrices(node):
         sk = gltf["skins"][node["skin"]]
         joints = sk["joints"]
@@ -358,6 +681,10 @@ def meshes_from_gltf(path, by_bone=False, skip=None, anim=None):
                     Wt = accessor(gltf, buffers, attrs["WEIGHTS_0"])
                     Wt = Wt / np.maximum(Wt.sum(axis=1, keepdims=True), 1e-9)
                     SM = skin_matrices(node)
+                    if by_bone:
+                        jn = [gltf["nodes"][j].get("name", "") for j in gltf["skins"][node["skin"]]["joints"]]
+                        jl = np.array([limb_of(x) for x in jn], dtype=object)
+                        vlab = jl[J[np.arange(len(J)), np.argmax(Wt, axis=1)]]
                     VM = np.einsum("vk,vkij->vij", Wt, SM[J])  # per-vertex blended matrix
                     P = np.einsum("vij,vj->vi", VM, np.c_[pos, np.ones(len(pos))])[:, :3]
                     if nrm is None:
@@ -373,6 +700,9 @@ def meshes_from_gltf(path, by_bone=False, skip=None, anim=None):
                         nn = nrm @ np.linalg.inv(M[:3, :3]).T
                         nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
                 m = material_mesh(prim.get("material"), bone)
+                if not ("skin" in node and "JOINTS_0" in attrs and by_bone):
+                    vlab = np.array([""] * len(pos), dtype=object)
+                m.vlabel = np.concatenate([m.vlabel, vlab])
                 off = len(m.pos)
                 m.pos = np.vstack([m.pos, P]); m.nrm = np.vstack([m.nrm, nn]); m.uv = np.vstack([m.uv, uv[:, :2]])
                 m.faces = np.vstack([m.faces, idx.reshape(-1, 3) + off])
@@ -446,12 +776,12 @@ def bounds(meshes):
     return allp.min(axis=0), allp.max(axis=0)
 
 
-def normalize(meshes, length, keep_scale=False):
+def normalize(meshes, length, keep_scale=False, by_height=False):
     """Centres the model on its bounding box and scales the longest side to `length` (or keeps the scale).
     Returns (size, k, origin): origin is where the SOURCE origin (0,0,0) ended up, i.e. the grip when the file was made that way."""
     lo, hi = bounds(meshes)
     size = hi - lo
-    k = 1.0 if keep_scale else length / max(size)
+    k = 1.0 if keep_scale else length / (size[1] if by_height and size[1] > 1e-9 else max(size))
     centre = (lo + hi) / 2
     for m in meshes:
         m.pos = (m.pos - centre) * k
@@ -636,6 +966,9 @@ def main():
                     "--as-is model)")
     ap.add_argument("--grip", choices=["normal", "reverse"], default="normal", help="knives: normal = blade up / forward, reverse = blade down "
                     "along the forearm")
+    ap.add_argument("--skin-bones", action="store_true", help="costume only: cut a skinned model into R15 parts by its skin weights "
+                    "(limbs from joint names, torso/head by height)")
+    ap.add_argument("--arms-down", action="store_true", help="costume only: swing T-pose / A-pose arms down beside the body")
     ap.add_argument("--no-auto-grip", action="store_true", help="guns/knives: hold the model at its centre instead of at the detected grip")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
@@ -650,7 +983,8 @@ def main():
         raise SystemExit("no such file: %s" % src)
     ext = src.suffix.lower()
     by_bone = a.kind == "char" and a.group == "costume"
-    meshes = meshes_from_gltf(src, by_bone, a.skip or None, a.anim_pose) if ext in (".glb", ".gltf") else meshes_from_obj(src) if ext == ".obj" else None
+    pose_up = AXES[a.up] if (a.arms_down and a.skin_bones) else None
+    meshes = meshes_from_gltf(src, by_bone, a.skip or None, a.anim_pose, pose_up) if ext in (".glb", ".gltf") else meshes_from_obj(src) if ext == ".obj" else None
     if meshes is None:
         raise SystemExit("unsupported format %s (use .glb, .gltf or .obj; for .fbx / .blend export glTF or OBJ from Blender first)" % ext)
     meshes = [m for m in meshes if len(m.faces)]
@@ -659,7 +993,8 @@ def main():
     total_in = sum(len(m.faces) for m in meshes)
     orient(meshes, a.forward, a.up)
     length = a.length or {"gun": 2.8, "knife": 3.0}.get(a.kind, 5.5 if a.group == "costume" else 3.0)
-    size, k, origin = normalize(meshes, length, keep_scale=a.as_is)
+    # costumes are sized by their height (a T-pose's arm span must not decide how tall the character is)
+    size, k, origin = normalize(meshes, length, keep_scale=a.as_is, by_height=(a.kind == "char" and a.group == "costume"))
     if a.scale != 1.0:
         for m in meshes:
             m.pos = m.pos * a.scale
@@ -668,11 +1003,22 @@ def main():
     if a.kind in ("gun", "knife") and not a.as_is and not a.no_auto_grip:
         grip = find_grip(meshes, a.kind)
         print("  grip (hold point): " + ", ".join("%.2f" % v for v in grip))
+    if a.skin_bones:
+        if a.kind != "char" or a.group != "costume":
+            raise SystemExit("--skin-bones is for costumes (--kind char --group costume)")
+        meshes = split_by_skin(meshes)
+        print("  cut by skin weights into: " + ", ".join(sorted({m.bone for m in meshes})))
     if a.auto_bones:
         if a.kind != "char" or a.group != "costume":
             raise SystemExit("--auto-bones is for costumes (--kind char --group costume)")
+        if a.arms_down and bend_arms_down(meshes):
+            size, _, _ = normalize(meshes, length, keep_scale=True)  # re-centre on the narrower pose
+            a.arms_down = False                      # already done, smoothly; no rigid turn after the cut
         meshes = split_by_position(meshes)
         print("  cut into body parts: " + ", ".join(sorted({m.bone for m in meshes})))
+    if a.arms_down and not a.skin_bones:
+        arms_down(meshes)  # unrigged models: the arm is turned as one piece (the rigged path poses the skeleton instead)
+        size, _, _ = normalize(meshes, length, keep_scale=True)  # re-centre on the narrower pose
     # split the budget between materials in proportion to their size
     budget = a.max_tris
     out_meshes = []

@@ -11,10 +11,12 @@
 Адрес быстрого туннеля меняется при каждом запуске, поэтому Loader.lua нужно пересобирать (программа делает это сама) и раздавать заново.
 """
 import argparse
+import collections
 import os
 import pathlib
 import platform
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -110,14 +112,43 @@ def cloudflared_path():
     return target
 
 
+def port_free(port):
+    """True when nothing listens on 127.0.0.1:port (e.g. a server left over from a closed window would block it)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", port)) != 0
+
+
+def free_port(port):
+    """port itself, or the next free one: an old server still holding 8787 no longer stops a new start."""
+    for p in range(port, port + 20):
+        if port_free(p):
+            if p != port:
+                say(f"  порт {port} занят (старый сервер ещё работает?), использую порт {p}")
+            return p
+    raise RuntimeError(f"порты {port}-{port + 19} заняты; перезагрузите компьютер или закройте старые окна сервера")
+
+
+def drain(stream, keep):
+    """Reads a child's output to the end, keeping the last lines. Without this the pipe fills up (on Windows after a few KB of
+    request log) and the server or tunnel stops answering."""
+    try:
+        for line in stream:
+            keep.append(line.rstrip())
+    except Exception:
+        pass
+
+
 class Stack:
     """The running server (+ tunnel). Safe to start once and stop once."""
 
     def __init__(self, port=8787):
-        self.port = port
+        self.port = free_port(port)
         self.server = None
         self.tunnel = None
         self.url = None
+        self.server_log = collections.deque(maxlen=30)
+        self.tunnel_log = collections.deque(maxlen=30)
 
     def start_server(self):
         ensure_secret()
@@ -125,12 +156,15 @@ class Stack:
         env = dict(os.environ)
         self.server = subprocess.Popen(
             [sys.executable, str(ROOT / "server" / "app.py"), "--port", str(self.port)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env, text=True,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env, text=True, encoding="utf-8", errors="replace",
         )
+        reader = threading.Thread(target=drain, args=(self.server.stderr, self.server_log), daemon=True)
+        reader.start()
         deadline = time.time() + 15
         while time.time() < deadline:
             if self.server.poll() is not None:
-                raise RuntimeError("сервер завершился: " + (self.server.stderr.read() or "без сообщения"))
+                reader.join(2)
+                raise RuntimeError("сервер завершился: " + ("\n".join(list(self.server_log)[-8:]) or "без сообщения"))
             try:
                 with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/health", timeout=1) as r:
                     if r.status == 200:
@@ -150,24 +184,31 @@ class Stack:
         exe = cloudflared_path()
         self.tunnel = subprocess.Popen(
             [str(exe), "tunnel", "--url", f"http://127.0.0.1:{self.port}", "--no-autoupdate", "--protocol", "http2"],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
         )  # http2 вместо QUIC: у многих провайдеров UDP заблокирован, и туннель отвечает ошибкой 1033
         found = threading.Event()
 
-        def pump():
-            for line in self.tunnel.stdout:
-                url = find_tunnel_url(line)
-                if url and not self.url:
-                    self.url = url
-                    found.set()
+        def pump():  # reads ALL output (a full pipe would freeze cloudflared) and picks up the address
+            try:
+                for line in self.tunnel.stdout:
+                    self.tunnel_log.append(line.rstrip())
+                    url = find_tunnel_url(line)
+                    if url and not self.url:
+                        self.url = url
+                        found.set()
+            except Exception:
+                pass
+            found.set()  # the tunnel ended: stop waiting at once
 
         threading.Thread(target=pump, daemon=True).start()
         self._found = found
 
     def wait_tunnel(self):
         found = self._found
-        if not found.wait(40):
-            raise RuntimeError("туннель не сообщил адрес за 40 секунд (проверьте интернет)")
+        if not found.wait(40) or not self.url:
+            tail = "\n".join(l for l in list(self.tunnel_log)[-6:] if l)
+            why = "туннель (cloudflared) закрылся" if self.tunnel and self.tunnel.poll() is not None else "туннель не сообщил адрес за 40 секунд"
+            raise RuntimeError(why + " (проверьте интернет, антивирус/брандмауэр для cloudflared.exe)" + ("\nПоследние строки:\n" + tail if tail else ""))
         say(f"  https-адрес:       {self.url}")
 
     def stop(self):
