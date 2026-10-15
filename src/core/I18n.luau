@@ -170,6 +170,8 @@ function I18n.tr(text)
 	end
 	cache[text] = out
 	cacheSize += 1
+	-- a pattern result passed through tr() again (labels are re-translated on refresh) is already in this language
+	known[out] = true
 	return out
 end
 
