@@ -1750,6 +1750,14 @@
  },
  "patterns": [
   [
+   "^out of reach %(([%d%.]+) / ([%d%.]+) studs%)$",
+   "fora de alcance (%s / %s studs)"
+  ],
+  [
+   "^Settings changed: (%d+)$",
+   "Configurações alteradas: %s"
+  ],
+  [
    "^(.+): needed by (.+)$",
    "%s: necessário para %s"
   ],

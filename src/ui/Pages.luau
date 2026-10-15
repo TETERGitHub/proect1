@@ -166,7 +166,7 @@ local function buildInterface(page)
 	for _, pr in ipairs(import("features/Presets").LOOK) do
 		page:action({ label = pr.name, desc = pr.desc, text = "Apply", onClick = function()
 			local n = import("features/Presets").apply("look", pr.name)
-			notify("Interface", I18n.tr("Settings changed:") .. " " .. tostring(n or 0), "success")
+			notify("Interface", I18n.tr(string.format("Settings changed: %d", n or 0)), "success")
 		end })
 	end
 	section(page, "Appearance", { "ui.theme", "ui.useThemeAccent", "ui.accent", "ui.cornerRadius", "ui.density", "ui.textScale", "ui.scale" })
@@ -294,7 +294,7 @@ local function buildCamera(page)
 	for _, pr in ipairs(import("features/Presets").CAMERA) do
 		page:action({ label = pr.name, desc = pr.desc, text = "Apply", onClick = function()
 			local n = import("features/Presets").apply("camera", pr.name)
-			notify("Camera", I18n.tr("Settings changed:") .. " " .. tostring(n or 0), "success")
+			notify("Camera", I18n.tr(string.format("Settings changed: %d", n or 0)), "success")
 		end })
 	end
 	section(page, "Zoom", { "camera.zoomEnabled", "camera.zoomSpeed", "camera.minZoom", "camera.maxZoom", "camera.rememberZoom", "camera.preferredZoom" })
@@ -531,7 +531,8 @@ local function buildMobile(page)
 	local lines = {}
 	for _, l in ipairs({
 		{ "Device", function() local st = Mobile.status(); return st.running and st.device or "N/A" end },
-		{ "Layout preset", function() local st = Mobile.status(); return st.running and (st.layout ~= "" and st.layout or "none") or "N/A" end },
+		{ "Layout preset", function() local st = Mobile.status(); local names = { phone = "Phone", tablet = "Tablet", desktop = "Desktop" }
+			return st.running and (names[st.layout] or (st.layout ~= "" and st.layout) or "none") or "N/A" end },
 		{ "Quality", function() local st = Mobile.status(); return st.running and (st.profile == "Auto" and st.levelName or st.profile) or "N/A" end },
 		{ "Frame rate", function() return string.format("%d FPS", math.floor(Perf.fps() + 0.5)) end },
 		{ "Hub objects in the world", function() return tostring(Mobile.objectCount()) end },

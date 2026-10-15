@@ -1752,6 +1752,8 @@ local exact = {
 }
 
 local patterns = {
+	{ "^out of reach %(([%d%.]+) / ([%d%.]+) studs%)$", "fuera de alcance (%s / %s studs)" },
+	{ "^Settings changed: (%d+)$", "Ajustes cambiados: %s" },
 	{ "^(.+): needed by (.+)$", "%s: lo necesita %s" },
 	{ "^needed by (.+)$", "lo necesita %s" },
 	{ "^(.+) stopped$", "%s detenido" },

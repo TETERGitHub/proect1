@@ -247,7 +247,7 @@ local function miss(reason, kind, extra)
 	st.misses += 1
 	st.streak = 0
 	st.reasons[reason] = (st.reasons[reason] or 0) + 1
-	log("miss", (kind or "Swing") .. " missed", I18n.tr(reason) .. (extra or ""))
+	log("miss", (kind or "Swing") .. " missed", I18n.tr(extra or reason))
 end
 
 local function hit(d, dist, kind, from)
@@ -357,7 +357,7 @@ function MT.swing(source)
 		return best.id
 	end
 	local reason = not nearest and "no mannequin" or sawBlocked and "behind an obstacle" or sawOutOfArc and "not in front of you" or "out of reach"
-	miss(reason, kind, reason == "out of reach" and string.format(" (%.1f / %.1f %s)", nearestD, reach, I18n.tr("studs")) or nil)
+	miss(reason, kind, reason == "out of reach" and string.format("out of reach (%.1f / %.1f studs)", nearestD, reach) or nil)
 	return nil, reason
 end
 

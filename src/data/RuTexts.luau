@@ -1644,6 +1644,8 @@ local exact = {
 }
 
 local patterns = {
+	{ "^Settings changed: (%d+)$", "Изменено настроек: %s" },
+	{ "^out of reach %(([%d%.]+) / ([%d%.]+) studs%)$", "вне досягаемости (%s / %s стадов)" },
 	{ "^(.+) stopped$", "%s остановлен" },
 	{ "^needed by (.+)$", "нужен модулю %s" },
 	{ "^(.+): needed by (.+)$", "%s: нужен модулю %s" },
