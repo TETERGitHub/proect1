@@ -1418,9 +1418,54 @@
   "Ring": "Anel",
   "Laser": "Laser",
   "Energy": "Energia",
-  "Menacing": "Ameaça (ゴゴゴ)"
+  "Menacing": "Ameaça (ゴゴゴ)",
+  "Quality profile": "Perfil de qualidade",
+  "Ultra Low / Balanced / High set the hub's load settings together; Auto adapts them to your FPS; Custom keeps your own values.": "Ultra Low / Balanced / High ajustam juntas as opções de carga do hub; Auto adapta-as aos seus FPS; Personalizado mantém os seus valores.",
+  "Target FPS": "FPS alvo",
+  "Auto quality lowers the quality when the frame rate stays under this, and raises it after a long stretch well above it.": "Auto baixa a qualidade se os FPS ficam abaixo disto e sobe-a após um bom tempo bem acima.",
+  "Quality notifications": "Avisos de qualidade",
+  "Tell me when Auto quality changes the level.": "Avise-me quando o Auto mudar o nível.",
+  "Layout": "Layout",
+  "Window size, scale, compact rows and on-screen buttons for this kind of device. Auto uses the detected device.": "Tamanho da janela, escala, linhas compactas e botões na tela para este tipo de dispositivo. Auto usa o detectado.",
+  "Battery friendly": "Poupança de bateria",
+  "Effects update at most 20 times a second and decorations are reduced, to save battery and heat.": "Os efeitos atualizam no máximo 20 vezes por segundo e as decorações são reduzidas, para poupar bateria e calor.",
+  "Pause in background": "Pausa em segundo plano",
+  "While the game window is in the background, effects and overlays stop updating.": "Enquanto a janela do jogo está em segundo plano, efeitos e sobreposições não atualizam.",
+  "Performance monitor": "Monitor de desempenho",
+  "Small overlay with FPS, frame time, scheduled tasks and the hub's objects in the world.": "Pequena sobreposição com FPS, tempo de quadro, tarefas agendadas e objetos do hub no mundo.",
+  "Profiles for phones and weak devices, adaptive quality, battery saving and a performance monitor.": "Perfis para celulares e aparelhos fracos, qualidade adaptativa, poupança de bateria e monitor de desempenho.",
+  "Device": "Dispositivo",
+  "Layout preset": "Layout aplicado",
+  "Quality": "Qualidade",
+  "Frame rate": "Taxa de quadros",
+  "Hub objects in the world": "Objetos do hub no mundo",
+  "Background pause": "Pausa em segundo plano",
+  "N/A": "N/D",
+  "Layout and touch": "Layout e toque",
+  "Saving resources": "Poupança de recursos",
+  "Monitor": "Monitor",
+  "Ultra Low, Balanced and High change these real settings together: effect update rate, decoration limit, reduced effects, animation speed, kill-effect detail, aura intensity and the low load profile. You can still change each one below.": "Ultra Low, Balanced e High mudam juntas estas opções reais: frequência dos efeitos, limite de decorações, efeitos reduzidos, velocidade das animações, detalhe dos abates, intensidade da aura e perfil de baixa carga. Pode mudar cada uma abaixo.",
+  "Battery level and temperature are not available to Roblox scripts, so they are not shown; the monitor shows what the client measures.": "O nível de bateria e a temperatura não estão disponíveis para scripts do Roblox, por isso não aparecem; o monitor mostra o que o cliente mede.",
+  "Ultra Low": "Ultra Low (mínimo)",
+  "Balanced": "Equilibrado",
+  "High": "Alto",
+  "Phone": "Celular",
+  "Tablet": "Tablet",
+  "Desktop": "Computador",
+  "Touch desktop": "Computador com toque",
+  "Unknown": "Desconhecido",
+  "Minimum": "Mínimo",
+  "Low": "Baixo"
  },
  "patterns": [
+  [
+   "^(%d+) FPS$",
+   "%s FPS"
+  ],
+  [
+   "^Quality: (.+)$",
+   "Qualidade: %s"
+  ],
   [
    "^Models ready: (%d+) %(open the Custom pages to use them%)%.$",
    "Modelos prontos: %s (abra as páginas Personalizar para usá-los)."
@@ -1727,7 +1772,8 @@
   "status.stopped": "parado",
   "nav.watermark": "Marca d'água",
   "nav.killfx": "Efeitos de abate",
-  "nav.hitfx": "Acertos"
+  "nav.hitfx": "Acertos",
+  "nav.mobile": "Celular"
  },
  "keep": {
   "RightShift": true,

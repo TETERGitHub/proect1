@@ -21,7 +21,8 @@ Platform.presets = {
 		["state.width"] = 640, ["state.height"] = 400,
 		["ui.showTooltips"] = false, ["ui.screenButtons"] = true, ["ui.screenButtonSize"] = 52,
 	},
-	desktop = {},
+	-- by hand only (Mobile page, Layout: Desktop): back to the desktop look after a phone / tablet preset
+	desktop = { ["ui.scale"] = 1, ["ui.compact"] = false, ["ui.screenButtonSize"] = 46 },
 }
 
 -- Features pinned to the screen by default on touch devices (feature ids from the catalogue).

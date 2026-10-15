@@ -1418,9 +1418,54 @@
   "Ring": "Кільце",
   "Laser": "Лазер",
   "Energy": "Енергія",
-  "Menacing": "Загроза (ゴゴゴ)"
+  "Menacing": "Загроза (ゴゴゴ)",
+  "Quality profile": "Профіль якості",
+  "Ultra Low / Balanced / High set the hub's load settings together; Auto adapts them to your FPS; Custom keeps your own values.": "Ultra Low / Balanced / High змінюють налаштування навантаження хаба разом; Авто підлаштовує їх під ваш FPS; Свій залишає ваші значення.",
+  "Target FPS": "Цільовий FPS",
+  "Auto quality lowers the quality when the frame rate stays under this, and raises it after a long stretch well above it.": "Авто знижує якість, коли FPS довго нижче цього значення, і підвищує після довгої роботи помітно вище.",
+  "Quality notifications": "Сповіщення про якість",
+  "Tell me when Auto quality changes the level.": "Повідомляти, коли Авто змінює рівень якості.",
+  "Layout": "Розкладка",
+  "Window size, scale, compact rows and on-screen buttons for this kind of device. Auto uses the detected device.": "Розмір вікна, масштаб, компактні рядки й екранні кнопки під цей тип пристрою. Авто — за визначеним пристроєм.",
+  "Battery friendly": "Економія батареї",
+  "Effects update at most 20 times a second and decorations are reduced, to save battery and heat.": "Ефекти оновлюються не частіше 20 разів на секунду, прикраси спрощено — менше витрата батареї й нагрів.",
+  "Pause in background": "Пауза у фоні",
+  "While the game window is in the background, effects and overlays stop updating.": "Поки вікно гри згорнуте чи у фоні, ефекти й оверлеї не оновлюються.",
+  "Performance monitor": "Монітор продуктивності",
+  "Small overlay with FPS, frame time, scheduled tasks and the hub's objects in the world.": "Невелика панель: FPS, час кадру, задачі планувальника й об'єкти хаба у світі.",
+  "Profiles for phones and weak devices, adaptive quality, battery saving and a performance monitor.": "Профілі для телефонів і слабких пристроїв, адаптивна якість, економія батареї та монітор продуктивності.",
+  "Device": "Пристрій",
+  "Layout preset": "Застосована розкладка",
+  "Quality": "Якість",
+  "Frame rate": "Частота кадрів",
+  "Hub objects in the world": "Об'єктів хаба у світі",
+  "Background pause": "Пауза у фоні",
+  "N/A": "немає даних",
+  "Layout and touch": "Розкладка й дотики",
+  "Saving resources": "Економія ресурсів",
+  "Monitor": "Монітор",
+  "Ultra Low, Balanced and High change these real settings together: effect update rate, decoration limit, reduced effects, animation speed, kill-effect detail, aura intensity and the low load profile. You can still change each one below.": "Ultra Low, Balanced і High змінюють разом реальні налаштування: частоту оновлення ефектів, ліміт прикрас, спрощені ефекти, швидкість анімацій, деталізацію ефектів убивства, яскравість аури й режим низького навантаження. Кожне можна змінити нижче.",
+  "Battery level and temperature are not available to Roblox scripts, so they are not shown; the monitor shows what the client measures.": "Рівень батареї й температура недоступні скриптам Roblox, тому не показуються; монітор показує те, що вимірює клієнт.",
+  "Ultra Low": "Ultra Low (мінімум)",
+  "Balanced": "Збалансований",
+  "High": "Високий",
+  "Phone": "Телефон",
+  "Tablet": "Планшет",
+  "Desktop": "Комп'ютер",
+  "Touch desktop": "Комп'ютер із сенсором",
+  "Unknown": "Невідомо",
+  "Minimum": "Мінімум",
+  "Low": "Низька"
  },
  "patterns": [
+  [
+   "^(%d+) FPS$",
+   "%s FPS"
+  ],
+  [
+   "^Quality: (.+)$",
+   "Якість: %s"
+  ],
   [
    "^Models ready: (%d+) %(open the Custom pages to use them%)%.$",
    "Моделей готово: %s (відкрийте сторінки «Свій ...», щоб вибрати)."
@@ -1727,7 +1772,8 @@
   "status.stopped": "зупинено",
   "nav.watermark": "Водяний знак",
   "nav.killfx": "Ефекти вбивства",
-  "nav.hitfx": "Влучання"
+  "nav.hitfx": "Влучання",
+  "nav.mobile": "Мобільна оптимізація"
  },
  "keep": {
   "RightShift": true,

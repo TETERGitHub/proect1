@@ -55,10 +55,25 @@ local function notifyLow()
 	end
 end
 
+-- paused visual work: while the game window is in the background (features/Mobile "pause when unfocused") visual tasks
+-- (effects, overlays) are skipped entirely; logic tasks keep running so nothing falls out of sync.
+local visualPaused = false
+
+function Perf.setVisualPaused(on)
+	visualPaused = on == true
+end
+
+function Perf.visualPaused()
+	return visualPaused
+end
+
 function Perf.effectiveHz(hz, visual)
 	local eff = hz
 	if visual then
 		eff = math.min(eff, setting("perf.visualHz", 30))
+		if setting("mobile.battery", false) then
+			eff = math.min(eff, 20) -- battery friendly: decorations at most 20 updates a second
+		end
 	end
 	if Perf.isLow() then
 		eff = eff * 0.5
@@ -184,7 +199,7 @@ function Perf.frame(dt)
 		table.insert(list, task)
 	end
 	for _, task in ipairs(list) do
-		if not task.disabled and tasks[task.name] == task then
+		if not task.disabled and tasks[task.name] == task and not (visualPaused and task.visual) then
 			task.acc += dt
 			local interval = 1 / Perf.effectiveHz(task.hz, task.visual)
 			if task.acc >= interval then
@@ -253,6 +268,7 @@ function Perf.frames()
 end
 
 function Perf._reset()
+	visualPaused = false
 	table.clear(tasks)
 	table.clear(longOps)
 	fps = 60

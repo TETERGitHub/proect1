@@ -67,7 +67,7 @@ local NAV_GROUPS = {
 	{ "Customize", { "customgun", "customknife", "customchar", "killfx", "hitfx", "watermark", "aura", "killmurderer", "killsheriff" } },
 	{ "Practice", { "training", "defence" } },
 	{ "Audio", { "music", "sounds", "gameaudio" } },
-	{ "System", { "perf", "tools", "keys", "configs", "diagnostics", "help", "about" } },
+	{ "System", { "mobile", "perf", "tools", "keys", "configs", "diagnostics", "help", "about" } },
 }
 
 -- navGroups() -> list of { title, ids } following NAV_GROUPS, with unknown pages appended under "More"

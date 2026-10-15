@@ -1159,3 +1159,66 @@ T.test("kill shows the hit marker, a shot draws a tracer that fades away", "mark
 	import("features/FxKit")._reset()
 	T.truthy(ok, tostring(err))
 end)
+
+T.suite("Mobile optimisation")
+T.test("profiles, adaptive quality, battery, background pause, layout", "real settings change; hysteresis; visual tasks pause", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local ok, err = pcall(function()
+		local Mobile = import("features/Mobile")
+		local Settings = import("core/Settings")
+		local Perf = import("core/Perf")
+		-- fixed profiles write real settings; Custom writes nothing
+		Settings.set("mobile.profile", "Ultra Low")
+		T.eq(Settings.get("perf.visualHz"), 15); T.eq(Settings.get("ui.reduceEffects"), true); T.eq(Settings.get("perf.lowProfile"), true)
+		T.eq(Settings.get("killfx.detail"), 0.4)
+		Settings.set("mobile.profile", "High")
+		T.eq(Settings.get("perf.visualHz"), 60); T.eq(Settings.get("ui.reduceEffects"), false); T.eq(Settings.get("perf.lowProfile"), false)
+		Settings.set("perf.visualHz", 44)
+		Settings.set("mobile.profile", "Custom")
+		T.eq(Settings.get("perf.visualHz"), 44, "Custom keeps your own value")
+		-- Auto: starts Balanced, drops once after a sustained deficit, never twice within 8 s, climbs back slowly
+		Settings.set("mobile.profile", "Auto")
+		T.eq(Mobile.level(), 2)
+		local changes = {}
+		for _ = 1, 12 do
+			local l = Mobile.adapt(12)
+			if l then table.insert(changes, l) end
+		end
+		T.eq(changes[1], 1, "dropped to Low"); T.eq(#changes, 1, "only one change in 12 s")
+		T.eq(Settings.get("perf.visualHz"), 20)
+		for _ = 1, 8 do Mobile.adapt(42) end -- inside the dead band (35..50 for target 40): no change
+		T.eq(Mobile.level(), 1)
+		for _ = 1, 30 do Mobile.adapt(90) end
+		T.truthy(Mobile.level() >= 2, "climbed back")
+		-- a manual profile is never overridden by Auto
+		Settings.set("mobile.profile", "Balanced")
+		for _ = 1, 20 do T.eq(Mobile.adapt(5), nil) end
+		-- battery caps decorative updates; background pause skips visual tasks only
+		Settings.set("mobile.battery", true)
+		T.truthy(Perf.effectiveHz(60, true) <= 20); T.eq(Settings.get("ui.reduceEffects"), true)
+		Settings.set("mobile.battery", false)
+		local vis, logic = 0, 0
+		local a = Perf.every("t.vis", 60, function() vis += 1 end, { visual = true })
+		local b = Perf.every("t.logic", 60, function() logic += 1 end)
+		Perf.setVisualPaused(true); frames(10)
+		T.eq(vis, 0, "visual task paused"); T.truthy(logic > 0, "logic keeps running")
+		Perf.setVisualPaused(false); frames(10)
+		T.truthy(vis > 0, "resumed")
+		a.Cancel(); b.Cancel()
+		-- layout presets
+		Mobile.applyLayout("Phone")
+		T.eq(Settings.get("ui.compact"), true); T.eq(Settings.get("ui.screenButtons"), true)
+		Mobile.applyLayout("Desktop")
+		T.eq(Settings.get("ui.compact"), false); T.eq(Settings.get("ui.scale"), 1)
+		T.truthy(Mobile.detect().device ~= nil)
+		-- monitor
+		Settings.set("mobile.monitor", true); frames(70)
+		T.truthy(string.find(Mobile.monitorText(), "FPS") ~= nil)
+		T.truthy(Mobile.status().running)
+	end)
+	h.unload(); Mock.uninstall()
+	T.truthy(ok, tostring(err))
+end)

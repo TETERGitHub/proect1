@@ -362,6 +362,16 @@ add(with("killfx", "KillFX", {
 	bool("killfx.onSheriff", true, "As sheriff", "Play on kills with your gun."),
 }))
 
+add(with("mobile", "Mobile", {
+	enum("mobile.profile", "Custom", { "Custom", "Auto", "Ultra Low", "Balanced", "High" }, "Quality profile", "Ultra Low / Balanced / High set the hub's load settings together; Auto adapts them to your FPS; Custom keeps your own values."),
+	num("mobile.targetFps", 40, 20, 60, 1, "Target FPS", "Auto quality lowers the quality when the frame rate stays under this, and raises it after a long stretch well above it."),
+	bool("mobile.adaptiveNotify", true, "Quality notifications", "Tell me when Auto quality changes the level."),
+	enum("mobile.layout", "Auto", { "Auto", "Phone", "Tablet", "Desktop" }, "Layout", "Window size, scale, compact rows and on-screen buttons for this kind of device. Auto uses the detected device."),
+	bool("mobile.battery", false, "Battery friendly", "Effects update at most 20 times a second and decorations are reduced, to save battery and heat."),
+	bool("mobile.pauseUnfocused", true, "Pause in background", "While the game window is in the background, effects and overlays stop updating."),
+	bool("mobile.monitor", false, "Performance monitor", "Small overlay with FPS, frame time, scheduled tasks and the hub's objects in the world."),
+}))
+
 add(with("hitfx", "HitFX", {
 	bool("hitfx.marker", true, "Hit marker", "A marker pops at the centre of your screen when one of your kills is confirmed."),
 	enum("hitfx.markerStyle", "Classic", { "Classic", "Burst", "Diamond", "Skull", "Cross", "Spark", "Ring", "Heart" }, "Marker style", "Shape of the hit marker (the hub's own drawings)."),

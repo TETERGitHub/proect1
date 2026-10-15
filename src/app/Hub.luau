@@ -171,6 +171,7 @@ local function registerModules(h)
 		{ "ghost", "features/Ghost", { "services" } },
 		{ "modelsync", "features/ModelSync", { "services" } },
 		{ "hitfx", "features/HitFX", { "services", "killsounds" } },
+		{ "mobile", "features/Mobile", { "services" } },
 	}) do
 		local mod = import(def[2])
 		Core.registerModule({ name = def[1], deps = def[3], start = function(ctx) mod.start(ctx) end })

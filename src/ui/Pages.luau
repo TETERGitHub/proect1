@@ -339,6 +339,40 @@ local function buildKillFx(page)
 	resetButton(page, "KillFX")
 end
 
+local function buildMobile(page)
+	local Mobile = import("features/Mobile")
+	local lines = {}
+	for _, l in ipairs({
+		{ "Device", function() local st = Mobile.status(); return st.running and st.device or "N/A" end },
+		{ "Layout preset", function() local st = Mobile.status(); return st.running and (st.layout ~= "" and st.layout or "none") or "N/A" end },
+		{ "Quality", function() local st = Mobile.status(); return st.running and (st.profile == "Auto" and st.levelName or st.profile) or "N/A" end },
+		{ "Frame rate", function() return string.format("%d FPS", math.floor(Perf.fps() + 0.5)) end },
+		{ "Hub objects in the world", function() return tostring(Mobile.objectCount()) end },
+		{ "Background pause", function() return Perf.visualPaused() and "paused" or "running" end },
+	}) do
+		local update = infoLine(page, l[1], l[2])
+		table.insert(lines, update)
+	end
+	local h = Perf.every("ui.mobile", 1, function()
+		if visible("mobile") then
+			for _, f in ipairs(lines) do
+				f()
+			end
+		end
+	end)
+	page.maid:Give(h.Cancel)
+	for _, f in ipairs(lines) do
+		f()
+	end
+	section(page, "Quality", { "mobile.profile", "mobile.targetFps", "mobile.adaptiveNotify" })
+	page:note("Ultra Low, Balanced and High change these real settings together: effect update rate, decoration limit, reduced effects, animation speed, kill-effect detail, aura intensity and the low load profile. You can still change each one below.", "textDim", 44)
+	section(page, "Layout and touch", { "mobile.layout", "ui.scale", "ui.compact", "ui.screenButtons", "ui.screenButtonSize" })
+	section(page, "Saving resources", { "mobile.battery", "mobile.pauseUnfocused", "ui.reduceEffects", "perf.visualHz", "perf.maxDecor", "killfx.detail", "aura.intensity" })
+	section(page, "Monitor", { "mobile.monitor" })
+	page:note("Battery level and temperature are not available to Roblox scripts, so they are not shown; the monitor shows what the client measures.", "textDim", 30)
+	resetButton(page, "Mobile")
+end
+
 local function buildHitFx(page)
 	local HitFX = import("features/HitFX")
 	section(page, "Hit marker", { "hitfx.marker", "hitfx.markerStyle", "hitfx.markerColor", "hitfx.markerSize", "hitfx.markerTime" })
@@ -384,6 +418,7 @@ function Pages.registerAll()
 		{ "customknife", "knife", Custom.knife, "Your own murderer knife: models, colours, materials, preview and presets." },
 		{ "customchar", "person", Custom.char, "Costumes and accessories on your own avatar, with a safe preview." },
 		{ "killfx", "bolt", buildKillFx, "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter." },
+		{ "mobile", "gauge", buildMobile, "Profiles for phones and weak devices, adaptive quality, battery saving and a performance monitor." },
 		{ "hitfx", "target", buildHitFx, "Hit marker when you get a kill and glowing tracers when you shoot." },
 		{ "watermark", "star", buildWatermark, "Your own badge on screen with flowing colours, FPS, ping and time." },
 		{ "aura", "star", buildAura, "Wings, halo, rune circle, chains and sparkles on your own character." },
