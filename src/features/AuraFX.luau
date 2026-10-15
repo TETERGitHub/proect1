@@ -112,7 +112,34 @@ function Aura:colorOf(role, seq)
 	return seq and ColorSequence.new(c) or c
 end
 
+-- glow(it, width, o, role): a light streak (Trail) behind a moving item; recoloured with the aura
+function Aura:glow(it, width, o, role)
+	o = o or {}
+	o.color = self:colorOf(role or it.role, true)
+	local tr = FxKit.trail(it.part, width * self.s, o)
+	if tr then
+		table.insert(self.extras, { obj = tr, role = role or it.role })
+	end
+	return tr
+end
+
+-- ribbon(p0, p1, o, role): a Beam between two parts, recoloured with the aura
+function Aura:ribbon(p0, p1, o, role)
+	o = o or {}
+	o.color = self:colorOf(role, true)
+	o.width0 = (o.width0 or 0.5) * self.s
+	o.width1 = (o.width1 or o.width0 / self.s) * self.s
+	local b = FxKit.beam(p0, p1, o)
+	if b then
+		table.insert(self.extras, { obj = b, role = role })
+	end
+	return b
+end
+
 function Aura:applyColors()
+	for _, ex in ipairs(self.extras) do
+		pcall(FxKit.setEmitterColor, ex.obj, self:colorOf(ex.role, true))
+	end
 	for _, it in ipairs(self.items) do
 		if it.emitter then
 			FxKit.setEmitterColor(it.emitter, self:colorOf(it.role, true))
@@ -259,12 +286,15 @@ local function wing(a, side, n, length, role, tipRole, flapSpeed, flapAmount)
 		local len = length * (0.55 + 0.45 * sin(PI * (0.25 + f * 0.75)))
 		local spread = rad(18 + f * 95)
 		local role_ = (i % 3 == 0) and tipRole or role
-		a:mesh("feather", v3(1.15, len, 0.2), role_, function(t, base)
+		local fit = a:mesh("feather", v3(1.15, len, 0.2), role_, function(t, base)
 			local flap = sin(t * flapSpeed) * rad(flapAmount) * (0.4 + f * 0.6)
 			-- lean back (+X tilt) and sweep the outer part of each wing backwards (rotation about Y)
 			return base * at(a, side * 0.35, 1.3, 0.6) * CFrame.Angles(rad(14), side * rad(-28), 0)
 				* CFrame.Angles(0, 0, -side * (spread + flap)) * CFrame.new(0, len * a.s / 2, 0)
 		end, NEON, 0.08 + f * 0.1, "Wedge")
+		if i % 2 == 1 then
+			a:glow(fit, 0.5, { life = 0.3, t = { 0.4, 1 } }, tipRole)
+		end
 	end
 end
 
@@ -282,6 +312,19 @@ end
 local function flat(a, y)
 	return function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + y * a.s, base.Position.Z)
+	end
+end
+
+-- wisps(a, n, radius, y0, height, speed, role, size): glowing motes spiralling up round you, each with a light trail
+local function wisps(a, n, radius, y0, height, speed, role, size)
+	for i = 1, n do
+		local phase = i / n * TAU
+		local it = a:part("Ball", v3(size or 0.32, size or 0.32, size or 0.32), role, function(t, base)
+			local ang = phase + t * speed
+			local h = ((t * 0.3 + i / n) % 1)
+			return base * at(a, cos(ang) * radius * (1 - h * 0.35), y0 + h * height, sin(ang) * radius * (1 - h * 0.35))
+		end, NEON, 0)
+		a:glow(it, (size or 0.32) * 1.4, { life = 0.45, t = { 0.1, 1 } }, role)
 	end
 end
 
@@ -317,6 +360,10 @@ BUILD["Inferno Crown"] = function(a)
 	a:mesh("ring", v3(2, 0.6, 2), "s", function(t, base)
 		return base * at(a, 0, 3.55, 0) * CFrame.Angles(0, t, 0)
 	end, NEON, 0)
+	wisps(a, 8, 2.6, 0.2, 4.2, 2.2, "s", 0.3)
+	a:emit("glow", { rate = 6, size = { 1.6, 0 }, life = { 0.3, 0.5 }, speed = { 0, 0.5 }, t = { 0.2, 1 } }, "s", function(t, base)
+		return base * at(a, 0, 3.9, 0)
+	end)
 end
 
 BUILD["Storm God"] = function(a)
@@ -334,10 +381,11 @@ BUILD["Storm God"] = function(a)
 	end)
 	-- orbiting charged orbs with trailing sparks
 	orbit(a, 3, 3.4, 1.4, 1.6, function(i, fn)
-		a:part("Ball", v3(0.7, 0.7, 0.7), "w", function(t, base)
+		local orb = a:part("Ball", v3(0.7, 0.7, 0.7), "w", function(t, base)
 			local cf = fn(t, base)
 			return cf + v3(0, sin(t * 2 + i * 2) * 0.6 * a.s, 0)
 		end)
+		a:glow(orb, 0.9, { life = 0.5, t = { 0, 1 } }, "p")
 		a:emit("glow", { rate = 8, size = { 2.2, 0 }, life = { 0.25, 0.4 }, speed = { 0, 0 }, t = { 0.3, 1 } }, "p", function(t, base)
 			return fn(t, base) + v3(0, sin(t * 2 + i * 2) * 0.6 * a.s, 0)
 		end)
@@ -364,7 +412,16 @@ BUILD["Storm God"] = function(a)
 			a.nextStrike = t + 0.35 + rand() * 0.8
 			local ang, r = rand() * TAU, (2.5 + rand() * 3) * a.s
 			local top = base.Position + v3(cos(ang) * 1.5, 7, sin(ang) * 1.5) * a.s
-			bolt(a, top, v3(base.Position.X + cos(ang) * r, a.floorY, base.Position.Z + sin(ang) * r), rand() < 0.5 and "w" or "p", 0.25, 0.22)
+			local ground = v3(base.Position.X + cos(ang) * r, a.floorY, base.Position.Z + sin(ang) * r)
+			bolt(a, top, ground, rand() < 0.5 and "w" or "p", 0.25, 0.22)
+			-- a crackling beam over the jagged core, and a flash where it lands
+			local h0, h1 = FxKit.holder(a.folder, CFrame.new(top)), FxKit.holder(a.folder, CFrame.new(ground))
+			a:ribbon(h0, h1, { tex = "bolt", width0 = 1.6, width1 = 1.2, segments = 12, speed = 6, repeatLength = 6 }, "w")
+			table.insert(a.transient, { part = h0, age = 0, life = 0.22, t0 = 1 })
+			table.insert(a.transient, { part = h1, age = 0, life = 0.22, t0 = 1 })
+			local flash = FxKit.part(a.folder, "Ball", v3(1.5, 1.5, 1.5) * a.s, a:colorOf("w"), NEON, 0.3)
+			flash.CFrame = CFrame.new(ground)
+			table.insert(a.transient, { part = flash, age = 0, life = 0.25, t0 = 0.3 })
 		end
 	end
 end
@@ -384,12 +441,21 @@ BUILD["Galaxy"] = function(a)
 			local ang = t * pl[3] + k * 2
 			return base * at(a, 0, pl[4], 0) * tilt * at(a, cos(ang) * pl[1], 0, sin(ang) * pl[1])
 		end
-		a:part("Ball", v3(pl[2], pl[2], pl[2]), pl[5], fn, Enum.Material.Neon, 0)
+		local planet = a:part("Ball", v3(pl[2], pl[2], pl[2]), pl[5], fn, Enum.Material.Neon, 0)
+		a:glow(planet, pl[2] * 0.9, { life = 1.4, t = { 0.2, 1 }, widthTail = 0.3 }, pl[5])
 		if k == 2 then
 			a:mesh("ring", v3(2.1, 0.4, 2.1), "w", function(t, base)
 				return fn(t, base) * CFrame.Angles(0.5, t, 0.3)
 			end, NEON, 0.2)
 		end
+	end
+	-- a disc of star grains turning with the vortex
+	for i = 1, 36 do
+		local r0, ph = 1.5 + (i % 9) * 0.45, i * 2.4
+		a:part("Ball", v3(0.12, 0.12, 0.12), i % 4 == 0 and "w" or "s", function(t, base)
+			local ang = ph + t * (1.6 - r0 * 0.12)
+			return CFrame.new(base.Position.X + cos(ang) * r0 * a.s, a.floorY + 0.35 + sin(t * 2 + i) * 0.08, base.Position.Z + sin(ang) * r0 * a.s)
+		end, NEON, 0)
 	end
 	a:emit("star", { rate = 14, size = { 0.7, 0 }, life = { 1, 2 }, speed = { 0.5, 2 }, spin = { -90, 90 } }, "w", function(t, base)
 		return base * at(a, 0, 2, 0)
@@ -401,9 +467,10 @@ end
 
 BUILD["Frost Monarch"] = function(a)
 	orbit(a, 8, 3.1, 1.6, 0.8, function(i, fn)
-		a:mesh("crystal", v3(0.6, 1.5, 0.6), i % 2 == 0 and "p" or "s", function(t, base)
+		local cr = a:mesh("crystal", v3(0.6, 1.5, 0.6), i % 2 == 0 and "p" or "s", function(t, base)
 			return fn(t, base) * CFrame.new(0, sin(t * 1.8 + i) * 0.35 * a.s, 0) * CFrame.Angles(0, t * 2, 0.25)
 		end, Enum.Material.Ice, 0.05, "Wedge")
+		a:glow(cr, 0.5, { life = 0.4, t = { 0.3, 1 } }, "w")
 	end)
 	orbit(a, 7, 0.8, 3.95, 0.5, function(i, fn)
 		a:mesh("crystal", v3(0.32, 0.8 + (i % 2) * 0.45, 0.32), "s", fn, NEON, 0, "Wedge")
@@ -419,6 +486,7 @@ BUILD["Frost Monarch"] = function(a)
 		return base * at(a, 0, 8, 0) * CFrame.Angles(PI, 0, 0)
 	end)
 	a:emit("smoke", { rate = 7, size = { 2, 5 }, life = { 1.5, 2.2 }, speed = { 1, 2.5 }, spread = 88, light = 0.2, t = { 0.7, 1 } }, "w", flat(a, 0.25))
+	wisps(a, 6, 3.6, 0.2, 4, -1.2, "w", 0.22)
 end
 
 BUILD["Void Wings"] = function(a)
@@ -433,6 +501,7 @@ BUILD["Void Wings"] = function(a)
 	a:mesh("ring", v3(1.9, 0.35, 1.9), "s", function(t, base)
 		return base * at(a, 0, 3.9, 0.15) * CFrame.Angles(0.35, t * 1.5, 0)
 	end, NEON, 0)
+	wisps(a, 7, 2.4, 0, 4.5, 1.5, "s", 0.26)
 end
 
 BUILD["Sakura"] = function(a)
@@ -493,6 +562,7 @@ BUILD["Phoenix"] = function(a)
 	a:mesh("ring", v3(2, 0.5, 2), "s", function(t, base)
 		return base * at(a, 0, 3.9, 0) * CFrame.Angles(0.2, t * 2, 0)
 	end, NEON, 0)
+	wisps(a, 9, 2.8, 0, 5, 2.4, "s", 0.3)
 end
 
 BUILD["Dragon Spirit"] = function(a)
@@ -500,11 +570,14 @@ BUILD["Dragon Spirit"] = function(a)
 	for i = 1, n do
 		local f = (i - 1) / (n - 1)
 		local d = 1.0 - f * 0.65
-		a:part("Ball", v3(d, d, d), i % 2 == 0 and "p" or "s", function(t, base)
+		local seg = a:part("Ball", v3(d, d, d), i % 2 == 0 and "p" or "s", function(t, base)
 			local s_ = t * 1.6 - i * 0.22
 			local h = 2.2 + sin(s_ * 0.7) * 1.6
 			return base * at(a, cos(s_) * 3.4, h, sin(s_) * 3.4)
 		end, NEON, f * 0.35)
+		if i % 4 == 1 then
+			a:glow(seg, d * 0.8, { life = 0.6, t = { 0.35, 1 } }, "p")
+		end
 		if i % 2 == 1 and i < n - 2 then
 			a:mesh("crystal", v3(0.25, 0.7 * d + 0.2, 0.25), "s", function(t, base)
 				local s_ = t * 1.6 - i * 0.22
@@ -519,10 +592,11 @@ BUILD["Dragon Spirit"] = function(a)
 		local h = 2.2 + sin(s_ * 0.7) * 1.6
 		return (base * at(a, cos(s_) * 3.4, h, sin(s_) * 3.4)).Position
 	end
-	a:mesh("crystal", v3(0.9, 1.8, 0.9), "p", function(t, base)
+	local headIt = a:mesh("crystal", v3(0.9, 1.8, 0.9), "p", function(t, base)
 		local p0, p1 = head(t, base), head(t, base, 0.15)
 		return CFrame.lookAt(p0, p1) * CFrame.Angles(-PI / 2, 0, 0)
 	end, NEON, 0, "Wedge")
+	a:glow(headIt, 1.2, { life = 0.8, t = { 0, 1 }, widthTail = 0.05 }, "s")
 	for side = -1, 1, 2 do
 		a:mesh("crystal", v3(0.2, 0.9, 0.2), "s", function(t, base)
 			local p0, p1 = head(t, base), head(t, base, 0.15)
@@ -538,7 +612,7 @@ BUILD["Dragon Spirit"] = function(a)
 end
 
 BUILD["Holy Light"] = function(a)
-	local _, pillar = a:part("Cylinder", v3(30, 2.6, 2.6), "s", function(t, base)
+	local _, pillar = a:part("Cylinder", v3(30, 1.8, 1.8), "s", function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + 15 * a.s, base.Position.Z) * CFrame.Angles(0, 0, PI / 2)
 	end, NEON, 0.82)
 	for k = 1, 3 do
@@ -554,12 +628,26 @@ BUILD["Holy Light"] = function(a)
 	a:mesh("ring", v3(2, 0.4, 2), "w", function(t, base)
 		return base * at(a, 0, 3.95, 0) * CFrame.Angles(0, t, 0)
 	end, NEON, 0)
+	-- six shafts of light from the ground circle into the sky, slowly turning
+	for i = 1, 6 do
+		local ang0 = i / 6 * TAU
+		local low = a:add(FxKit.holder(a.folder), "keep", function(t, base)
+			local ang = ang0 + t * 0.3
+			return CFrame.new(base.Position.X + cos(ang) * 3 * a.s, a.floorY, base.Position.Z + sin(ang) * 3 * a.s)
+		end)
+		local high = a:add(FxKit.holder(a.folder), "keep", function(t, base)
+			local ang = ang0 + t * 0.3
+			return CFrame.new(base.Position.X + cos(ang) * 1.6 * a.s, a.floorY + 16 * a.s, base.Position.Z + sin(ang) * 1.6 * a.s)
+		end)
+		a:ribbon(low.part, high.part, { width0 = 0.55, width1 = 0.12, t = { 0.62, 0.97 }, speed = 1.5, repeatLength = 8 }, "s")
+	end
+	wisps(a, 8, 2.2, 0, 5, 0.9, "w", 0.22)
 	a:emit("star", { rate = 12, size = { 0.6, 0 }, life = { 1, 2 }, speed = { 1, 3 }, accel = v3(0, 2, 0) }, "w", flat(a, 0.3))
 	a:emit("petal", { rate = 6, size = { 0.5, 0.4 }, life = { 2.5, 3.5 }, speed = { 0.3, 1 }, accel = v3(0, -1, 0), spin = { -60, 60 }, light = 0.6 }, "w", function(t, base)
 		return base * at(a, 0, 7, 0)
 	end) -- falling feathers (soft white petals)
 	a.tick = function(t)
-		pillar.Transparency = 0.8 + 0.08 * sin(t * 3)
+		pillar.Transparency = 0.86 + 0.06 * sin(t * 3)
 	end
 end
 
@@ -582,6 +670,7 @@ BUILD["Toxic Rift"] = function(a)
 	end
 	a:emit("smoke", { rate = 9, size = { 2, 5 }, life = { 1.5, 2.5 }, speed = { 1, 2.5 }, spread = 30, light = 0.4, t = { 0.6, 1 } }, "p", flat(a, 0.3))
 	a:emit("glow", { rate = 14, size = { 0.5, 0 }, life = { 0.8, 1.5 }, speed = { 2, 4 }, spread = 25 }, "s", flat(a, 0.2))
+	wisps(a, 6, 2.8, 0.1, 3.5, 1.1, "s", 0.28)
 end
 
 BUILD["Shadow Reaper"] = function(a)
@@ -591,9 +680,10 @@ BUILD["Shadow Reaper"] = function(a)
 	a:emit("smoke", { rate = 10, size = { 3, 6 }, life = { 1.2, 2 }, speed = { 0.3, 1 }, light = 0, t = { 0.4, 1 } }, "d", flat(a, 0.2))
 	-- three scythes circling, blades facing outward
 	orbit(a, 3, 3.3, 1.8, 1.8, function(i, fn)
-		a:mesh("blade", v3(2.6, 2.6, 1), "p", function(t, base)
+		local bl = a:mesh("blade", v3(2.6, 2.6, 1), "p", function(t, base)
 			return fn(t, base) * CFrame.Angles(0, PI / 2, t * 4)
 		end, NEON, 0, "Wedge")
+		a:glow(bl, 1.6, { life = 0.22, t = { 0.2, 1 }, widthTail = 0.4 }, "p")
 		a:part("Block", v3(0.12, 3, 0.12), "d", function(t, base)
 			return fn(t, base) * CFrame.Angles(0, PI / 2, t * 4) * CFrame.new(0, -1.2 * a.s, 0)
 		end, Enum.Material.SmoothPlastic, 0)
@@ -616,7 +706,8 @@ BUILD["Neon Cyber"] = function(a)
 			return base * at(a, 0, -1.6 + k * 1.3, 0) * CFrame.Angles(0, t * (k % 2 == 0 and -1.5 or 1.5), 0)
 		end, NEON, 0.15)
 		orbit(a, 6, 3 - k * 0.4, -1.6 + k * 1.3, k % 2 == 0 and -1.5 or 1.5, function(i, fn)
-			a:part("Block", v3(0.6, 0.12, 0.12), "w", fn, NEON, 0.1)
+			local mk = a:part("Block", v3(0.6, 0.12, 0.12), "w", fn, NEON, 0.1)
+			a:glow(mk, 0.18, { life = 0.35, t = { 0.2, 1 } }, k == 2 and "s" or "p")
 		end)
 	end
 	a:emit("hex", { rate = 6, size = { 1.6, 2.4 }, life = { 0.8, 1.2 }, speed = { 0, 0.2 }, spread = 0, rot = { 0, 0 }, spin = { 0, 0 }, t = { 0.3, 1 } }, "p", function(t, base)
@@ -646,7 +737,7 @@ function AuraFX.new(opts)
 	folder.Parent = workspace.CurrentCamera
 	local pal = AuraFX.palette[style]
 	local a = setmetatable({
-		character = char, root = root, folder = folder, style = style, s = opts.scale or 1, intensity = 1, items = {}, transient = {},
+		character = char, root = root, folder = folder, style = style, s = opts.scale or 1, intensity = 1, items = {}, transient = {}, extras = {},
 		primary = pal[1], secondary = pal[2], basePrimary = pal[1], baseSecondary = pal[2], t = 0, features = {}, destroyed = false,
 		hip = ((hum and hum.HipHeight) or 2) + root.Size.Y / 2,
 	}, Aura)

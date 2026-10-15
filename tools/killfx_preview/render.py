@@ -54,6 +54,7 @@ def tex(name):
 
 def load(name):
     frames, sprites = {}, {}
+    trails, beams = {}, {}
     for line in (S / f"{name}.txt").read_text().splitlines():
         t = line.split()
         if line.startswith("P "):
@@ -69,9 +70,75 @@ def load(name):
             n = int(t[1])
             sprites.setdefault(n, []).append((t[2][3:], np.array(list(map(float, t[3:6]))), float(t[6]), float(t[7]),
                 np.array(list(map(float, t[8:11]))), float(t[11]), float(t[12]), int(t[13]), np.array(list(map(float, t[14:17])))))
+        elif line.startswith("T "):
+            n = int(t[1])
+            v = list(map(float, t[3:]))
+            trails.setdefault(n, []).append((int(t[2]), np.array(v[0:3]), np.array(v[3:6]), np.array(v[6:9]), np.array(v[9:12]), v[12], v[13], v[14], v[15]))
+        elif line.startswith("B "):
+            n = int(t[1])
+            v = list(map(float, t[3:]))
+            beams.setdefault(n, []).append((t[2], np.array(v[0:3]), np.array(v[3:6]), v[6], v[7], np.array(v[8:11]), v[11], v[12]))
         elif line.startswith("F "):
             frames.setdefault(int(t[1]), [])
+    LAST_FX[name] = (trails, beams)
     return frames, sprites
+
+LAST_FX = {}
+
+
+def fx_polys(trails, beams, n):
+    """trail ribbons from the recorded history (head = now) and beam strips, as glowing polygons"""
+    out = []
+    hist = {}
+    for k in range(max(0, n - 40), n + 1):
+        for (tid, p0, p1, c0, c1, t0, t1, life, wt) in trails.get(k, ()):
+            hist.setdefault(tid, []).append((k, p0, p1, c0, c1, t0, t1, life, wt))
+    for tid, h in hist.items():
+        if not h or h[-1][0] != n:
+            continue
+        life = h[-1][7]
+        h = [e for e in h if (n - e[0]) / 30.0 <= life]
+        for i in range(len(h) - 1):
+            (ka, a0, a1, c0, c1, t0, t1, life, wt), (kb, b0, b1, *_r) = h[i], h[i + 1]
+            age = (n - ka) / 30.0 / max(life, 1e-3)
+            agen = (n - kb) / 30.0 / max(life, 1e-3)
+            def shrink(p, q, f):
+                m = (p + q) / 2
+                return m + (p - m) * f, m + (q - m) * f
+            wa, wb = 1 + (wt - 1) * age, 1 + (wt - 1) * agen
+            a0s, a1s = shrink(a0, a1, wa)
+            b0s, b1s = shrink(b0, b1, wb)
+            quad = np.array([a0s, b0s, b1s, a1s])
+            xy, z = proj(quad)
+            if (z < 0.5).any():
+                continue
+            col = c0 + (c1 - c0) * age
+            tr = t0 + (t1 - t0) * age
+            out.append((z.mean(), "poly", [tuple(q) for q in xy], None, col, min(1, tr + 0.15), True))
+    for (tex, p0, p1, w0, w1, col, t0, t1) in beams.get(n, ()):
+        d = p1 - p0
+        L = np.linalg.norm(d)
+        if L < 1e-3:
+            continue
+        steps = 14
+        pts = []
+        rng = np.random.default_rng(int(abs(p0[0] * 1000)) + n)
+        side = np.cross(d / L, (EYE - p0) / np.linalg.norm(EYE - p0))
+        side /= max(np.linalg.norm(side), 1e-6)
+        for i in range(steps + 1):
+            f = i / steps
+            jit = (rng.normal() * L * 0.04 if tex.endswith("bolt.png") and 0 < i < steps else 0)
+            pts.append(p0 + d * f + side * jit)
+        for i in range(steps):
+            f0, f1 = i / steps, (i + 1) / steps
+            wa, wb = (w0 + (w1 - w0) * f0) / 2, (w0 + (w1 - w0) * f1) / 2
+            core = 0.35 if tex.endswith("bolt.png") else 1.0
+            quad = np.array([pts[i] + side * wa * core, pts[i + 1] + side * wb * core, pts[i + 1] - side * wb * core, pts[i] - side * wa * core])
+            xy, z = proj(quad)
+            if (z < 0.5).any():
+                continue
+            out.append((z.mean(), "poly", [tuple(q) for q in xy], None, col, t0 + (t1 - t0) * f0, True))
+    return out
 
 def background():
     img = Image.new("RGB", (W, H))
@@ -87,7 +154,7 @@ def background():
                 d.line([tuple(xy[0]), tuple(xy[1])], fill=(62, 66, 80), width=1)
     return img
 
-def frame_image(parts, bg, sprites=()):
+def frame_image(parts, bg, sprites=(), extra=()):
     img = bg.copy().convert("RGB")  # RGB + an "RGBA" draw = real alpha blending
     glow = Image.new("RGB", (W, H))
     polys = []
@@ -134,6 +201,7 @@ def frame_image(parts, bg, sprites=()):
             if nrm @ (EYE - ctr) <= 0: continue
             shade = 1.0 if neon else 0.35 + 0.65 * max(0, nrm @ LIGHT)
             polys.append((z[list(face)].mean(), "poly", [tuple(xy[i]) for i in face], None, col * shade, tr, neon))
+    polys.extend(extra)
     for texname, pos, size, tr, col, light, rot, squash, vel in sprites:
         (xy, z) = proj(pos[None])
         if z[0] < 0.5 or size <= 0.01: continue
@@ -186,7 +254,12 @@ def frame_image(parts, bg, sprites=()):
                 g.polygon(a, fill=tuple(int(v * (1 - tr)) for v in c))
     base = np.asarray(img.convert("RGB"), np.float32)
     gl = np.asarray(glow.filter(ImageFilter.GaussianBlur(9)), np.float32) * 1.3 + np.asarray(glow.filter(ImageFilter.GaussianBlur(3)), np.float32) * 0.6
-    return Image.fromarray(np.clip(base + gl, 0, 255).astype(np.uint8))
+    out = np.clip(base + gl, 0, 255)
+    # bloom: bright areas bleed light into their surroundings (a post effect Roblox applies with its own Bloom)
+    bright = np.clip(out - 170, 0, 255) * 1.6
+    bimg = Image.fromarray(bright.astype(np.uint8))
+    bloom = np.asarray(bimg.filter(ImageFilter.GaussianBlur(6)), np.float32) * 0.7 + np.asarray(bimg.filter(ImageFilter.GaussianBlur(18)), np.float32) * 0.6
+    return Image.fromarray(np.clip(out + bloom, 0, 255).astype(np.uint8))
 
 FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
 NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв"}
@@ -202,9 +275,10 @@ if "--auras" in sys.argv:
     heroes = []
     for key, title in AURA_NAMES.items():
         frames, sprites = load("aura_" + key)
+        trails, beams = LAST_FX["aura_" + key]
         imgs = []
         for n in sorted(frames):
-            im = frame_image(frames[n], bg, sprites.get(n, ()))
+            im = frame_image(frames[n], bg, sprites.get(n, ()), fx_polys(trails, beams, n))
             ImageDraw.Draw(im).text((12, 10), title, fill=(255, 255, 255), font=FONT)
             imgs.append(im)
         q = [im.convert("P", palette=Image.ADAPTIVE, colors=200) for im in imgs]
@@ -220,9 +294,10 @@ if "--auras" in sys.argv:
 bg = background()
 for name in NAMES:
     frames, sprites = load(name)
+    trails, beams = LAST_FX[name]
     imgs = []
     for n in sorted(frames):
-        im = frame_image(frames[n], bg, sprites.get(n, ()))
+        im = frame_image(frames[n], bg, sprites.get(n, ()), fx_polys(trails, beams, n))
         ImageDraw.Draw(im).text((12, 10), NAMES[name], fill=(255, 255, 255), font=FONT)
         imgs.append(im)
     q = [im.convert("P", palette=Image.ADAPTIVE, colors=200) for im in imgs]

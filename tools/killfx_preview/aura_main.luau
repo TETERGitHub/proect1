@@ -61,6 +61,7 @@ local function dump(frameNo)
 		end
 	end
 	DUMP_SPRITES(frameNo)
+	DUMP_FX(frameNo, a.folder)
 	print("F " .. frameNo)
 end
 for f = 0, 104 do

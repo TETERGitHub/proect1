@@ -63,6 +63,7 @@ local function dump()
 		end
 	end
 	DUMP_SPRITES(frameNo)
+	DUMP_FX(frameNo, fx.folder)
 	print("F " .. frameNo)
 end
 -- a few frames of the intact body first

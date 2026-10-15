@@ -120,6 +120,77 @@ function FxKit.setEmitterColor(em, col)
 	em.Color = typeof(col) == "ColorSequence" and col or ColorSequence.new(col)
 end
 
+local function attach(part, offset)
+	local a = Instance.new("Attachment")
+	a.Position = offset
+	a.Parent = part
+	return a
+end
+
+local function seq(a, b)
+	return NumberSequence.new({ NumberSequenceKeypoint.new(0, a), NumberSequenceKeypoint.new(1, b) })
+end
+
+-- trail(part, width, o) -> Trail | nil: a glowing streak left behind a moving part (our beam texture). o: color (Color3 or
+-- ColorSequence), life (seconds), t {a, b} transparency head->tail, light, tex ("beam" default), widthTail (0-1 scale at tail)
+function FxKit.trail(part, width, o)
+	o = o or {}
+	local url = FxKit.asset((o.tex or "beam") .. ".png")
+	local ok, tr = pcall(function()
+		local a0 = attach(part, Vector3.new(0, width / 2, 0))
+		local a1 = attach(part, Vector3.new(0, -width / 2, 0))
+		local t = Instance.new("Trail")
+		t.Attachment0, t.Attachment1 = a0, a1
+		if url then
+			t.Texture = url
+			t.TextureMode = Enum.TextureMode.Stretch
+		end
+		FxKit.setEmitterColor(t, o.color or Color3.fromRGB(255, 255, 255))
+		t.Lifetime = o.life or 0.4
+		local tt = o.t or { 0, 1 }
+		t.Transparency = seq(tt[1], tt[2])
+		t.WidthScale = seq(1, o.widthTail or 0.1)
+		t.LightEmission = o.light or 1
+		t.LightInfluence = 0
+		t.FaceCamera = true
+		t.MinLength = 0.05
+		t.Parent = part
+		return t
+	end)
+	return ok and tr or nil
+end
+
+-- beam(p0, p1, o) -> Beam | nil: a textured energy ribbon between two parts (positions of their centres). o: width0, width1,
+-- color, t {a, b}, tex ("beam" or "bolt"), segments, curve0, curve1 (bend), speed (texture scroll), light, repeat (texture tiles)
+function FxKit.beam(p0, p1, o)
+	o = o or {}
+	local url = FxKit.asset((o.tex or "beam") .. ".png")
+	local ok, b = pcall(function()
+		local a0 = attach(p0, Vector3.new(0, 0, 0))
+		local a1 = attach(p1, Vector3.new(0, 0, 0))
+		local bm = Instance.new("Beam")
+		bm.Attachment0, bm.Attachment1 = a0, a1
+		if url then
+			bm.Texture = url
+			bm.TextureMode = Enum.TextureMode.Wrap
+			bm.TextureLength = o.repeatLength or 4
+			bm.TextureSpeed = o.speed or 1
+		end
+		FxKit.setEmitterColor(bm, o.color or Color3.fromRGB(255, 255, 255))
+		bm.Width0, bm.Width1 = o.width0 or 0.5, o.width1 or o.width0 or 0.5
+		local tt = o.t or { 0, 0 }
+		bm.Transparency = seq(tt[1], tt[2])
+		bm.LightEmission = o.light or 1
+		bm.LightInfluence = 0
+		bm.FaceCamera = true
+		bm.Segments = o.segments or 10
+		bm.CurveSize0, bm.CurveSize1 = o.curve0 or 0, o.curve1 or 0
+		bm.Parent = p0
+		return bm
+	end)
+	return ok and b or nil
+end
+
 -- holder(parent, cf) -> an invisible anchored part to carry emitters
 function FxKit.holder(parent, cf)
 	local h = FxKit.part(parent, "Block", Vector3.new(0.2, 0.2, 0.2), Color3.fromRGB(255, 255, 255), Enum.Material.SmoothPlastic, 1)

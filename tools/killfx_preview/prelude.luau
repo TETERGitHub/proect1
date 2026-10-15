@@ -218,3 +218,24 @@ function DUMP_SPRITES(frame)
 			sample(p.size, f), sample(p.tr, f), c.R, c.G, c.B, p.light, p.rot, p.squash and 1 or 0, p.vel.x, p.vel.y, p.vel.z))
 	end
 end
+
+-- trails and beams: dump their attachment positions every frame (the renderer keeps trail history itself)
+local fxId = 0
+function DUMP_FX(frame, root)
+	for _, o in ipairs(root:GetDescendants()) do
+		if (o.ClassName == "Trail" or o.ClassName == "Beam") and o.Attachment0 and o.Attachment1 then
+			if not rawget(o, "_id") then fxId += 1; rawset(o, "_id", fxId) end
+			local p0 = o.Attachment0._parent.CFrame * o.Attachment0.Position
+			local p1 = o.Attachment1._parent.CFrame * o.Attachment1.Position
+			local c0, c1 = sample(o.Color, 0), sample(o.Color, 1)
+			local t0, t1 = sample(o.Transparency, 0), sample(o.Transparency, 1)
+			if o.ClassName == "Trail" then
+				print(string.format("T %d %d %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f", frame, o._id, p0.x, p0.y, p0.z,
+					p1.x, p1.y, p1.z, c0.R, c0.G, c0.B, c1.R, c1.G, c1.B, t0, t1, o.Lifetime or 0.4, sample(o.WidthScale, 1)))
+			else
+				print(string.format("B %d %s %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f", frame, tostring(o.Texture), p0.x, p0.y, p0.z,
+					p1.x, p1.y, p1.z, o.Width0 or 0.5, o.Width1 or 0.5, c0.R, c0.G, c0.B, t0, t1))
+			end
+		end
+	end
+end

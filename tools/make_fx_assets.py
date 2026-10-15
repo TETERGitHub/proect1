@@ -82,6 +82,26 @@ def textures():
         return np.maximum(qx * 0.866 + qy * 0.5, qy) - 0.78
     dd = hexd(x, y)
     save("hex.png", np.exp(-(dd / 0.04) ** 2) + np.exp(-(dd / 0.16) ** 2) * 0.35)
+    # beam: a soft energy strip for Beams and Trails (runs along X, bright white core, wide soft falloff across Y)
+    core = np.exp(-(y / 0.08) ** 2)
+    halo = np.exp(-(y / 0.45) ** 2) * 0.55
+    save("beam.png", core + halo)
+    # bolt: a lightning ribbon texture (jagged bright line with glow) for Beams that crackle
+    rng2 = np.random.default_rng(12)
+    img2 = Image.new("L", (N, N), 0)
+    from PIL import ImageDraw as _D
+    d2 = _D.Draw(img2)
+    pts = [(0, N / 2)]
+    for i in range(1, 16):
+        pts.append((i * N / 15, N / 2 + rng2.normal() * 16))
+    d2.line(pts, fill=255, width=4)
+    for k in range(4):
+        i0 = rng2.integers(2, 12)
+        x0, y0 = pts[i0]
+        d2.line([(x0, y0), (x0 + rng2.normal() * 14, y0 + rng2.normal() * 22)], fill=170, width=2)
+    c2 = np.asarray(img2, float) / 255
+    g2 = np.asarray(img2.filter(ImageFilter.GaussianBlur(6)), float) / 255
+    save("bolt.png", c2 + g2 * 1.8)
     # arc: a jagged electric crackle across the sprite
     rng = np.random.default_rng(5)
     img = Image.new("L", (N, N), 0)
@@ -209,7 +229,7 @@ def meshes_extra():
     steps = 16
     for i in range(steps + 1):
         t = i / steps
-        w = 0.32 * math.sin(math.pi * min(1, t * 1.05)) ** 0.8 + 0.01
+        w = 0.95 * math.sin(math.pi * min(1, t * 1.05)) ** 0.8 + 0.02
         y = t * 3.0
         V += [(-w, y, 0.0), (0.0, y, 0.06), (w, y, 0.0), (0.0, y, -0.03)]
     for i in range(steps):
