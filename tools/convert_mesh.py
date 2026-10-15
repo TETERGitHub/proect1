@@ -113,6 +113,40 @@ def split_by_position(meshes):
                 names[i] = "LowerTorso"
             else:
                 names[i] = side + ("UpperLeg" if ti > 0.27 else "LowerLeg" if ti > 0.07 else "Foot")
+        # keep only the part of each arm that is connected to its shoulder: stray bits of hip or thigh that happen to lie past the
+        # gap are separate pieces of surface and go back to the torso or legs
+        key = np.round(m.pos / max(h * 1e-4, 1e-6)).astype(np.int64)
+        _, weld = np.unique(key, axis=0, return_inverse=True)
+        weld = weld.reshape(-1)
+        for sd in ("Right", "Left"):
+            arm = np.array([str(n).startswith(sd) and ("Arm" in n or n.endswith("Hand")) for n in names])
+            idxs = np.where(arm)[0]
+            if len(idxs) < 2:
+                continue
+            parent = {}
+            def find(a):
+                while parent.setdefault(a, a) != a:
+                    parent[a] = parent[parent[a]]
+                    a = parent[a]
+                return a
+            for fi in idxs:
+                w = weld[m.faces[fi]]
+                for q in w[1:]:
+                    ra, rb = find(w[0]), find(q)
+                    if ra != rb:
+                        parent[ra] = rb
+            comp = {}
+            for fi in idxs:
+                comp.setdefault(find(weld[m.faces[fi][0]]), []).append(fi)
+            upper = [fi for fi in idxs if names[fi] == sd + "UpperArm"]
+            if not upper:
+                continue
+            main = max(comp.values(), key=lambda c: sum(1 for fi in c if names[fi] == sd + "UpperArm") * 1e6 + len(c))
+            keep = set(main)
+            for fi in idxs:
+                if fi not in keep:
+                    tt = t[fi]
+                    names[fi] = "UpperTorso" if tt > 0.58 else "LowerTorso" if tt > 0.47 else sd + ("UpperLeg" if tt > 0.27 else "LowerLeg")
         for bone in sorted(set(names)):
             sel = np.where(names == bone)[0]
             used = np.unique(m.faces[sel])
