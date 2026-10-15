@@ -46,6 +46,58 @@ R15 = ["Head", "UpperTorso", "LowerTorso", "LeftUpperArm", "LeftLowerArm", "Left
        "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"]
 
 
+# rest centres of the R15 parts in root space for a 5.5-stud avatar (same numbers as src/data/Rig.luau)
+RIG_REST = {
+    "Head": (0, 1.9, 0), "UpperTorso": (0, 0.75, 0), "LowerTorso": (0, -0.35, 0),
+    "RightUpperArm": (1.5, 0.9, 0), "RightLowerArm": (1.5, 0.1, 0), "RightHand": (1.5, -0.55, 0),
+    "LeftUpperArm": (-1.5, 0.9, 0), "LeftLowerArm": (-1.5, 0.1, 0), "LeftHand": (-1.5, -0.55, 0),
+    "RightUpperLeg": (0.5, -1.15, 0), "RightLowerLeg": (0.5, -2.0, 0), "RightFoot": (0.5, -2.75, 0),
+    "LeftUpperLeg": (-0.5, -1.15, 0), "LeftLowerLeg": (-0.5, -2.0, 0), "LeftFoot": (-0.5, -2.75, 0),
+}
+
+
+def split_by_position(meshes):
+    """--auto-bones: cut each mesh into R15 body parts by where its triangles are (for models without a skeleton or names).
+    Positions are in the hub's space (front -Z, up +Y, 5.5 studs tall, centred). The arms are found from the model's own width so a
+    wide or thin body still gets its arms; the legs are split at the crotch. Returns new meshes with .bone set."""
+    allp = np.vstack([m.pos for m in meshes])
+    lo, hi = allp.min(axis=0), allp.max(axis=0)
+    h = hi[1] - lo[1]
+    out = []
+    for m in meshes:
+        cen = m.pos[m.faces].mean(axis=1)
+        t = (cen[:, 1] - lo[1]) / h          # 0 feet .. 1 top
+        x = cen[:, 0]
+        # torso half-width at chest height: the body without the arms (the narrowest 60 % of points at 55-75 % height)
+        band = allp[((allp[:, 1] - lo[1]) / h > 0.55) & ((allp[:, 1] - lo[1]) / h < 0.75)]
+        torso_half = np.percentile(np.abs(band[:, 0]), 60) if len(band) else 0.6
+        names = np.empty(len(cen), dtype=object)
+        for i in range(len(cen)):
+            ti, xi = t[i], x[i]
+            side = "Right" if xi > 0 else "Left"   # facing -Z, the avatar's right is +X
+            if ti > 0.82:
+                names[i] = "Head"
+            elif abs(xi) > torso_half * 1.05 and ti > 0.33:
+                names[i] = side + ("UpperArm" if ti > 0.62 else "LowerArm" if ti > 0.47 else "Hand")
+            elif ti > 0.58:
+                names[i] = "UpperTorso"
+            elif ti > 0.47:
+                names[i] = "LowerTorso"
+            else:
+                names[i] = side + ("UpperLeg" if ti > 0.27 else "LowerLeg" if ti > 0.07 else "Foot")
+        for bone in sorted(set(names)):
+            sel = np.where(names == bone)[0]
+            used = np.unique(m.faces[sel])
+            remap = -np.ones(len(m.pos), dtype=np.int64); remap[used] = np.arange(len(used))
+            n = Mesh(m.name + "_" + bone)
+            n.pos, n.uv = m.pos[used], m.uv[used]
+            n.nrm = m.nrm[used] if len(m.nrm) == len(m.pos) else m.nrm
+            n.faces = remap[m.faces[sel]]
+            n.image, n.color, n.bone = m.image, m.color, bone
+            out.append(n)
+    return out
+
+
 def bone_of(name):
     """R15 part a node name belongs to (longest prefix match, case-insensitive), or None."""
     n = (name or "").lower()
@@ -494,6 +546,8 @@ def main():
     ap.add_argument("--skip", default="", help="regular expression: nodes whose name matches are left out with their children "
                     "(stands, signs, extra copies in a showcase scene)")
     ap.add_argument("--anim-pose", type=int, default=None, help="pose the model as in the first keyframe of animation N (0 = first)")
+    ap.add_argument("--auto-bones", action="store_true", help="costume only: cut the model into R15 body parts by position, so every "
+                    "part follows its limb (arms raise with a held knife or gun, legs walk)")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
     ap.add_argument("--credit", default="", help="author / title / licence text kept next to the model")
@@ -517,6 +571,11 @@ def main():
     orient(meshes, a.forward, a.up)
     length = a.length or {"gun": 2.8, "knife": 3.0}.get(a.kind, 5.5 if a.group == "costume" else 3.0)
     size, k, origin = normalize(meshes, length, keep_scale=a.as_is)
+    if a.auto_bones:
+        if a.kind != "char" or a.group != "costume":
+            raise SystemExit("--auto-bones is for costumes (--kind char --group costume)")
+        meshes = split_by_position(meshes)
+        print("  cut into body parts: " + ", ".join(sorted({m.bone for m in meshes})))
     # split the budget between materials in proportion to their size
     budget = a.max_tris
     out_meshes = []
