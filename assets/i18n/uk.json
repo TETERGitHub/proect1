@@ -1312,7 +1312,14 @@
   "When": "Коли",
   "Plays on a copy of your avatar 10 studs in front of you.": "Програється на копії вашого аватара за 10 стадів перед вами.",
   "Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.": "Зібрано з власних деталей і анімації хаба, без стандартних ефектів Roblox. Лише на вашому екрані: справжнє тіло жертви просто приховане у вас.",
-  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "Потужні добивання на жертвах: блискавка, вибух, випаровування, чорна діра, крижаний вибух."
+  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "Потужні добивання на жертвах: блискавка, вибух, випаровування, чорна діра, крижаний вибух.",
+  "Menu background": "Тло меню",
+  "Picture behind the menu: liquid chrome waves (tinted to your theme or menu colour).": "Зображення за меню: хвилі рідкого хрому (у колір теми або вашого кольору меню).",
+  "Chrome waves": "Хромові хвилі",
+  "Background strength": "Яскравість тла",
+  "How visible the background picture is.": "Наскільки помітне зображення тла.",
+  "Glass grain": "Зерно скла",
+  "A very fine frosted-glass grain and a soft highlight over the window.": "Дуже дрібне зерно матового скла й м'який відблиск поверх вікна."
  },
  "patterns": [
   [

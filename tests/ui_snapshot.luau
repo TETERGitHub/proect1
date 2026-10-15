@@ -26,7 +26,7 @@ local CFG = Json.decode(SNAP_CFG_JSON)
 local KEEP_CLASSES = {
 	Frame = true, TextLabel = true, TextButton = true, TextBox = true, ScrollingFrame = true, CanvasGroup = true, ImageLabel = true, ImageButton = true,
 	UICorner = true, UIStroke = true, UIGradient = true, UIListLayout = true, UIGridLayout = true, UIPadding = true, UIScale = true, ScreenGui = true,
-	UIAspectRatioConstraint = true, UISizeConstraint = true,
+	UIAspectRatioConstraint = true, UISizeConstraint = true, UITextSizeConstraint = true,
 }
 
 local function enumOf(v)
@@ -117,6 +117,14 @@ end
 local function runJob(job)
 	T.fresh(); Mock.uninstall()
 	local game = Mock.install(); Services.clear()
+	-- a file API with getcustomasset, so the bundled images (backdrop, grain, sticker...) are created and can be drawn
+	local files = {}
+	local api = {
+		writefile = function(path, t) files[path] = t end, readfile = function(path) return files[path] end, isfile = function(path) return files[path] ~= nil end,
+		makefolder = function() end, isfolder = function() return true end, getcustomasset = function(path) return "snap://" .. path end,
+	}
+	import("core/Env").setLookup(function(name) return api[name] end)
+	import("core/Env").setForceMemory(false)
 	local cam = game.Workspace.CurrentCamera
 	local vp = job.viewport or { 1280, 720 }
 	cam.ViewportSize = Mock.v2(vp[1], vp[2])
@@ -134,7 +142,7 @@ local function runJob(job)
 		local gui = Instance.new("ScreenGui")
 		gui.Name = "KeyCardShot"
 		gui.Parent = game.__services.CoreGui
-		local card = KeyCard.build(gui, { title = "MM2 Hub", prompt = "Enter your licence key to start the hub.", placeholder = "MM2H-XXXXX-XXXXX-...", button = "Activate", busy = "Checking...", onSubmit = function() end })
+		local card = KeyCard.build(gui, { sticker = { image = import("ui/Flair").image("sticker_mouth.png"), frames = 10, cols = 5, cell = 128 }, title = "TrollHub", prompt = "Enter your licence key to start the hub.", placeholder = "MM2H-XXXXX-XXXXX-...", button = "Activate", busy = "Checking...", onSubmit = function() end })
 		if job.keycard == "error" then card.box.Text = "MM2H-0406N-KMFQ9"; card.setStatus("This key has expired.", "error")
 		elseif job.keycard == "busy" then card.box.Text = "MM2H-0406N-KMFQ9-NCZR9"; card.setBusy(true)
 		elseif job.keycard == "ok" then card.box.Text = "MM2H-0406N-KMFQ9-NCZR9"; card.setStatus("Key accepted. 12 days left.", "ok") end
@@ -144,6 +152,7 @@ local function runJob(job)
 		Mock.uninstall()
 		return
 	end
+	if not job.splash then Settings.set("ui.splash", false) end -- the mock never fires task.delay, so the loading cover would stay
 	local h = Hub.run({ skipLicense = true })
 	Settings.set("ui.animSpeed", 0)
 	if job.language then I18n.set(job.language); Window.relocalize() end

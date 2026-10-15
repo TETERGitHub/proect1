@@ -1312,7 +1312,14 @@
   "When": "Quand",
   "Plays on a copy of your avatar 10 studs in front of you.": "Se joue sur une copie de votre avatar 10 studs devant vous.",
   "Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.": "Construit avec les pièces et l'animation du hub, sans effets Roblox standard. Sur votre écran uniquement : le vrai corps de la victime est juste masqué pour vous.",
-  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "De grosses finitions sur vos victimes : foudre, explosion, vaporisation, trou noir, glace brisée."
+  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "De grosses finitions sur vos victimes : foudre, explosion, vaporisation, trou noir, glace brisée.",
+  "Menu background": "Fond du menu",
+  "Picture behind the menu: liquid chrome waves (tinted to your theme or menu colour).": "Image derrière le menu : vagues de chrome liquide (teintées selon le thème ou votre couleur).",
+  "Chrome waves": "Vagues de chrome",
+  "Background strength": "Intensité du fond",
+  "How visible the background picture is.": "Visibilité de l'image de fond.",
+  "Glass grain": "Grain du verre",
+  "A very fine frosted-glass grain and a soft highlight over the window.": "Un grain très fin de verre dépoli et un léger reflet sur la fenêtre."
  },
  "patterns": [
   [

@@ -99,6 +99,116 @@ function Flair.mascot(parent, size)
 	return m
 end
 
+-- Window layers ---------------------------------------------------------------------------------------------------------------
+
+-- backdrop(window, maid, isOpen): the menu's own picture layers, all behind the content:
+--   chrome waves (ui.background) tinted to the theme or your menu colour, drifting very slowly while the menu is open;
+--   a fine frosted-glass grain and a soft diagonal highlight (ui.grain).
+-- Each layer needs the bundled image (writefile + getcustomasset); without it the layer is simply not created.
+function Flair.backdrop(window, maid, isOpen)
+	local bgUrl, grainUrl, sheenUrl = Flair.image("bg_chrome.jpg"), Flair.image("grain.png"), Flair.image("sheen.png")
+	local layers = {}
+	if bgUrl then
+		local bg = Instance.new("ImageLabel")
+		bg.Name = "Backdrop"
+		bg.BackgroundTransparency = 1
+		bg.Image = bgUrl
+		bg.ScaleType = Enum.ScaleType.Crop
+		bg.AnchorPoint = Vector2.new(0.5, 0.5)
+		bg.Position = UDim2.fromScale(0.5, 0.5)
+		bg.Size = UDim2.fromScale(1.12, 1.12) -- a margin to drift in
+		bg.ZIndex = 1
+		bg.Active = false
+		bg.Parent = window
+		maid:Give(bg)
+		Theme.bind(bg, "ImageColor3", function()
+			if Settings.get("ui.tint") then
+				local c = Settings.get("ui.tintColor")
+				local peak = math.max(c.r, c.g, c.b, 1)
+				return Color3.fromRGB(math.floor(c.r / peak * 255), math.floor(c.g / peak * 255), math.floor(c.b / peak * 255))
+			end
+			return Theme.mix("highlight", "accent", 0.18)
+		end)
+		Theme.bind(bg, "ImageTransparency", function()
+			return 1 - Settings.get("ui.backgroundStrength") * 0.55
+		end)
+		Theme.bind(bg, "Visible", function()
+			return Settings.get("ui.background") ~= "Off" and Theme.effectsOn()
+		end)
+		layers.bg = bg
+	end
+	if grainUrl then
+		local g = Instance.new("ImageLabel")
+		g.Name = "Grain"
+		g.BackgroundTransparency = 1
+		g.Image = grainUrl
+		g.ScaleType = Enum.ScaleType.Tile
+		g.TileSize = UDim2.fromOffset(128, 128)
+		g.ImageTransparency = 0.955
+		g.Size = UDim2.fromScale(1, 1)
+		g.ZIndex = 1
+		g.Active = false
+		g.Parent = window
+		maid:Give(g)
+		Theme.bind(g, "Visible", function()
+			return Settings.get("ui.grain") and Theme.effectsOn()
+		end)
+		layers.grain = g
+	end
+	if sheenUrl then
+		local sh = Instance.new("ImageLabel")
+		sh.Name = "GlassHighlight"
+		sh.BackgroundTransparency = 1
+		sh.Image = sheenUrl
+		sh.Size = UDim2.new(0.75, 0, 0, 260)
+		sh.ZIndex = 1
+		sh.Active = false
+		sh.Parent = window
+		maid:Give(sh)
+		Theme.bind(sh, "ImageTransparency", function()
+			return 1 - 0.1 * Theme.glassAmount()
+		end)
+		Theme.bind(sh, "Visible", function()
+			return Settings.get("ui.grain") and Theme.effectsOn()
+		end)
+		layers.sheen = sh
+	end
+	if layers.bg then
+		local t = 0
+		local handle = Perf.every("ui.backdrop", 15, function(dt)
+			if not isOpen() or not Motion.enabled() then
+				return
+			end
+			t += dt
+			layers.bg.Position = UDim2.new(0.5 + math.sin(t * 0.07) * 0.035, 0, 0.5 + math.cos(t * 0.05) * 0.03, 0)
+		end, { visual = true })
+		maid:Give(handle.Cancel)
+	end
+	return layers
+end
+
+-- softShadow(parent, radius) -> ImageLabel | nil: one smooth 9-slice drop shadow (shadow.png) instead of stacked frames
+function Flair.softShadow(parent)
+	local url = Flair.image("shadow.png")
+	if not url then
+		return nil
+	end
+	local s = Instance.new("ImageLabel")
+	s.Name = "SoftShadow"
+	s.BackgroundTransparency = 1
+	s.Image = url
+	s.ScaleType = Enum.ScaleType.Slice
+	s.SliceCenter = Rect.new(60, 60, 68, 68)
+	s.AnchorPoint = Vector2.new(0.5, 0.5)
+	s.Position = UDim2.new(0.5, 0, 0.5, 12)
+	s.Size = UDim2.new(1, 70, 1, 70)
+	s.ImageTransparency = 0.25
+	s.ZIndex = 0
+	s.Active = false
+	s.Parent = parent
+	return s
+end
+
 -- Loading screen --------------------------------------------------------------------------------------------------------------
 
 -- loading(root, radius, maid, onDone): covers the window with black glass, the mascot, the name and a progress bar, then dissolves.

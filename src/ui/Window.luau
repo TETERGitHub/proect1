@@ -911,6 +911,14 @@ local function buildShadow(parent)
 	-- geometric so the layers read as one falloff instead of visible steps
 	local shadow = F.frame(parent, { Name = "Shadow", Size = UDim2.fromScale(1, 1), ZIndex = 0 })
 	w.shadow = shadow
+	-- preferred: one smooth 9-slice shadow image (ui/Flair); the stacked layers below are the fallback without bundled images
+	local soft = Flair.softShadow(shadow)
+	if soft then
+		Theme.bind(soft, "Visible", function()
+			return Theme.effectsOn()
+		end)
+		return
+	end
 	for _, spec in ipairs({ { 4, 0.9 }, { 10, 0.935 }, { 18, 0.955 }, { 28, 0.97 }, { 40, 0.982 }, { 54, 0.99 } }) do
 		local layer = Instance.new("Frame")
 		layer.Name = "Layer"
@@ -1098,6 +1106,10 @@ function Window.start(ctx)
 		return Theme.effectsOn()
 	end)
 
+	-- the menu's own picture layers: chrome waves backdrop, frosted grain, glass highlight (ui/Flair)
+	Flair.backdrop(window, ctx.maid, function()
+		return w ~= nil and w.visible and not Settings.get("state.minimized")
+	end)
 	-- specular sheen + animated accent line (decor)
 	F.sheen(window, 170)
 	local line = F.frame(window, { Name = "AccentLine", Size = UDim2.new(1, 0, 0, 1), ZIndex = 6 })

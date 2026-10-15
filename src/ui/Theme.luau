@@ -335,7 +335,7 @@ end
 
 local watched = {
 	"ui.theme", "ui.accent", "ui.useThemeAccent", "ui.textScale", "ui.density", "ui.cornerRadius", "ui.compact",
-	"ui.glass", "ui.reduceEffects", "ui.opacity", "ui.font", "ui.language", "ui.tint", "ui.tintColor", "ui.tintStrength",
+	"ui.glass", "ui.reduceEffects", "ui.opacity", "ui.font", "ui.language", "ui.tint", "ui.tintColor", "ui.tintStrength", "ui.background", "ui.backgroundStrength", "ui.grain",
 }
 
 -- start(maid): observe appearance settings so bound properties follow them.

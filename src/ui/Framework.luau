@@ -476,6 +476,51 @@ end
 -- button(parent, text, onClick, style, dim, maid) -> TextButton
 -- States: normal, hover, pressed, disabled (F.setButtonEnabled) and loading (F.setButtonLoading). A disabled or loading
 -- button ignores presses, so an operation that is still running cannot be started a second time.
+-- hoverGlow(btn, maid): on pointer-over a soft white wash fades in and a thin glint runs across once (glass feel). Off with
+-- reduced effects / low profile / animation speed 0. Returns the glow frame.
+function F.hoverGlow(b, maid)
+	local glow = Instance.new("Frame")
+	glow.Name = "HoverGlow"
+	glow.BorderSizePixel = 0
+	glow.Active = false
+	glow.Size = UDim2.fromScale(1, 1)
+	glow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	glow.BackgroundTransparency = 1
+	glow.ZIndex = b.ZIndex
+	local gc = Instance.new("UICorner")
+	gc.CornerRadius = UDim.new(1, 0)
+	gc.Parent = glow
+	local sweep = Instance.new("UIGradient")
+	sweep.Rotation = 20
+	sweep.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.45, 0.55), NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(0.55, 0.55), NumberSequenceKeypoint.new(1, 0.55),
+	})
+	sweep.Offset = Vector2.new(-1, 0)
+	sweep.Parent = glow
+	glow.Parent = b
+	local function corner()
+		local c = b:FindFirstChildOfClass("UICorner")
+		if c then
+			gc.CornerRadius = c.CornerRadius
+		end
+	end
+	corner()
+	maid:Give(b.MouseEnter:Connect(function()
+		if not Theme.effectsOn() or not Motion.enabled() then
+			return
+		end
+		corner()
+		Motion.tween(glow, { BackgroundTransparency = 0.9 }, Motion.D.fast, "smooth")
+		sweep.Offset = Vector2.new(-1, 0)
+		Motion.tween(sweep, { Offset = Vector2.new(1, 0) }, 0.45, "smooth")
+	end))
+	maid:Give(b.MouseLeave:Connect(function()
+		Motion.tween(glow, { BackgroundTransparency = 1 }, Motion.D.std, "smooth")
+	end))
+	return glow
+end
+
 function F.button(parent, text, onClick, style, dim, maid)
 	maid = maid or (ctx and ctx.maid) or Maid.new("button")
 	local st = { style = STYLE_ALIAS[style or "tinted"] or "tinted", enabled = true, loading = false, hover = false, down = false, label = I18n.tr(text) }
@@ -512,6 +557,9 @@ function F.button(parent, text, onClick, style, dim, maid)
 	b.Parent = parent
 	local scale = Motion.pressable(b, maid, 0.03)
 	st.scale = scale
+	if st.style ~= "plain" then
+		F.hoverGlow(b, maid)
+	end
 
 	local function paint(animate)
 		local bg, bgT, tc, tT = buttonLook(st)

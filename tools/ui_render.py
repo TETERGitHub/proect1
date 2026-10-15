@@ -388,6 +388,8 @@ def paint(n: N, pt: Painter, clip, inherited_alpha=1.0):
         if bg_t < 0.999:
             m, reg = pt.shape(box, radius, rot)
             pt.put(m, reg, color(n.get("BackgroundColor3"), (0.63, 0.63, 0.63)), (1 - bg_t) * inherited_alpha, clip, grads[0] if grads else None, box)
+    if n.cls in ("ImageLabel", "ImageButton"):
+        draw_image(n, pt, clip, inherited_alpha, box)
     if n.cls in ("TextLabel", "TextButton", "TextBox"):
         text = str(n.get("Text", "") or "")
         placeholder = False
@@ -411,6 +413,79 @@ def paint(n: N, pt: Painter, clip, inherited_alpha=1.0):
         pt.img = saved
         sub_img.putalpha(sub_img.getchannel("A").point(lambda v: int(v * (1 - group))))
         pt.img.alpha_composite(sub_img)
+
+
+IMG_CACHE = {}
+
+
+def draw_image(n, pt, clip, alpha, box):
+    """Bundled images only (Image = snap://.../<file>, looked up in assets/ui and assets/fx). Crop / Fit / Stretch / Tile /
+    Slice(approximated by stretch), ImageRectOffset/Size, ImageColor3 and ImageTransparency. Rotation is ignored."""
+    import numpy as np
+    url = str(n.get("Image", "") or "")
+    if not url.startswith("snap://"):
+        return
+    name = url.rsplit("/", 1)[-1]
+    if name not in IMG_CACHE:
+        src = None
+        for d in ("ui", "fx"):
+            f = ROOT / "assets" / d / name
+            if f.exists():
+                src = Image.open(f).convert("RGBA")
+        IMG_CACHE[name] = src
+    src = IMG_CACHE[name]
+    if src is None or n.w < 1 or n.h < 1:
+        return
+    def vec(v):
+        if isinstance(v, dict) and "v2" in v:
+            return float(v["v2"][0]), float(v["v2"][1])
+        if isinstance(v, dict):
+            return float(v.get("X", 0) or 0), float(v.get("Y", 0) or 0)
+        return 0.0, 0.0
+    (ox, oy), (sx, sy) = vec(n.get("ImageRectOffset")), vec(n.get("ImageRectSize"))
+    if sx > 0 and sy > 0:
+        src = src.crop((int(ox), int(oy), int(ox + sx), int(oy + sy)))
+    W2, H2 = max(1, int(n.w * SS)), max(1, int(n.h * SS))
+    st = enum_name(n.get("ScaleType"), "Stretch")
+    if st == "Crop":
+        k = max(W2 / src.width, H2 / src.height)
+        im = src.resize((max(1, int(src.width * k)), max(1, int(src.height * k))), Image.LANCZOS)
+        l, t = (im.width - W2) // 2, (im.height - H2) // 2
+        im = im.crop((l, t, l + W2, t + H2))
+    elif st == "Fit":
+        k = min(W2 / src.width, H2 / src.height)
+        fit = src.resize((max(1, int(src.width * k)), max(1, int(src.height * k))), Image.LANCZOS)
+        im = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))
+        im.paste(fit, ((W2 - fit.width) // 2, (H2 - fit.height) // 2))
+    elif st == "Tile":
+        ts = n.get("TileSize")
+        tw = int(ud_offset_x(ts) * SS) if ts else src.width
+        tile = src.resize((max(1, tw), max(1, tw)), Image.LANCZOS)
+        im = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))
+        for yy in range(0, H2, tile.height):
+            for xx in range(0, W2, tile.width):
+                im.paste(tile, (xx, yy))
+    else:
+        im = src.resize((W2, H2), Image.LANCZOS)
+    col = color(n.get("ImageColor3"), (1, 1, 1))
+    arr = np.asarray(im, np.float32)
+    arr[..., :3] *= np.array(col, np.float32)
+    a = (1 - float(n.get("ImageTransparency", 0) or 0)) * alpha
+    arr[..., 3] *= a
+    layer = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
+    x0, y0 = int(n.x * SS), int(n.y * SS)
+    full = Image.new("RGBA", pt.img.size, (0, 0, 0, 0))
+    full.paste(layer, (x0, y0))
+    if clip is not None:
+        full.putalpha(ImageChops.multiply(full.getchannel("A"), clip))
+    pt.img.alpha_composite(full)
+
+
+def ud_offset_x(v):
+    try:
+        return float(v["X"]["Offset"])
+    except Exception:
+        return 128.0
 
 
 def draw_text(n: N, pt: Painter, text, clip, alpha, placeholder):
