@@ -95,9 +95,12 @@ class ConvertMesh(unittest.TestCase):
         # the source origin sits 0.55 above the bounding-box centre (y range -1.6 .. 0.5); it becomes the grip
         self.assertAlmostEqual(e["hold"][1], 0.55, places=3)
         self.assertAlmostEqual(e["hold"][0], 0.0, places=3)
-        r2 = run(str(self.glb), "--id", "g", "--kind", "gun", "--out", str(self.tmp / "plain"), "--no-preview")
+        r2 = run(str(self.glb), "--id", "g", "--kind", "gun", "--no-auto-grip", "--out", str(self.tmp / "plain"), "--no-preview")
         e2 = json.loads((self.tmp / "plain" / "index.json").read_text())["models"][0]
-        self.assertEqual(e2["hold"], [0, 0, 0], "without --as-is the model is held at its centre")
+        self.assertEqual(e2["hold"], [0, 0, 0], "with --no-auto-grip the model is held at its centre")
+        r3 = run(str(self.glb), "--id", "g", "--kind", "gun", "--out", str(self.tmp / "grip"), "--no-preview")
+        e3 = json.loads((self.tmp / "grip" / "index.json").read_text())["models"][0]
+        self.assertGreater(e3["hold"][2], 0, "the detected grip is in the rear half (the barrel points to -Z)")
 
     def test_costume_is_split_per_body_part(self):
         # the same two boxes as two objects named like Blender exports them for an R15 costume

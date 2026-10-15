@@ -56,6 +56,28 @@ RIG_REST = {
 }
 
 
+def find_grip(meshes, kind):
+    """Where a hand holds the weapon, in the normalised space (front -Z, up +Y, centred).
+    Guns: the pistol grip, i.e. the lowest part hanging below the frame in the rear 55 % of the length, taken at the top of
+    that part (where the hand closes under the frame). Knives: the middle of the handle, the rear 12 % of the length."""
+    allp = np.vstack([m.pos for m in meshes])
+    lo, hi = allp.min(axis=0), allp.max(axis=0)
+    L = hi[2] - lo[2]
+    cx = (lo[0] + hi[0]) / 2
+    if kind == "knife":
+        rear = allp[allp[:, 2] > hi[2] - 0.24 * L]
+        return np.array([cx, (rear[:, 1].min() + rear[:, 1].max()) / 2, hi[2] - 0.12 * L])
+    rear = allp[allp[:, 2] > hi[2] - 0.55 * L]
+    H = hi[1] - lo[1]
+    low = rear[rear[:, 1] < rear[:, 1].min() + 0.35 * H]          # the part that hangs lowest at the back: the grip
+    if len(low) < 5:
+        return np.array([cx, (lo[1] + hi[1]) / 2, hi[2] - 0.2 * L])
+    z = float(np.median(low[:, 2]))
+    band = rear[np.abs(rear[:, 2] - z) < 0.06 * L]
+    y = band[:, 1].min() + 0.55 * (np.median(band[:, 1]) - band[:, 1].min()) if len(band) else low[:, 1].mean()
+    return np.array([cx, y, z])
+
+
 def split_by_position(meshes):
     """--auto-bones: cut each mesh into R15 body parts by where its triangles are (for models without a skeleton or names).
     Positions are in the hub's space (front -Z, up +Y, 5.5 studs tall, centred). The arms are found from the model's own width so a
@@ -612,6 +634,7 @@ def main():
                     "part follows its limb (arms raise with a held knife or gun, legs walk)")
     ap.add_argument("--scale", type=float, default=1.0, help="extra size factor applied after --length / --as-is (e.g. 0.65 to shrink an "
                     "--as-is model)")
+    ap.add_argument("--no-auto-grip", action="store_true", help="guns/knives: hold the model at its centre instead of at the detected grip")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
     ap.add_argument("--credit", default="", help="author / title / licence text kept next to the model")
@@ -639,6 +662,10 @@ def main():
         for m in meshes:
             m.pos = m.pos * a.scale
         size, origin = size * a.scale, origin * a.scale
+    grip = None
+    if a.kind in ("gun", "knife") and not a.as_is and not a.no_auto_grip:
+        grip = find_grip(meshes, a.kind)
+        print("  grip (hold point): " + ", ".join("%.2f" % v for v in grip))
     if a.auto_bones:
         if a.kind != "char" or a.group != "costume":
             raise SystemExit("--auto-bones is for costumes (--kind char --group costume)")
@@ -671,7 +698,7 @@ def main():
     entry = {
         "id": a.id, "name": a.name or a.id, "kind": a.kind, "parts": parts, "size": [round(float(s), 3) for s in size],
         "tris": int(sum(p["tris"] for p in parts)), "credit": a.credit,
-        "hold": [round(float(c), 4) for c in origin] if a.as_is else [0, 0, 0],
+        "hold": [round(float(c), 4) for c in origin] if a.as_is else ([round(float(c), 4) for c in grip] if grip is not None else [0, 0, 0]),
     }
     if a.kind == "char":
         entry["group"] = a.group
