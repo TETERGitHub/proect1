@@ -292,6 +292,28 @@ local function buildAura(page)
 	resetButton(page, "Aura")
 end
 
+local function buildKillFx(page)
+	local KillFX = import("features/KillFX")
+	section(page, "Kill effects", { "killfx.enabled", "killfx.effect", "killfx.scale", "killfx.detail" })
+	section(page, "Colour", { "killfx.customColor", "killfx.color" })
+	section(page, "When", { "killfx.onMurderer", "killfx.onSheriff", "killfx.hideBody" })
+	page:section("Preview")
+	for _, name in ipairs({ "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter" }) do
+		local label = ({ BlackHole = "Black hole", Shatter = "Ice shatter" })[name] or name
+		page:action({ label = label, desc = "Plays on a copy of your avatar 10 studs in front of you.", text = "Test", onClick = function()
+			local _, err = KillFX.test(name)
+			if err then
+				notify("Kill effects", err, "warn")
+			end
+		end })
+	end
+	infoLine(page, "Status", function()
+		return KillFX.status()
+	end)
+	page:note("Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.", "textDim", 40)
+	resetButton(page, "KillFX")
+end
+
 local function buildWatermark(page)
 	local Watermark = import("ui/Watermark")
 	section(page, "Watermark", { "watermark.enabled", "watermark.text", "watermark.position", "watermark.size", "watermark.background", "watermark.sticker" })
@@ -321,6 +343,7 @@ function Pages.registerAll()
 		{ "customgun", "gun", Custom.gun, "Your own sheriff gun: models, colours, materials, preview and presets." },
 		{ "customknife", "knife", Custom.knife, "Your own murderer knife: models, colours, materials, preview and presets." },
 		{ "customchar", "person", Custom.char, "Costumes and accessories on your own avatar, with a safe preview." },
+		{ "killfx", "bolt", buildKillFx, "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter." },
 		{ "watermark", "star", buildWatermark, "Your own badge on screen with flowing colours, FPS, ping and time." },
 		{ "aura", "star", buildAura, "Wings, halo, rune circle, chains and sparkles on your own character." },
 		{ "killmurderer", "knife", Custom.murderer, "The sound for a confirmed kill as murderer. Independent of the sheriff sound." },

@@ -1285,7 +1285,34 @@
   "Shown": "Mostrar",
   "Flowing colour": "Color con flujo",
   "The same flowing colour is used for the menu title (Interface page, 'Flowing title').": "El mismo flujo de color se usa en el título del menú (página Interfaz, 'Título con flujo').",
-  "Your own badge on screen with flowing colours, FPS, ping and time.": "Tu propia insignia en pantalla con colores que fluyen, FPS, ping y hora."
+  "Your own badge on screen with flowing colours, FPS, ping and time.": "Tu propia insignia en pantalla con colores que fluyen, FPS, ping y hora.",
+  "Kill effects": "Efectos de muerte",
+  "A big finisher on the victim when you get a confirmed kill: lightning, explosion, vaporize, black hole or ice shatter. Only you see it.": "Un remate enorme sobre la víctima cuando consigues una muerte confirmada: rayo, explosión, vaporizar, agujero negro o hielo roto. Solo tú lo ves.",
+  "Effect": "Efecto",
+  "Which finisher plays.": "Qué remate se reproduce.",
+  "Lightning": "Rayo",
+  "Explosion": "Explosión",
+  "Vaporize": "Vaporizar",
+  "Black hole": "Agujero negro",
+  "Ice shatter": "Hielo roto",
+  "Random": "Aleatorio",
+  "How big the effect is.": "Qué tan grande es el efecto.",
+  "Detail": "Detalle",
+  "Number of sparks, shards and dust. Lowered automatically in the low load profile.": "Cantidad de chispas, fragmentos y polvo. Se reduce automáticamente en el perfil de baja carga.",
+  "Own colour": "Color propio",
+  "Use your colour below instead of the effect's own colours.": "Usar tu color de abajo en lugar de los colores del efecto.",
+  "Effect colour": "Color del efecto",
+  "Main colour of the bolts, rings, glow and dust.": "Color principal de los rayos, anillos, brillo y polvo.",
+  "Hide the real body": "Ocultar el cuerpo real",
+  "On your screen the victim's body is replaced by the animated copy (other players still see the normal body).": "En tu pantalla el cuerpo de la víctima se sustituye por la copia animada (los demás jugadores ven el cuerpo normal).",
+  "As murderer": "Como asesino",
+  "Play on kills with your knife.": "Reproducir en muertes con tu cuchillo.",
+  "As sheriff": "Como sheriff",
+  "Play on kills with your gun.": "Reproducir en muertes con tu pistola.",
+  "When": "Cuándo",
+  "Plays on a copy of your avatar 10 studs in front of you.": "Se reproduce en una copia de tu avatar 10 studs delante de ti.",
+  "Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.": "Hecho con piezas y animación propias del hub, sin efectos de serie de Roblox. Solo en tu pantalla: el cuerpo real de la víctima solo se oculta para ti.",
+  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "Grandes remates en tus víctimas: rayo, explosión, vaporizar, agujero negro, hielo roto."
  },
  "patterns": [
   [
@@ -1576,7 +1603,8 @@
   "status.failed": "falló",
   "status.running": "en ejecución",
   "status.stopped": "detenido",
-  "nav.watermark": "Marca de agua"
+  "nav.watermark": "Marca de agua",
+  "nav.killfx": "Efectos de muerte"
  },
  "keep": {
   "RightShift": true,

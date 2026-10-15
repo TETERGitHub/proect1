@@ -1285,7 +1285,34 @@
   "Shown": "Показувати",
   "Flowing colour": "Перелив кольору",
   "The same flowing colour is used for the menu title (Interface page, 'Flowing title').": "Той самий перелив використовується для заголовка меню (сторінка «Інтерфейс», «Переливний заголовок»).",
-  "Your own badge on screen with flowing colours, FPS, ping and time.": "Власна плашка на екрані з переливними кольорами, FPS, пінгом і часом."
+  "Your own badge on screen with flowing colours, FPS, ping and time.": "Власна плашка на екрані з переливними кольорами, FPS, пінгом і часом.",
+  "Kill effects": "Ефекти вбивства",
+  "A big finisher on the victim when you get a confirmed kill: lightning, explosion, vaporize, black hole or ice shatter. Only you see it.": "Потужне добивання на жертві при підтвердженому вбивстві: блискавка, вибух, випаровування, чорна діра або крижаний вибух. Бачите лише ви.",
+  "Effect": "Ефект",
+  "Which finisher plays.": "Яке добивання програється.",
+  "Lightning": "Блискавка",
+  "Explosion": "Вибух",
+  "Vaporize": "Випаровування",
+  "Black hole": "Чорна діра",
+  "Ice shatter": "Крижаний вибух",
+  "Random": "Випадковий",
+  "How big the effect is.": "Наскільки великий ефект.",
+  "Detail": "Деталізація",
+  "Number of sparks, shards and dust. Lowered automatically in the low load profile.": "Кількість іскор, уламків і пилу. Автоматично знижується в профілі низького навантаження.",
+  "Own colour": "Власний колір",
+  "Use your colour below instead of the effect's own colours.": "Використовувати ваш колір нижче замість кольорів ефекту.",
+  "Effect colour": "Колір ефекту",
+  "Main colour of the bolts, rings, glow and dust.": "Основний колір блискавок, кілець, світіння й пилу.",
+  "Hide the real body": "Сховати справжнє тіло",
+  "On your screen the victim's body is replaced by the animated copy (other players still see the normal body).": "На вашому екрані тіло жертви замінюється анімованою копією (інші гравці бачать звичайне тіло).",
+  "As murderer": "За вбивцю",
+  "Play on kills with your knife.": "Програвати при вбивствах ножем.",
+  "As sheriff": "За шерифа",
+  "Play on kills with your gun.": "Програвати при вбивствах з пістолета.",
+  "When": "Коли",
+  "Plays on a copy of your avatar 10 studs in front of you.": "Програється на копії вашого аватара за 10 стадів перед вами.",
+  "Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.": "Зібрано з власних деталей і анімації хаба, без стандартних ефектів Roblox. Лише на вашому екрані: справжнє тіло жертви просто приховане у вас.",
+  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "Потужні добивання на жертвах: блискавка, вибух, випаровування, чорна діра, крижаний вибух."
  },
  "patterns": [
   [
@@ -1576,7 +1603,8 @@
   "status.failed": "помилка",
   "status.running": "працює",
   "status.stopped": "зупинено",
-  "nav.watermark": "Водяний знак"
+  "nav.watermark": "Водяний знак",
+  "nav.killfx": "Ефекти вбивства"
  },
  "keep": {
   "RightShift": true,

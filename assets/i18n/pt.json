@@ -1285,7 +1285,34 @@
   "Shown": "Mostrar",
   "Flowing colour": "Cor com fluxo",
   "The same flowing colour is used for the menu title (Interface page, 'Flowing title').": "O mesmo fluxo de cor é usado no título do menu (página Interface, 'Título com fluxo').",
-  "Your own badge on screen with flowing colours, FPS, ping and time.": "Seu próprio selo na tela com cores que fluem, FPS, ping e hora."
+  "Your own badge on screen with flowing colours, FPS, ping and time.": "Seu próprio selo na tela com cores que fluem, FPS, ping e hora.",
+  "Kill effects": "Efeitos de abate",
+  "A big finisher on the victim when you get a confirmed kill: lightning, explosion, vaporize, black hole or ice shatter. Only you see it.": "Uma finalização enorme na vítima quando você confirma um abate: raio, explosão, vaporizar, buraco negro ou gelo quebrado. Só você vê.",
+  "Effect": "Efeito",
+  "Which finisher plays.": "Qual finalização toca.",
+  "Lightning": "Raio",
+  "Explosion": "Explosão",
+  "Vaporize": "Vaporizar",
+  "Black hole": "Buraco negro",
+  "Ice shatter": "Gelo quebrado",
+  "Random": "Aleatório",
+  "How big the effect is.": "Quão grande é o efeito.",
+  "Detail": "Detalhe",
+  "Number of sparks, shards and dust. Lowered automatically in the low load profile.": "Quantidade de faíscas, estilhaços e poeira. Reduzida automaticamente no perfil de baixa carga.",
+  "Own colour": "Cor própria",
+  "Use your colour below instead of the effect's own colours.": "Usar sua cor abaixo em vez das cores do efeito.",
+  "Effect colour": "Cor do efeito",
+  "Main colour of the bolts, rings, glow and dust.": "Cor principal dos raios, anéis, brilho e poeira.",
+  "Hide the real body": "Esconder o corpo real",
+  "On your screen the victim's body is replaced by the animated copy (other players still see the normal body).": "Na sua tela o corpo da vítima é trocado pela cópia animada (os outros jogadores veem o corpo normal).",
+  "As murderer": "Como assassino",
+  "Play on kills with your knife.": "Tocar em abates com sua faca.",
+  "As sheriff": "Como xerife",
+  "Play on kills with your gun.": "Tocar em abates com sua arma.",
+  "When": "Quando",
+  "Plays on a copy of your avatar 10 studs in front of you.": "Toca numa cópia do seu avatar 10 studs à sua frente.",
+  "Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.": "Feito com peças e animação próprias do hub, sem efeitos padrão do Roblox. Só na sua tela: o corpo real da vítima só fica escondido para você.",
+  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "Grandes finalizações nas vítimas: raio, explosão, vaporizar, buraco negro, gelo quebrado."
  },
  "patterns": [
   [
@@ -1576,7 +1603,8 @@
   "status.failed": "falhou",
   "status.running": "rodando",
   "status.stopped": "parado",
-  "nav.watermark": "Marca d'água"
+  "nav.watermark": "Marca d'água",
+  "nav.killfx": "Efeitos de abate"
  },
  "keep": {
   "RightShift": true,

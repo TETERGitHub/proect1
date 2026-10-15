@@ -338,6 +338,18 @@ for _, k in ipairs(CUSTOM_KINDS) do
 	end
 	add(with("custom", module, list))
 end
+add(with("killfx", "KillFX", {
+	bool("killfx.enabled", true, "Kill effects", "A big finisher on the victim when you get a confirmed kill: lightning, explosion, vaporize, black hole or ice shatter. Only you see it.", { master = true }),
+	enum("killfx.effect", "Lightning", { "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Random" }, "Effect", "Which finisher plays.", { labels = { Lightning = "Lightning", Explosion = "Explosion", Vaporize = "Vaporize", BlackHole = "Black hole", Shatter = "Ice shatter", Random = "Random" } }),
+	num("killfx.scale", 1, 0.5, 2, 0.05, "Size", "How big the effect is."),
+	num("killfx.detail", 1, 0.3, 1.5, 0.05, "Detail", "Number of sparks, shards and dust. Lowered automatically in the low load profile."),
+	bool("killfx.customColor", false, "Own colour", "Use your colour below instead of the effect's own colours."),
+	color("killfx.color", { r = 178, g = 120, b = 255 }, "Effect colour", "Main colour of the bolts, rings, glow and dust."),
+	bool("killfx.hideBody", true, "Hide the real body", "On your screen the victim's body is replaced by the animated copy (other players still see the normal body)."),
+	bool("killfx.onMurderer", true, "As murderer", "Play on kills with your knife."),
+	bool("killfx.onSheriff", true, "As sheriff", "Play on kills with your gun."),
+}))
+
 add(with("watermark", "Watermark", {
 	bool("watermark.enabled", true, "Watermark", "A badge on your screen with your text, the mascot and optional FPS, ping and time. Only you see it.", { master = true }),
 	{ key = "watermark.text", type = "string", default = "TrollHub", maxLen = 40, label = "Text", desc = "What the watermark says." },

@@ -163,6 +163,7 @@ local function registerModules(h)
 		{ "cosmetics", "features/Cosmetics", { "services" } },
 		{ "aura", "features/Aura", { "services" } },
 		{ "watermark", "ui/Watermark", { "services" } },
+		{ "killfx", "features/KillFX", { "services", "sounds" } },
 		{ "music", "features/Music", { "services" } },
 		{ "screenbuttons", "ui/ScreenButtons", { "services" } },
 		{ "antifling", "features/AntiFling", { "services" } },

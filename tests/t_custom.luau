@@ -644,6 +644,47 @@ T.test("own menu colour tints surfaces but keeps their brightness level", "bg to
 	T.eq(Theme.rgb("bg2").r, plain.r)
 end)
 
+T.suite("Kill effects")
+T.test("every finisher plays on a copy and leaves nothing behind", "5 effects x test copy; parts created, then all removed", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local char = game.Players.LocalPlayer.Character
+	for _, name in ipairs({ "Head", "UpperTorso" }) do
+		local p = char:FindFirstChild(name)
+		p.Size = Vector3.new(2, name == "Head" and 1 or 2, 1); p.Color = Color3.fromRGB(200, 180, 150); p.Material = "Plastic"; p.Transparency = 0
+		p.CFrame = CFrame.new(0, name == "Head" and 6.5 or 5, 0)
+	end
+	local h = Hub.run({ skipLicense = true })
+	local KillFX = import("features/KillFX")
+	local cam = game.Workspace.CurrentCamera
+	local okRun, runErr = pcall(function()
+	for _, name in ipairs(KillFX.EFFECTS) do
+		local fx, err = KillFX.test(name)
+		T.truthy(fx ~= nil, name .. ": " .. tostring(err))
+		local most = 0
+		for _ = 1, 150 do
+			frames(1)
+			local folder = cam:FindFirstChild("MM2HubKillFX")
+			most = math.max(most, folder and #folder:GetChildren() or 0)
+		end
+		T.truthy(most > 40, name .. " builds parts: " .. most)
+		T.eq(KillFX.activeCount(), 0, name .. " finished")
+		T.eq(cam:FindFirstChild("MM2HubKillFX"), nil, name .. " cleaned up")
+	end
+	-- the real body is never hidden by the test copy
+	T.eq(char:FindFirstChild("Head").LocalTransparencyModifier, 0)
+	end)
+	local warns = {}
+	for _, e in ipairs(import("core/Logger").entries()) do
+		if e.tag == "KillFX" and e.level ~= "info" and e.level ~= "debug" then table.insert(warns, tostring(e.message)) end
+	end
+	done(h) -- always unload, so a failure here cannot break the next tests
+	T.truthy(okRun, tostring(runErr))
+	T.eq(#warns, 0, table.concat(warns, " / "))
+	return #KillFX.EFFECTS .. " effects"
+end)
+
 T.suite("Game audio")
 local GameAudio = import("features/GameAudio")
 local function sound(parent, name, vol)

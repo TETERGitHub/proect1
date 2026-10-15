@@ -1285,7 +1285,34 @@
   "Shown": "Afficher",
   "Flowing colour": "Couleur en dégradé",
   "The same flowing colour is used for the menu title (Interface page, 'Flowing title').": "Le même dégradé sert au titre du menu (page Interface, « Titre en dégradé »).",
-  "Your own badge on screen with flowing colours, FPS, ping and time.": "Votre badge à l'écran avec couleurs en dégradé, FPS, ping et heure."
+  "Your own badge on screen with flowing colours, FPS, ping and time.": "Votre badge à l'écran avec couleurs en dégradé, FPS, ping et heure.",
+  "Kill effects": "Effets d'élimination",
+  "A big finisher on the victim when you get a confirmed kill: lightning, explosion, vaporize, black hole or ice shatter. Only you see it.": "Une grosse finition sur la victime lors d'une élimination confirmée : foudre, explosion, vaporisation, trou noir ou glace brisée. Vous seul la voyez.",
+  "Effect": "Effet",
+  "Which finisher plays.": "Quelle finition est jouée.",
+  "Lightning": "Foudre",
+  "Explosion": "Explosion",
+  "Vaporize": "Vaporisation",
+  "Black hole": "Trou noir",
+  "Ice shatter": "Glace brisée",
+  "Random": "Aléatoire",
+  "How big the effect is.": "Taille de l'effet.",
+  "Detail": "Détail",
+  "Number of sparks, shards and dust. Lowered automatically in the low load profile.": "Nombre d'étincelles, d'éclats et de poussière. Réduit automatiquement en profil faible charge.",
+  "Own colour": "Couleur personnalisée",
+  "Use your colour below instead of the effect's own colours.": "Utiliser votre couleur ci-dessous au lieu des couleurs de l'effet.",
+  "Effect colour": "Couleur de l'effet",
+  "Main colour of the bolts, rings, glow and dust.": "Couleur principale des éclairs, anneaux, lueur et poussière.",
+  "Hide the real body": "Masquer le vrai corps",
+  "On your screen the victim's body is replaced by the animated copy (other players still see the normal body).": "Sur votre écran, le corps de la victime est remplacé par la copie animée (les autres joueurs voient le corps normal).",
+  "As murderer": "En tant que meurtrier",
+  "Play on kills with your knife.": "Jouer lors des éliminations au couteau.",
+  "As sheriff": "En tant que shérif",
+  "Play on kills with your gun.": "Jouer lors des éliminations au pistolet.",
+  "When": "Quand",
+  "Plays on a copy of your avatar 10 studs in front of you.": "Se joue sur une copie de votre avatar 10 studs devant vous.",
+  "Built from the hub's own parts and animation, no Roblox stock effects. Your screen only: the victim's real body is just hidden for you.": "Construit avec les pièces et l'animation du hub, sans effets Roblox standard. Sur votre écran uniquement : le vrai corps de la victime est juste masqué pour vous.",
+  "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter.": "De grosses finitions sur vos victimes : foudre, explosion, vaporisation, trou noir, glace brisée."
  },
  "patterns": [
   [
@@ -1576,7 +1603,8 @@
   "status.failed": "échec",
   "status.running": "en cours",
   "status.stopped": "arrêté",
-  "nav.watermark": "Filigrane"
+  "nav.watermark": "Filigrane",
+  "nav.killfx": "Effets d'élimination"
  },
  "keep": {
   "RightShift": true,
