@@ -362,6 +362,34 @@ add(with("killfx", "KillFX", {
 	bool("killfx.onSheriff", true, "As sheriff", "Play on kills with your gun."),
 }))
 
+add(with("esp", "ESP", {
+	bool("esp.enabled", false, "ESP", "Draws boxes, names, distance and more over characters. Players only while they are in your direct line of sight.", { master = true }),
+	bool("esp.players", true, "Players (in sight only)", "Other players, drawn only while nothing solid is between your camera and them. Behind a wall: nothing is drawn."),
+	bool("esp.mannequins", true, "Practice mannequins", "The Murder trainer's test mannequins, with their test roles and off-screen arrows."),
+	bool("esp.gunDrop", false, "Dropped gun (in sight only)", "A marker on the dropped gun while you can see it."),
+	{ key = "esp.gunDropName", type = "string", default = "GunDrop", maxLen = 32, label = "Dropped gun object name", desc = "Name of the dropped gun object in the map (MM2 is commonly reported to use GunDrop; change it if the game uses another)." },
+	bool("esp.box", true, "Box", "A box around each character."),
+	enum("esp.boxStyle", "Corner", { "Corner", "Full" }, "Box style", "Only the corners, or the full frame."),
+	bool("esp.names", true, "Names", "Display name (and @username when it differs)."),
+	bool("esp.distance", true, "Distance", "Distance from your camera in studs."),
+	bool("esp.health", true, "Health bar", "A bar left of the box; hidden when the health cannot be read."),
+	bool("esp.weaponTag", true, "Weapon in hand", "Shows 'knife in hand' / 'gun in hand' only when that tool is actually held (visible to everyone). No roles are guessed."),
+	bool("esp.weaponColors", true, "Colour by weapon in hand", "Red for a held knife, blue for a held gun; otherwise the ESP colour."),
+	bool("esp.tracers", false, "Tracers", "A line from a point of your screen to each character."),
+	enum("esp.tracerOrigin", "Bottom", { "Bottom", "Center", "Top" }, "Tracer start", "Where on your screen the tracers start."),
+	bool("esp.highlight", false, "Highlight", "Lights up the character; only the parts you can see (Occluded)."),
+	bool("esp.offscreen", true, "Off-screen arrows (mannequins)", "Arrows at the screen edge pointing to practice mannequins outside your view. Never for players."),
+	bool("esp.roleColors", true, "Mannequin role colours", "Mannequins in their test role colour (Innocent green, Sheriff blue)."),
+	color("esp.color", { r = 255, g = 255, b = 255 }, "ESP colour", "Colour of boxes, names and lines."),
+	num("esp.opacity", 0.9, 0.1, 1, 0.05, "Opacity", "1 = solid."),
+	bool("esp.fade", true, "Fade with distance", "Far characters are drawn fainter."),
+	num("esp.thickness", 1.5, 1, 4, 0.5, "Line thickness", "Thickness of boxes and lines in pixels."),
+	num("esp.textSize", 13, 9, 22, 1, "Text size", "Size of names and labels."),
+	num("esp.maxDistance", 300, 25, 2000, 25, "Max distance", "Characters farther than this are not drawn."),
+	num("esp.maxTargets", 16, 1, 40, 1, "Max characters", "At most this many (nearest first) - fewer is lighter on phones."),
+	num("esp.hz", 20, 5, 60, 1, "Update rate", "Updates per second (capped by the visual update rate; halved in the low load profile)."),
+}))
+
 add(with("murder", "MurderTrainer", {
 	num("murder.count", 4, 1, 8, 1, "Mannequins", "How many test mannequins stand in the arena."),
 	num("murder.sheriffs", 1, 0, 3, 1, "Sheriffs among them", "Mannequins with the TEST role Sheriff (blue torso); the rest are Innocent (green)."),

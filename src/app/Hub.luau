@@ -64,6 +64,7 @@ local function registerActions(h)
 		A("murder.throw", "Practice throw", "Throws the simulated knife at the arena.", function() MT.throw() end, { "knife", "murderer" })
 		A("murder.stop", "Stop practice", "Stops auto swing, knives in flight and the replay at once.", function() MT.stop() end, { "murderer" })
 	end
+	A("esp.toggle", "Toggle ESP", "Turns ESP on or off (players only while in sight).", function() Settings.toggle("esp.enabled", "action") end, { "boxes", "names" })
 	A("crosshair.toggle", "Toggle crosshair", "Turns the custom crosshair on or off.", function() Settings.toggle("crosshair.enabled", "action") end, { "aim", "dot" })
 	A("lowprofile.toggle", "Toggle low load profile", "Halves update rates and disables heavy effects.", function() Settings.toggle("perf.lowProfile", "action") end, { "fps", "performance" })
 	A("camera.reset", "Reset camera", "Resets camera settings and restores originals.", Camera.reset)
@@ -178,6 +179,7 @@ local function registerModules(h)
 		{ "antifling", "features/AntiFling", { "services" } },
 		{ "selectaim", "features/TargetSelect", { "services", "training" } },
 		{ "murder", "features/MurderTrainer", { "services", "training", "selectaim", "killsounds" } },
+		{ "esp", "features/ESP", { "services", "murder" } },
 		{ "ghost", "features/Ghost", { "services" } },
 		{ "modelsync", "features/ModelSync", { "services" } },
 		{ "hitfx", "features/HitFX", { "services", "killsounds" } },

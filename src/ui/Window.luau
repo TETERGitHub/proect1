@@ -63,7 +63,7 @@ end
 -- Navigation groups (sidebar sections). Pages that are not listed here go into a trailing "More" group.
 local NAV_GROUPS = {
 	{ "Hub", { "dashboard", "ui" } },
-	{ "Visuals", { "crosshair", "camera", "lighting", "cosmetics" } },
+	{ "Visuals", { "esp", "crosshair", "camera", "lighting", "cosmetics" } },
 	{ "Customize", { "customgun", "customknife", "customchar", "killfx", "hitfx", "watermark", "aura", "killmurderer", "killsheriff" } },
 	{ "Practice", { "training", "murder", "defence" } },
 	{ "Audio", { "music", "sounds", "gameaudio" } },

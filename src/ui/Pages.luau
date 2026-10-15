@@ -339,6 +339,28 @@ local function buildKillFx(page)
 	resetButton(page, "KillFX")
 end
 
+local function buildEsp(page)
+	local ESP = import("features/ESP")
+	local status = infoLine(page, "Status", function()
+		local st = ESP.status()
+		if not st.running then return "N/A" end
+		if not st.enabled then return "off" end
+		return string.format("%d / %d", st.drawn, st.hiddenBySight)
+	end)
+	page:note("Drawn / out of sight. Players are drawn only while they are in your direct line of sight; behind a wall nothing is drawn. No roles are shown for players, only a knife or gun actually held in hand.", "textDim", 44)
+	local h = Perf.every("ui.esp", 2, function()
+		if visible("esp") then status() end
+	end)
+	page.maid:Give(h.Cancel)
+	status()
+	section(page, "What", { "esp.enabled", "esp.players", "esp.mannequins", "esp.gunDrop", "esp.gunDropName" })
+	section(page, "Parts", { "esp.box", "esp.boxStyle", "esp.names", "esp.distance", "esp.health", "esp.weaponTag", "esp.tracers", "esp.tracerOrigin", "esp.highlight", "esp.offscreen" })
+	section(page, "Look", { "esp.color", "esp.weaponColors", "esp.roleColors", "esp.opacity", "esp.fade", "esp.thickness", "esp.textSize" })
+	section(page, "Load", { "esp.maxDistance", "esp.maxTargets", "esp.hz" })
+	page:action({ label = "Clear ESP objects", desc = "Removes every ESP object now; they are rebuilt on the next update while ESP is on.", text = "Clear", onClick = function() ESP.clear() end })
+	resetButton(page, "ESP")
+end
+
 local function buildMurder(page)
 	local MT = import("features/MurderTrainer")
 	local function fmt(v, f)
@@ -493,6 +515,7 @@ function Pages.registerAll()
 	local list = {
 		{ "dashboard", "home", buildDashboard, "Session overview, quick actions and your favourite features." },
 		{ "ui", "sliders", buildInterface, "Theme, glass effects, motion, language and notifications." },
+		{ "esp", "target", buildEsp, "Boxes, names, distance, health, tracers and highlights - players only while in your line of sight." },
 		{ "crosshair", "target", buildCrosshair, "Draw your own crosshair on screen. Everything stays on your client." },
 		{ "camera", "camera", buildCamera, "Zoom, field of view, mouse sensitivity, camera mode and local invisibility." },
 		{ "lighting", "sun", buildLighting, "Time of day, colour correction, blur and bloom on your own screen." },

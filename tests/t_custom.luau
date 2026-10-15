@@ -1291,3 +1291,65 @@ T.test("arena, swings, auto swing, throw with prediction, stats, log, replay, st
 	h.unload(); Mock.uninstall()
 	T.truthy(ok, tostring(err))
 end)
+
+T.suite("ESP")
+T.test("players only in line of sight, weapon in hand, mannequins with roles, cleanup", "wall hides a player; tool tag; sets removed", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local ok, err = pcall(function()
+		local ESP = import("features/ESP")
+		local MT = import("features/MurderTrainer")
+		local Settings = import("core/Settings")
+		-- a fake other player 30 studs in front of the camera
+		local char = Instance.new("Model"); char.Name = "Other"; char.Parent = game.Workspace
+		local root = Instance.new("Part"); root.Name = "HumanoidRootPart"; root.Size = Vector3.new(2, 2, 1); root.CFrame = CFrame.new(0, 5, -10); root.Parent = char
+		local head = Instance.new("Part"); head.Name = "Head"; head.Size = Vector3.new(1, 1, 1); head.CFrame = CFrame.new(0, 7, -10); head.Parent = char
+		local hum = Instance.new("Humanoid"); hum.Parent = char
+		ESP.setSource(function() return { { key = "P:1", name = "Other", character = char, player = true } } end)
+		Settings.set("esp.enabled", true); Settings.set("esp.mannequins", false)
+		ESP.update()
+		T.eq(ESP.status().drawn, 1, "in sight: drawn")
+		-- a wall between camera and player: nothing drawn
+		local wall = Instance.new("Part"); wall.Name = "Wall"; wall.Parent = game.Workspace
+		local realRaycast = game.Workspace.Raycast
+		game.Workspace.Raycast = function() return { Instance = wall, Position = Vector3.new(0, 6, 0) } end
+		ESP.update()
+		T.eq(ESP.status().drawn, 0, "behind a wall: not drawn"); T.eq(ESP.status().hiddenBySight, 1)
+		T.eq(ESP.status().sets, 0, "its objects are removed")
+		-- the ray reaches the player's own part: in sight again
+		game.Workspace.Raycast = function() return { Instance = head, Position = head.Position } end
+		ESP.update()
+		T.eq(ESP.status().drawn, 1, "back in sight")
+		game.Workspace.Raycast = realRaycast
+		-- weapon tag only for a tool actually in the character (equipped)
+		T.eq(ESP.heldWeapon(char), nil)
+		local knife = Instance.new("Tool"); knife.Name = "Knife"; knife.Parent = char
+		T.eq(ESP.heldWeapon(char), "Knife")
+		knife.Parent = nil
+		local gun = Instance.new("Tool"); gun.Name = "Gun"; gun.Parent = char
+		T.eq(ESP.heldWeapon(char), "Gun")
+		-- dead players are not drawn
+		hum.Health = 0
+		ESP.update()
+		T.eq(ESP.status().drawn, 0, "dead: not drawn")
+		-- mannequins: drawn without the line-of-sight rule, with their test role
+		Settings.set("esp.players", false); Settings.set("esp.mannequins", true)
+		Settings.set("murder.count", 2); MT.spawnArena()
+		ESP.update()
+		T.eq(ESP.status().drawn, 2, "mannequins drawn")
+		-- every option combination builds without error
+		for _, k in ipairs({ "box", "names", "distance", "health", "weaponTag", "tracers", "highlight" }) do
+			Settings.set("esp." .. k, true)
+		end
+		Settings.set("esp.boxStyle", "Full"); ESP.update()
+		Settings.set("esp.boxStyle", "Corner"); ESP.update()
+		-- off: everything removed
+		Settings.set("esp.enabled", false); ESP.update()
+		T.eq(ESP.status().sets, 0)
+		MT.clearArena()
+	end)
+	h.unload(); Mock.uninstall()
+	T.truthy(ok, tostring(err))
+end)
