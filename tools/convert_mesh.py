@@ -68,18 +68,44 @@ def split_by_position(meshes):
         cen = m.pos[m.faces].mean(axis=1)
         t = (cen[:, 1] - lo[1]) / h          # 0 feet .. 1 top
         x = cen[:, 0]
-        # torso half-width at chest height: the body without the arms (the narrowest 60 % of points at 55-75 % height)
-        band = allp[((allp[:, 1] - lo[1]) / h > 0.55) & ((allp[:, 1] - lo[1]) / h < 0.75)]
-        torso_half = np.percentile(np.abs(band[:, 0]), 60) if len(band) else 0.6
+        # per height: where the arm separates from the torso (the widest gap in |x| between the body and the arm). Above the
+        # armpit there is no gap; the threshold there continues from the armpit so the shoulder cap goes with the arm.
+        allt = (allp[:, 1] - lo[1]) / h
+        ax = np.abs(allp[:, 0])
+        width = ax.max()
+        bins = np.linspace(0.30, 0.82, 27)
+        thr = np.full(len(bins), np.nan)
+        for j, tb in enumerate(bins):
+            v = np.sort(ax[(allt > tb - 0.012) & (allt < tb + 0.012)])
+            if len(v) < 8:
+                continue
+            gaps = np.diff(v)
+            ok = (v[:-1] > width * 0.18) & (v[:-1] < width * 0.85)
+            if ok.any():
+                k = np.argmax(np.where(ok, gaps, 0))
+                if gaps[k] > width * 0.025:
+                    thr[j] = (v[k] + v[k + 1]) / 2
+        good = ~np.isnan(thr)
+        if good.any():
+            top = np.where(good)[0].max()          # the armpit: highest slice that still has a gap
+            thr[top + 1:] = thr[top] * 0.82          # shoulder cap
+            thr = np.interp(bins, bins[~np.isnan(thr)], thr[~np.isnan(thr)])
+            armpit_t = bins[top]
+        else:
+            band = allp[(allt > 0.55) & (allt < 0.75)]
+            thr = np.full(len(bins), (np.percentile(np.abs(band[:, 0]), 60) if len(band) else 0.6) * 1.05)
+            armpit_t = 0.66
+        def arm_threshold(tt):
+            return float(np.interp(tt, bins, thr))
         names = np.empty(len(cen), dtype=object)
         for i in range(len(cen)):
             ti, xi = t[i], x[i]
             side = "Right" if xi > 0 else "Left"   # facing -Z, the avatar's right is +X
             if ti > 0.82:
                 names[i] = "Head"
-            elif (abs(xi) > torso_half * 1.05 and ti > 0.33) or (abs(xi) > torso_half * 0.82 and 0.66 < ti <= 0.82):
-                # the shoulder cap belongs to the arm, so it lifts with it instead of staying behind as a flap
-                names[i] = side + ("UpperArm" if ti > 0.62 else "LowerArm" if ti > 0.47 else "Hand")
+            elif ti > 0.30 and abs(xi) > arm_threshold(ti):
+                # past the gap between torso and arm (the shoulder cap above the armpit included): the arm, so it lifts as one piece
+                names[i] = side + ("UpperArm" if ti > armpit_t - 0.14 else "LowerArm" if ti > armpit_t - 0.28 else "Hand")
             elif ti > 0.58:
                 names[i] = "UpperTorso"
             elif ti > 0.47:
