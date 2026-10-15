@@ -1,7 +1,7 @@
 import sys, pathlib, subprocess
 S = pathlib.Path(sys.argv[0]).resolve().parent
 SRC = S.parent.parent / "src"
-mods = "MODULES = {}\n" + "".join('MODULES["%s"] = function(...)\n%s\nend\n' % (m, (SRC / (m + ".luau")).read_text()) for m in ("features/FxKit", "features/KillFX", "features/AuraFX"))
+mods = "MODULES = {}\n" + "".join('MODULES["%s"] = function(...)\n%s\nend\n' % (m, (SRC / (m + ".luau")).read_text()) for m in ("features/FxKit", "features/KillFX", "features/AuraFX", "features/AuraLayers"))
 LUAU = next((a for a in sys.argv[1:] if not a.startswith("--")), "/tmp/claude-0/luau/luau")
 for name in ([] if "--auras" in sys.argv else ["Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Troll"]):
     if any(a.startswith("--only=") for a in sys.argv) and name not in next(a.split("=", 1)[1].split(",") for a in sys.argv if a.startswith("--only=")):
@@ -16,7 +16,7 @@ for name in ([] if "--auras" in sys.argv else ["Lightning", "Explosion", "Vapori
 
 
 AURAS = ["Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit", "Holy Light",
-         "Toxic Rift", "Shadow Reaper", "Neon Cyber", "Troll", "Burning"]
+         "Toxic Rift", "Shadow Reaper", "Neon Cyber", "Troll", "Burning", "Burning+Layers"]
 ONLY = next((a.split("=", 1)[1].split(",") for a in sys.argv if a.startswith("--only=")), None)
 if "--auras" in sys.argv:
     for name in AURAS:
@@ -26,6 +26,6 @@ if "--auras" in sys.argv:
         f = S / ("run_aura.luau")
         f.write_text(body)
         out = subprocess.run([LUAU, str(f)], capture_output=True, text=True)
-        key = "aura_" + name.replace(" ", "")
+        key = "aura_" + name.replace(" ", "").replace("+", "_")
         (S / (key + ".txt")).write_text(out.stdout)
         print(name, "frames", out.stdout.count("\nF "), out.stderr[:300], [l for l in out.stdout.splitlines() if l.startswith("WARN")][:2])

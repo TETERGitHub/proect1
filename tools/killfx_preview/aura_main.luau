@@ -44,11 +44,18 @@ local hum = Instance.new("Humanoid")
 hum.HipHeight = 2
 hum.Parent = char
 math.randomseed(7)
-local a = AuraFX.new({ character = char, style = EFFECT_NAME, scale = 1, manual = true })
+local STYLE = string.match(EFFECT_NAME, "^(.-)%+Layers$") or EFFECT_NAME
+local a = AuraFX.new({ character = char, style = STYLE, scale = 1, manual = true })
+local layers = nil
+if STYLE ~= EFFECT_NAME then -- the extra layers (features/AuraLayers): spheres on sine waves, ring + stars at the feet
+	layers = import("features/AuraLayers").new({ character = char, spheres = 4, feet = true, highlight = false, manual = true,
+		primary = Color3.fromRGB(255, 120, 40), secondary = Color3.fromRGB(255, 220, 90) })
+end
 local function dump(frameNo)
 	local list = {}
 	for _, p in ipairs(char:GetChildren()) do if p:IsA("BasePart") then table.insert(list, p) end end
 	for _, p in ipairs(a.folder:GetDescendants()) do if p:IsA("BasePart") then table.insert(list, p) end end
+	if layers then for _, p in ipairs(layers.folder:GetDescendants()) do if p:IsA("BasePart") then table.insert(list, p) end end end
 	for _, p in ipairs(list) do
 		if p.Transparency < 0.995 then
 			local cf, s, c = p.CFrame, p.Size, p.Color
@@ -62,10 +69,12 @@ local function dump(frameNo)
 	end
 	DUMP_SPRITES(frameNo)
 	DUMP_FX(frameNo, a.folder)
+	if layers then DUMP_FX(frameNo, layers.folder) end
 	print("F " .. frameNo)
 end
 for f = 0, 104 do
 	a:step(1 / 30)
+	if layers then layers:step(1 / 30) end
 	STEP_SPRITES(1 / 30)
 	if f >= 30 then dump(f - 30) end
 end

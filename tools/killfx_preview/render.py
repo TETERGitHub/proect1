@@ -296,7 +296,8 @@ FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв", "Troll": "Тролль"}
 AURA_NAMES = {"InfernoCrown": "Огненная корона", "StormGod": "Бог грозы", "Galaxy": "Галактика", "FrostMonarch": "Ледяной монарх",
               "VoidWings": "Крылья пустоты", "Sakura": "Сакура", "Phoenix": "Феникс", "DragonSpirit": "Дух дракона",
-              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон", "Troll": "Тролль", "Burning": "Горение"}
+              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон", "Troll": "Тролль", "Burning": "Горение",
+              "Burning_Layers": "Горение + слои (сферы, кольцо, звёзды)"}
 if "--auras" in sys.argv:
     EYE[:] = [11.0, 6.5, 14.0]; TARGET[:] = [0.0, 3.0, 0.0]
     f = TARGET - EYE; f /= np.linalg.norm(f)
