@@ -453,7 +453,12 @@ def render_view(meshes, texes, size, az, el):
 
 
 def preview(meshes, texes, path, views):
-    imgs = [render_view(meshes, texes, 460, az, el) for az, el in views]
+    placed = []
+    for m in meshes:
+        c = Mesh(m.name)
+        c.pos, c.uv, c.nrm, c.faces = m.pos + getattr(m, "centre", 0), m.uv, m.nrm, m.faces
+        placed.append(c)
+    imgs = [render_view(placed, texes, 460, az, el) for az, el in views]
     sheet = Image.new("RGB", (460 * len(imgs), 460))
     for i, im in enumerate(imgs):
         sheet.paste(im, (i * 460, 0))
@@ -525,6 +530,7 @@ def main():
         lo, hi = m.pos.min(axis=0), m.pos.max(axis=0)
         centre, psize = (lo + hi) / 2, hi - lo
         m.pos = m.pos - centre
+        m.centre = centre  # the part is written centred; the preview puts it back where it belongs
         base = "%s_%d" % (a.id, i)
         write_obj(m, outdir / (base + ".obj"))
         tex = texture_for(m, a.max_texture)
