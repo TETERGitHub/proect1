@@ -103,7 +103,8 @@ def split_by_position(meshes):
             side = "Right" if xi > 0 else "Left"   # facing -Z, the avatar's right is +X
             if ti > 0.82:
                 names[i] = "Head"
-            elif ti > 0.30 and abs(xi) > arm_threshold(ti):
+            elif ti > 0.30 and abs(xi) > arm_threshold(ti) + (width * 0.06 if ti < armpit_t - 0.28 else 0):
+                # (beside the hips the hand needs a wider margin, or the edge of the hips would be lifted with the hand)
                 # past the gap between torso and arm (the shoulder cap above the armpit included): the arm, so it lifts as one piece
                 names[i] = side + ("UpperArm" if ti > armpit_t - 0.14 else "LowerArm" if ti > armpit_t - 0.28 else "Hand")
             elif ti > 0.58:
