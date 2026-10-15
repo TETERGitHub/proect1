@@ -67,6 +67,10 @@ add(with("ui", "Interface", {
 	bool("ui.compact", false, "Compact mode", "Hides descriptions to fit more rows on screen.", { master = true }),
 	bool("ui.lockPosition", false, "Lock window", "Prevents moving and resizing the window."),
 	bool("ui.showTooltips", true, "Tooltips", "Shows descriptions when hovering a control."),
+	bool("ui.tint", false, "Own menu colour", "Tints the whole menu with the colour below. The glass, the glossy rim and every effect stay; only the colour changes."),
+	color("ui.tintColor", { r = 120, g = 60, b = 255 }, "Menu colour", "Colour of the menu background and panels when 'Own menu colour' is on."),
+	num("ui.tintStrength", 0.6, 0.1, 1, 0.05, "Colour strength", "How strongly the menu takes your colour."),
+	bool("ui.titleFlow", true, "Flowing title", "The menu title flows with the colours, style and direction set on the Watermark page."),
 	bool("ui.decor", true, "Decorative effects", "Animated accent line and soft gradient. Disabled automatically in low profile."),
 	bool("ui.splash", true, "Loading animation", "Shows the mascot and a progress bar inside the window when the hub starts."),
 	bool("ui.cursor", true, "Custom cursor", "Replaces the mouse arrow with a glossy ring while the menu is open."),
@@ -334,6 +338,25 @@ for _, k in ipairs(CUSTOM_KINDS) do
 	end
 	add(with("custom", module, list))
 end
+add(with("watermark", "Watermark", {
+	bool("watermark.enabled", true, "Watermark", "A badge on your screen with your text, the mascot and optional FPS, ping and time. Only you see it.", { master = true }),
+	{ key = "watermark.text", type = "string", default = "TrollHub", maxLen = 40, label = "Text", desc = "What the watermark says." },
+	enum("watermark.position", "TopLeft", { "TopLeft", "TopCenter", "TopRight", "BottomLeft", "BottomRight" }, "Position", "Corner of the screen.", { labels = { TopLeft = "Top left", TopCenter = "Top centre", TopRight = "Top right", BottomLeft = "Bottom left", BottomRight = "Bottom right" } }),
+	num("watermark.size", 1, 0.6, 2, 0.05, "Size", "Scale of the watermark."),
+	bool("watermark.background", true, "Glass background", "Black glass with a glossy rim behind the text."),
+	bool("watermark.sticker", true, "Mascot", "The Trollface sticker at the start of the watermark."),
+	bool("watermark.showFps", true, "FPS", "Frames per second."),
+	bool("watermark.showPing", true, "Ping", "Network delay in milliseconds."),
+	bool("watermark.showTime", false, "Time", "Your local clock."),
+	enum("watermark.style", "Wave", { "Off", "Wave", "Rainbow", "Pulse", "Chrome", "Neon" }, "Flow style", "How the colour moves: Wave - your colours flow across; Rainbow - the whole spectrum; Pulse - the text breathes between your colours; Chrome - silver bands; Neon - a bright glint runs along; Off - one plain colour.", { labels = { Off = "Off", Wave = "Wave", Rainbow = "Rainbow", Pulse = "Pulse", Chrome = "Chrome", Neon = "Neon" } }),
+	enum("watermark.direction", "Right", { "Right", "Left", "Up", "Down", "Diagonal", "Spin" }, "Flow direction", "Which way the colour flows. Spin turns it round.", { labels = { Right = "Right", Left = "Left", Up = "Up", Down = "Down", Diagonal = "Diagonal", Spin = "Spin" } }),
+	num("watermark.speed", 1, 0.1, 4, 0.1, "Flow speed", "How fast the colour moves."),
+	bool("watermark.themeColors", false, "Theme colours", "Use the menu accent instead of your three colours."),
+	color("watermark.color1", { r = 255, g = 255, b = 255 }, "Colour 1", "First flow colour."),
+	color("watermark.color2", { r = 178, g = 120, b = 255 }, "Colour 2", "Second flow colour."),
+	color("watermark.color3", { r = 90, g = 210, b = 255 }, "Colour 3", "Third flow colour."),
+}))
+
 add(with("aura", "Aura", {
 	bool("aura.enabled", false, "Aura", "Wings, halo, a rotating rune circle, orbiting chains and sparkles on your own character. Only you see it.", { master = true }),
 	enum("aura.preset", "Angel", { "Angel", "Inferno", "Frost", "Toxic", "Crimson", "Rainbow" }, "Preset", "Colour scheme of the aura."),

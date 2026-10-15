@@ -89,7 +89,7 @@ T.test("import rejects tampering", "checksum/prefix/base64/json errors", functio
 	T.fresh(); Config.init()
 	local good = Config.exportString("Default")
 	local json = Codec.b64decode(string.sub(good, 9))
-	local tampered = "MM2HUB1:" .. Codec.b64encode((string.gsub(json, '"iOS"', '"Ocean"')))
+	local tampered = "MM2HUB1:" .. Codec.b64encode((string.gsub(json, '"iOS 27 Glass"', '"Ocean"')))
 	local cases = { "hello", "MM2HUB1:!!!", "MM2HUB1:" .. Codec.b64encode("{not json"), tampered, "MM2HUB1:" .. Codec.b64encode("[]"), 42, string.rep("x", 300000) }
 	for i, c in ipairs(cases) do
 		local ok, rep = Config.importString(c)

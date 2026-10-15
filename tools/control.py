@@ -141,6 +141,12 @@ class Stack:
         raise RuntimeError("сервер не запустился за 15 секунд")
 
     def start_tunnel(self):
+        self.launch_tunnel()
+        self.wait_tunnel()
+
+    def launch_tunnel(self):
+        """Starts cloudflared without waiting for its address: it can connect while the hub is built and the server starts
+        (the tunnel only needs the port, not a running server), which removes most of the start-up wait."""
         exe = cloudflared_path()
         self.tunnel = subprocess.Popen(
             [str(exe), "tunnel", "--url", f"http://127.0.0.1:{self.port}", "--no-autoupdate", "--protocol", "http2"],
@@ -156,6 +162,10 @@ class Stack:
                     found.set()
 
         threading.Thread(target=pump, daemon=True).start()
+        self._found = found
+
+    def wait_tunnel(self):
+        found = self._found
         if not found.wait(40):
             raise RuntimeError("туннель не сообщил адрес за 40 секунд (проверьте интернет)")
         say(f"  https-адрес:       {self.url}")
@@ -174,10 +184,16 @@ class Stack:
 def start_stack(port, tunnel=True, url=None):
     stack = Stack(port)
     say("Запуск...")
-    stack.start_server()
     if tunnel:
-        stack.start_tunnel()
-        url = stack.url
+        stack.launch_tunnel()  # in parallel with the build and the server below
+    try:
+        stack.start_server()
+        if tunnel:
+            stack.wait_tunnel()
+            url = stack.url
+    except Exception:
+        stack.stop()
+        raise
     if not url:
         stack.stop()
         raise RuntimeError("нет публичного адреса: используйте туннель или укажите --url https://ваш.домен")

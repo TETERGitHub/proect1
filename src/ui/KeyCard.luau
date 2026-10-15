@@ -224,10 +224,10 @@ function KeyCard.build(parent, opts)
 		if kind == "error" then
 			-- a short sideways shake, like a wrong passcode on iOS
 			pcall(function()
-				local x0 = UDim2.fromScale(0.5, 0.5) -- fixed rest position, so overlapping shakes never drift
+				-- always relative to the fixed centre, so overlapping shakes never drift
 				for i, dx in ipairs({ -10, 9, -6, 4, 0 }) do
 					task.delay(i * 0.05, function()
-						stack.Position = x0 + UDim2.fromOffset(dx, 0)
+						stack.Position = UDim2.new(0.5, dx, 0.5, 0)
 					end)
 				end
 			end)

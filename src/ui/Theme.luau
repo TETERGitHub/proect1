@@ -35,13 +35,31 @@ function Theme.names()
 	return out
 end
 
+-- Own menu colour (ui.tint): surfaces keep their light level (so text stays readable and the glass keeps its depth) but take
+-- the hue of your colour. LEVEL = how bright that surface is drawn from your colour.
+local TINT_LEVEL = { bg0 = 0.10, bg1 = 0.16, bg2 = 0.23, bg3 = 0.34, stroke = 0.62 }
+
+local function tinted(token, base)
+	local level = TINT_LEVEL[token]
+	if not level or not Settings.get("ui.tint") then
+		return base
+	end
+	local c, k = Settings.get("ui.tintColor"), Settings.get("ui.tintStrength")
+	local peak = math.max(c.r, c.g, c.b, 1)
+	local function ch(v, b)
+		local target = v / peak * 255 * level -- your hue at this surface's brightness
+		return math.floor(b + (target - b) * k + 0.5)
+	end
+	return { r = ch(c.r, base.r), g = ch(c.g, base.g), b = ch(c.b, base.b) }
+end
+
 -- rgb(token) -> {r,g,b}
 function Theme.rgb(token)
 	if token == "accent" and not Settings.get("ui.useThemeAccent") then
 		return Settings.get("ui.accent")
 	end
 	local t = themeData()
-	return t[token] or t.text
+	return tinted(token, t[token] or t.text)
 end
 
 function Theme.color(token)
@@ -317,7 +335,7 @@ end
 
 local watched = {
 	"ui.theme", "ui.accent", "ui.useThemeAccent", "ui.textScale", "ui.density", "ui.cornerRadius", "ui.compact",
-	"ui.glass", "ui.reduceEffects", "ui.opacity", "ui.font", "ui.language",
+	"ui.glass", "ui.reduceEffects", "ui.opacity", "ui.font", "ui.language", "ui.tint", "ui.tintColor", "ui.tintStrength",
 }
 
 -- start(maid): observe appearance settings so bound properties follow them.

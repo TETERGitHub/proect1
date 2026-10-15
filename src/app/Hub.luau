@@ -162,6 +162,7 @@ local function registerModules(h)
 		{ "training", "features/Training", { "services", "sounds" } },
 		{ "cosmetics", "features/Cosmetics", { "services" } },
 		{ "aura", "features/Aura", { "services" } },
+		{ "watermark", "ui/Watermark", { "services" } },
 		{ "music", "features/Music", { "services" } },
 		{ "screenbuttons", "ui/ScreenButtons", { "services" } },
 		{ "antifling", "features/AntiFling", { "services" } },

@@ -162,7 +162,8 @@ end
 local function buildInterface(page)
 	resetButton(page, "Interface")
 	section(page, "Appearance", { "ui.theme", "ui.useThemeAccent", "ui.accent", "ui.cornerRadius", "ui.density", "ui.textScale", "ui.scale" })
-	section(page, "Glass & effects", { "ui.glass", "ui.opacity", "ui.reduceEffects", "ui.decor" })
+	section(page, "Menu colour", { "ui.tint", "ui.tintColor", "ui.tintStrength", "ui.titleFlow" })
+	section(page, "Glass & effects", { "ui.glass", "ui.opacity", "ui.reduceEffects", "ui.decor", "ui.splash", "ui.cursor", "ui.sticker" })
 	section(page, "Motion", { "ui.animSpeed" })
 	section(page, "On-screen buttons", { "ui.screenButtons", "ui.screenButtonSize", "ui.screenButtonOpacity" })
 	section(page, "Behaviour", { "ui.compact", "ui.lockPosition", "ui.showTooltips", "ui.showLauncher", "ui.showFpsBadge", "ui.notifications", "ui.notifyDuration" })
@@ -291,6 +292,18 @@ local function buildAura(page)
 	resetButton(page, "Aura")
 end
 
+local function buildWatermark(page)
+	local Watermark = import("ui/Watermark")
+	section(page, "Watermark", { "watermark.enabled", "watermark.text", "watermark.position", "watermark.size", "watermark.background", "watermark.sticker" })
+	section(page, "Shown", { "watermark.showFps", "watermark.showPing", "watermark.showTime" })
+	section(page, "Flowing colour", { "watermark.style", "watermark.direction", "watermark.speed", "watermark.themeColors", "watermark.color1", "watermark.color2", "watermark.color3" })
+	infoLine(page, "Status", function()
+		return Watermark.isVisible() and "on" or "off"
+	end)
+	page:note("The same flowing colour is used for the menu title (Interface page, 'Flowing title').", "textDim", 30)
+	resetButton(page, "Watermark")
+end
+
 -- registerAll(): registers every page with the window in navigation order.
 function Pages.registerAll()
 	local Game = import("ui/PagesGame")
@@ -308,6 +321,7 @@ function Pages.registerAll()
 		{ "customgun", "gun", Custom.gun, "Your own sheriff gun: models, colours, materials, preview and presets." },
 		{ "customknife", "knife", Custom.knife, "Your own murderer knife: models, colours, materials, preview and presets." },
 		{ "customchar", "person", Custom.char, "Costumes and accessories on your own avatar, with a safe preview." },
+		{ "watermark", "star", buildWatermark, "Your own badge on screen with flowing colours, FPS, ping and time." },
 		{ "aura", "star", buildAura, "Wings, halo, rune circle, chains and sparkles on your own character." },
 		{ "killmurderer", "knife", Custom.murderer, "The sound for a confirmed kill as murderer. Independent of the sheriff sound." },
 		{ "killsheriff", "gun", Custom.sheriff, "The sound for a confirmed kill as sheriff. Independent of the murderer sound." },

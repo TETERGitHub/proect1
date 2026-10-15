@@ -64,7 +64,7 @@ end
 local NAV_GROUPS = {
 	{ "Hub", { "dashboard", "ui" } },
 	{ "Visuals", { "crosshair", "camera", "lighting", "cosmetics" } },
-	{ "Customize", { "customgun", "customknife", "customchar", "aura", "killmurderer", "killsheriff" } },
+	{ "Customize", { "customgun", "customknife", "customchar", "watermark", "aura", "killmurderer", "killsheriff" } },
 	{ "Practice", { "training", "defence" } },
 	{ "Audio", { "music", "sounds", "gameaudio" } },
 	{ "System", { "perf", "tools", "keys", "configs", "diagnostics", "help", "about" } },
@@ -670,6 +670,14 @@ local function buildTitleBar(maid)
 	name.Position = UDim2.fromOffset(50, 16)
 	name.ZIndex = 4
 	w.nameLabel = name
+	-- flowing title: the colours / style / direction of the Watermark page (ui.titleFlow)
+	local Shimmer = import("ui/Shimmer")
+	Shimmer.attach(name, maid, function()
+		if Settings.get("ui.titleFlow") then
+			return import("ui/Watermark").shimmerConfig()
+		end
+		return { style = "Off", colors = { { r = 255, g = 255, b = 255 } } }
+	end)
 	-- breadcrumb: a hairline and the name of the current page
 	local divider = F.frame(bar, { Position = UDim2.fromOffset(130, 18), Size = UDim2.fromOffset(1, 16), ZIndex = 4 }, { BackgroundColor3 = "stroke" })
 	divider.BackgroundTransparency = 0.45
