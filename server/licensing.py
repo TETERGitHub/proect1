@@ -45,9 +45,12 @@ def encrypt_payload(canonical: str, nonce: bytes, plaintext: bytes):
 class LicenseStore:
     """Tiny JSON-file store: first-activation time and bound Roblox user id per key id."""
 
-    def __init__(self, path: pathlib.Path, revoked_path: pathlib.Path):
+    def __init__(self, path: pathlib.Path, revoked_path: pathlib.Path, seats_path: pathlib.Path = None):
         self.path = path
         self.revoked_path = revoked_path
+        # how many Roblox accounts may use each key (key id -> number), written by keygen.py --users; 1 when not listed
+        self.seats_path = seats_path if seats_path is not None else path.parent / "seats.json"
+        self._seats = (None, {})
         self.lock = threading.Lock()
         self.data = {}
         if path.exists():
@@ -57,6 +60,19 @@ class LicenseStore:
         if not self.revoked_path.exists():
             return set()
         return {l.strip().lower() for l in self.revoked_path.read_text().splitlines() if l.strip() and not l.startswith("#")}
+
+    def seats(self, nonce: str) -> int:
+        """accounts allowed for this key id (re-read when keygen adds keys while the server runs)"""
+        try:
+            mtime = self.seats_path.stat().st_mtime
+        except OSError:
+            return 1
+        if self._seats[0] != mtime:
+            try:
+                self._seats = (mtime, {k.lower(): int(v) for k, v in json.loads(self.seats_path.read_text() or "{}").items()})
+            except (ValueError, TypeError, OSError):
+                self._seats = (mtime, {})
+        return max(1, self._seats[1].get(nonce.lower(), 1))
 
     def _save(self):
         tmp = self.path.with_suffix(".tmp")
@@ -88,11 +104,14 @@ class LicenseService:
             return False, "key is not valid yet"
         with self.store.lock:
             rec = self.store.data.get(info["nonce"], {})
+            uids = list(rec.get("uids") or ([rec["uid"]] if rec.get("uid") is not None else []))
             if self.bind_uid:
                 if uid is None:
                     return False, "account id required"
-                if rec.get("uid") not in (None, uid):
-                    return False, "key is already bound to another account"
+                seats = self.store.seats(info["nonce"])
+                if uid not in uids and len(uids) >= seats:
+                    # the first `seats` accounts that used the key keep it; everyone after them is refused
+                    return False, "key is already bound to another account" if seats == 1 else "this key has no free places left"
             if info["mode"] == 0:
                 expires = info["value"]
             else:
@@ -103,7 +122,10 @@ class LicenseService:
             if commit:
                 rec.setdefault("first", now)
                 if self.bind_uid:
-                    rec["uid"] = uid
+                    if uid not in uids:
+                        uids.append(uid)
+                    rec["uids"] = uids
+                    rec["uid"] = uids[0]  # older servers / tools read the first account here
                 rec["last"] = now
                 self.store.data[info["nonce"]] = rec
                 self.store._save()

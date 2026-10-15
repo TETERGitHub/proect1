@@ -23,6 +23,7 @@ import csv
 import datetime as dt
 import hashlib
 import hmac
+import json
 import os
 import pathlib
 import re
@@ -34,6 +35,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 LICENSE_DIR = ROOT / ".license"
 SECRET_FILE = LICENSE_DIR / "secret.hex"
 LOG_FILE = LICENSE_DIR / "issued.csv"
+SEATS_FILE = LICENSE_DIR / "seats.json"  # key id -> how many Roblox accounts may use it (read by the server; 1 when absent)
+MAX_USERS = 100000
 
 VERSION = 1
 MAC_BYTES = 10
@@ -172,7 +175,33 @@ def cmd_init(_args):
     print(f"Создан {SECRET_FILE}. Сделайте копию: потеряете его, и все ключи перестанут работать; утечка позволит любому выпускать ключи.")
 
 
+def save_seats(new: dict):
+    """adds key id -> accounts to seats.json (written whole, atomically, so a running server never reads half a file)"""
+    data = {}
+    if SEATS_FILE.exists():
+        try:
+            data = json.loads(SEATS_FILE.read_text() or "{}")
+        except ValueError:
+            data = {}
+    data.update(new)
+    tmp = SEATS_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=1))
+    os.replace(tmp, SEATS_FILE)
+
+
+def seats_of(nonce: str) -> int:
+    if not SEATS_FILE.exists():
+        return 1
+    try:
+        return int(json.loads(SEATS_FILE.read_text() or "{}").get(nonce.lower(), 1))
+    except (ValueError, TypeError):
+        return 1
+
+
 def cmd_gen(args):
+    args.users = getattr(args, "users", 1)  # callers built before --users existed
+    if not 1 <= args.users <= MAX_USERS:
+        sys.exit(f"Число людей на ключ: от 1 до {MAX_USERS}.")
     secret = load_secret()
     if args.interactive:
         parts = interactive()
@@ -211,12 +240,18 @@ def cmd_gen(args):
         w = csv.writer(f)
         if new_file:
             w.writerow(["issued_utc", "nonce", "mode", "value", "note", "key"])
+        seats = {}
         for _ in range(args.count):
             nonce = os.urandom(4)
             key = make_key(secret, mode, now, value, nonce)
-            w.writerow([fmt_ts(now), nonce.hex(), args.mode, value, args.note, key])
+            w.writerow([fmt_ts(now), nonce.hex(), args.mode, value, args.note + (f" [людей: {args.users}]" if args.users > 1 else ""), key])
+            if args.users > 1:
+                seats[nonce.hex()] = args.users
             print(key)
-    print(f"# ключей: {args.count}, режим: {'с первой активации' if args.mode == 'activation' else 'с момента выдачи'}, {summary}", file=sys.stderr)
+    if seats:
+        save_seats(seats)
+    who = "1 человек" if args.users == 1 else f"до {args.users} человек на ключ (первые {args.users} аккаунта)"
+    print(f"# ключей: {args.count}, {who}, режим: {'с первой активации' if args.mode == 'activation' else 'с момента выдачи'}, {summary}", file=sys.stderr)
 
 
 def cmd_info(args):
@@ -233,6 +268,7 @@ def cmd_info(args):
     else:
         print("режим    : с первой активации, срок", info["value"], "секунд", f"({info['value'] / 86400:.2f} дн.)")
     print("номер    :", info["nonce"])
+    print("людей    :", seats_of(info["nonce"]))
 
 
 def cmd_list(_args):
@@ -254,6 +290,7 @@ def main():
     g.add_argument("--mode", choices=["absolute", "activation"], default="absolute")
     g.add_argument("--forever", action="store_true", help="key without a time limit")
     g.add_argument("--count", type=int, default=1)
+    g.add_argument("--users", type=int, default=1, help="how many Roblox accounts may use each key (the first N to activate it)")
     g.add_argument("--note", default="")
     g.add_argument("--now", help="override the issue time (unix seconds); for tests")
     g.set_defaults(fn=cmd_gen)

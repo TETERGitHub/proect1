@@ -43,6 +43,46 @@ class ServiceTests(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.clock = Clock(ISSUED + 3600)
 
+    def test_key_for_several_people(self):
+        """a key made with --users 3: the first three accounts get in (and keep getting in), the fourth is refused"""
+        key = keygen.make_key(SECRET, 0, ISSUED, keygen.FOREVER, b"\x0a\x0b\x0c\x0d")
+        (pathlib.Path(self.tmp) / "seats.json").write_text(json.dumps({"0a0b0c0d": 3}))
+        svc, store = make_service(self.tmp, self.clock)
+        for uid in (1, 2, 3):
+            self.assertTrue(svc.activate(key, uid)["ok"], uid)
+        res = svc.activate(key, 4)
+        self.assertFalse(res["ok"])
+        self.assertEqual(res["error"], "this key has no free places left")
+        self.assertTrue(svc.activate(key, 2)["ok"])
+        self.assertTrue(svc.ping(key, 3)["ok"])
+        self.assertFalse(svc.ping(key, 4)["ok"])
+        # a normal key (not in seats.json) stays one account
+        one = keygen.make_key(SECRET, 0, ISSUED, keygen.FOREVER, b"\x01\x01\x01\x01")
+        self.assertTrue(svc.activate(one, 1)["ok"])
+        self.assertEqual(svc.activate(one, 2)["error"], "key is already bound to another account")
+        # the seat count is re-read when keygen adds keys while the server runs
+        late = keygen.make_key(SECRET, 0, ISSUED, keygen.FOREVER, b"\x02\x02\x02\x02")
+        self.assertTrue(svc.activate(late, 1)["ok"])
+        self.assertFalse(svc.activate(late, 2)["ok"])
+        import os, time
+        (pathlib.Path(self.tmp) / "seats.json").write_text(json.dumps({"0a0b0c0d": 3, "02020202": 2}))
+        os.utime(pathlib.Path(self.tmp) / "seats.json", (time.time() + 5, time.time() + 5))
+        self.assertTrue(svc.activate(late, 2)["ok"])
+
+    def test_keygen_writes_seats(self):
+        old = keygen.SEATS_FILE
+        keygen.SEATS_FILE = pathlib.Path(self.tmp) / "seats.json"
+        try:
+            keygen.save_seats({"aabbccdd": 5})
+            keygen.save_seats({"11223344": 2})
+            self.assertEqual(keygen.seats_of("AABBCCDD"), 5)
+            self.assertEqual(keygen.seats_of("11223344"), 2)
+            self.assertEqual(keygen.seats_of("99999999"), 1)
+            store = licensing.LicenseStore(pathlib.Path(self.tmp) / "state.json", pathlib.Path(self.tmp) / "revoked.txt")
+            self.assertEqual(store.seats("aabbccdd"), 5)
+        finally:
+            keygen.SEATS_FILE = old
+
     def test_valid_key_returns_decryptable_payload(self):
         svc, _ = make_service(self.tmp, self.clock)
         res = svc.activate(KEY_ABS, 42)

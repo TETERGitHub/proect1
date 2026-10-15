@@ -110,7 +110,7 @@ def windows_autostart_on():
     return bool(d and (d / "MM2Hub_panel.cmd").exists())
 
 
-def generate_keys(values, mode_activation, count, note, forever=False):
+def generate_keys(values, mode_activation, count, note, forever=False, users=1):
     """Runs keygen.py gen and returns (keys, summary). Any number of years is accepted: a term longer than the key format holds
     (year 2106) becomes a key without a time limit, the same as forever=True."""
     if forever:
@@ -120,7 +120,7 @@ def generate_keys(values, mode_activation, count, note, forever=False):
                                      values.get("hours", 0), values.get("minutes", 0), values.get("seconds", 0))
     control.ensure_secret()
     cmd = [sys.executable, str(ROOT / "tools" / "keygen.py"), "gen", *args, "--mode", "activation" if mode_activation else "absolute",
-           "--count", str(max(1, min(int(count), 100)))]
+           "--count", str(max(1, min(int(count), 100))), "--users", str(max(1, int(users)))]
     if note:
         cmd += ["--note", note]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -330,12 +330,17 @@ class App:
                            activeforeground=TEXT, font=(FONT, 10), anchor="w", highlightthickness=0, bd=0).pack(fill="x")
         nrow = tk.Frame(f, bg=CARD)
         nrow.pack(fill="x", pady=(8, 0))
-        label(nrow, "Количество", dim=True, size=9).grid(row=0, column=0, sticky="w")
-        label(nrow, "Заметка (кому)", dim=True, size=9).grid(row=0, column=1, sticky="w", padx=(12, 0))
+        label(nrow, "Количество ключей", dim=True, size=9).grid(row=0, column=0, sticky="w")
+        label(nrow, "Человек на 1 ключ", dim=True, size=9).grid(row=0, column=1, sticky="w", padx=(12, 0))
+        label(nrow, "Заметка (кому)", dim=True, size=9).grid(row=0, column=2, sticky="w", padx=(12, 0))
         self.count = entry(nrow, 6, "1")
         self.count.grid(row=1, column=0, sticky="w")
-        self.note = entry(nrow, 30)
-        self.note.grid(row=1, column=1, sticky="we", padx=(12, 0))
+        self.users = entry(nrow, 6, "1")
+        self.users.grid(row=1, column=1, sticky="w", padx=(12, 0))
+        self.note = entry(nrow, 24)
+        self.note.grid(row=1, column=2, sticky="we", padx=(12, 0))
+        label(f, "Человек на 1 ключ: например 5 — ключ смогут активировать первые 5 аккаунтов Roblox, у остальных он не сработает "
+                 "(удобно для раздачи в канале). 1 = обычный личный ключ.", dim=True, size=9, wraplength=560, anchor="w").pack(fill="x", pady=(6, 0))
         brow = tk.Frame(f, bg=CARD)
         brow.pack(fill="x", pady=(12, 0))
         GlassButton(brow, "Создать ключ", self.make_keys, primary=True, width=170).pack(side="left")
@@ -478,7 +483,10 @@ class App:
                 raw = e.get().strip()
                 values[k] = int(raw) if raw else 0
             count = int(self.count.get().strip() or "1")
-            keys, summary = generate_keys(values, self.var_mode.get() == 1, count, self.note.get().strip(), self.var_forever.get())
+            users = int(self.users.get().strip() or "1")
+            if users < 1:
+                raise ValueError("человек на ключ должно быть 1 или больше")
+            keys, summary = generate_keys(values, self.var_mode.get() == 1, count, self.note.get().strip(), self.var_forever.get(), users)
         except ValueError as e:
             messagebox.showwarning(APP_TITLE, f"Проверьте поля: {e}")
             return

@@ -27,6 +27,7 @@ local ERRORS = {
 	["this key has been revoked"] = "Этот ключ отозван.",
 	["key expired"] = "Срок действия ключа истёк.",
 	["key is already bound to another account"] = "Этот ключ уже привязан к другому аккаунту.",
+	["this key has no free places left"] = "Все места этого ключа уже заняты другими аккаунтами.",
 	["account id required"] = "Не удалось определить ваш аккаунт Roblox.",
 	["key is not valid yet"] = "Ключ ещё не действует. Проверьте дату и время на устройстве.",
 	["too many attempts, wait a minute"] = "Слишком много попыток. Подождите минуту.",
