@@ -273,7 +273,8 @@ def meshes_from_obj(path):
                 key = (vi, ti, ni)
                 if key not in verts:
                     verts[key] = len(P)
-                    P.append(pos[vi]); U.append(uvs[ti] if ti >= 0 else [0.5, 0.5]); N.append(nrms[ni] if ni >= 0 else [0, 0, 0])
+                    # OBJ texture v points up; internally (as in glTF) v counts from the top of the image
+                    P.append(pos[vi]); U.append([uvs[ti][0], 1.0 - uvs[ti][1]] if ti >= 0 else [0.5, 0.5]); N.append(nrms[ni] if ni >= 0 else [0, 0, 0])
                 ids.append(verts[key])
             for k in range(1, len(ids) - 1):
                 F.append([ids[0], ids[k], ids[k + 1]])

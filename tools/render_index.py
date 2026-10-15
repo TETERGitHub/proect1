@@ -30,7 +30,6 @@ def main():
         for p in e["parts"]:
             m = cm.meshes_from_obj(folder / p["mesh"])[0]
             m.pos = m.pos + np.array(p["center"]) - hold
-            m.uv = np.c_[m.uv[:, 0], 1.0 - m.uv[:, 1]]  # OBJ v points up; the renderer samples images top-down like glTF
             meshes.append(m)
             texes.append(Image.open(folder / p["texture"]).convert("RGB") if p.get("texture") else Image.new("RGB", (8, 8), (200, 200, 200)))
         imgs = [cm.render_view(meshes, texes, 460, az, el) for az, el in [(38, 14), (90, 0), (160, 14)]]
