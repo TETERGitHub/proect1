@@ -1383,7 +1383,42 @@
   "Download models": "Descargar modelos",
   "Checking the models on the key server...": "Comprobando los modelos en el servidor de claves...",
   "Models are up to date.": "Los modelos están al día.",
-  "Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).": "¿Aún nada? Con una clave los modelos se descargan solos (Descargar modelos). O convierte un modelo con tools/convert_mesh.py y copia el resultado a MM2Hub/models/ (ver docs/IMPORT_MODELS.md)."
+  "Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).": "¿Aún nada? Con una clave los modelos se descargan solos (Descargar modelos). O convierte un modelo con tools/convert_mesh.py y copia el resultado a MM2Hub/models/ (ver docs/IMPORT_MODELS.md).",
+  "Hit marker": "Marcador de impacto",
+  "A marker pops at the centre of your screen when one of your kills is confirmed.": "Aparece un marcador en el centro de la pantalla cuando se confirma una de tus eliminaciones.",
+  "Marker style": "Estilo del marcador",
+  "Shape of the hit marker (the hub's own drawings).": "Forma del marcador (dibujos propios del hub).",
+  "Marker colour": "Color del marcador",
+  "Colour of the hit marker.": "Color del marcador de impacto.",
+  "Marker size": "Tamaño del marcador",
+  "Size of the hit marker in pixels.": "Tamaño del marcador en píxeles.",
+  "Marker time": "Duración del marcador",
+  "How long the marker stays (seconds).": "Cuánto dura el marcador (segundos).",
+  "Bullet tracers": "Trazadores de bala",
+  "When you fire your gun, a glowing beam runs from the gun to where you aimed. Only you see it.": "Al disparar, un rayo brillante va del arma a donde apuntaste. Solo tú lo ves.",
+  "Tracer style": "Estilo del trazador",
+  "Look of the tracer beam.": "Aspecto del rayo trazador.",
+  "Tracer colour": "Color del trazador",
+  "Colour of the tracer (Rainbow ignores it).": "Color del trazador (Arcoíris lo ignora).",
+  "Tracer width": "Grosor del trazador",
+  "Thickness of the tracer in studs.": "Grosor del trazador en studs.",
+  "Tracer time": "Duración del trazador",
+  "How long the tracer stays (seconds).": "Cuánto dura el trazador (segundos).",
+  "Impact sparks": "Chispas de impacto",
+  "Sparks and a flash where the tracer ends, a flash at the gun.": "Chispas y destello donde termina el trazador, destello en el arma.",
+  "Try it": "Pruébalo",
+  "Shows the marker and fires a tracer 40 studs ahead of you.": "Muestra el marcador y lanza un trazador 40 studs delante de ti.",
+  "Drawn with the hub's own textures. Your screen only: nothing is sent to the game and nobody else sees it.": "Dibujado con texturas propias del hub. Solo en tu pantalla: no se envía nada al juego y nadie más lo ve.",
+  "Hit marker when you get a kill and glowing tracers when you shoot.": "Marcador al eliminar y trazadores brillantes al disparar.",
+  "Hit effects": "Impactos",
+  "Hit effects are not running.": "Los impactos no están activos.",
+  "Burst": "Estallido",
+  "Skull": "Calavera",
+  "Spark": "Chispa",
+  "Ring": "Anillo",
+  "Laser": "Láser",
+  "Energy": "Energía",
+  "Menacing": "Amenaza (ゴゴゴ)"
  },
  "patterns": [
   [
@@ -1691,7 +1726,8 @@
   "status.running": "en ejecución",
   "status.stopped": "detenido",
   "nav.watermark": "Marca de agua",
-  "nav.killfx": "Efectos de muerte"
+  "nav.killfx": "Efectos de muerte",
+  "nav.hitfx": "Impactos"
  },
  "keep": {
   "RightShift": true,
@@ -1735,7 +1771,6 @@
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
   "TrollHub": true,
-  "X": true,
-  "Menacing": true
+  "X": true
  }
 }

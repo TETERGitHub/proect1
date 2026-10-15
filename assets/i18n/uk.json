@@ -1383,7 +1383,42 @@
   "Download models": "Завантажити моделі",
   "Checking the models on the key server...": "Перевіряю моделі на сервері ключів...",
   "Models are up to date.": "Моделі вже актуальні.",
-  "Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).": "Поки нічого немає? З ключем моделі завантажуються самі (Завантажити моделі). Або сконвертуйте модель через tools/convert_mesh.py і скопіюйте результат у MM2Hub/models/ (див. docs/IMPORT_MODELS.md)."
+  "Nothing imported yet? With a key the models download by themselves (Download models). Or convert a model with tools/convert_mesh.py and copy the result to MM2Hub/models/ (see docs/IMPORT_MODELS.md).": "Поки нічого немає? З ключем моделі завантажуються самі (Завантажити моделі). Або сконвертуйте модель через tools/convert_mesh.py і скопіюйте результат у MM2Hub/models/ (див. docs/IMPORT_MODELS.md).",
+  "Hit marker": "Хітмаркер",
+  "A marker pops at the centre of your screen when one of your kills is confirmed.": "Коли ваше вбивство зараховано, у центрі екрана спалахує позначка.",
+  "Marker style": "Вигляд позначки",
+  "Shape of the hit marker (the hub's own drawings).": "Форма хітмаркера (малюнки хаба).",
+  "Marker colour": "Колір позначки",
+  "Colour of the hit marker.": "Колір хітмаркера.",
+  "Marker size": "Розмір позначки",
+  "Size of the hit marker in pixels.": "Розмір хітмаркера в пікселях.",
+  "Marker time": "Час позначки",
+  "How long the marker stays (seconds).": "Скільки тримається позначка (секунди).",
+  "Bullet tracers": "Трасери куль",
+  "When you fire your gun, a glowing beam runs from the gun to where you aimed. Only you see it.": "Коли ви стріляєте, від пістолета до точки прицілу летить світний промінь. Бачите лише ви.",
+  "Tracer style": "Вигляд трасера",
+  "Look of the tracer beam.": "Як виглядає промінь трасера.",
+  "Tracer colour": "Колір трасера",
+  "Colour of the tracer (Rainbow ignores it).": "Колір трасера («Веселка» його не використовує).",
+  "Tracer width": "Товщина трасера",
+  "Thickness of the tracer in studs.": "Товщина трасера в стадах.",
+  "Tracer time": "Час трасера",
+  "How long the tracer stays (seconds).": "Скільки тримається трасер (секунди).",
+  "Impact sparks": "Іскри при влучанні",
+  "Sparks and a flash where the tracer ends, a flash at the gun.": "Іскри й спалах у кінці трасера, спалах біля пістолета.",
+  "Try it": "Спробувати",
+  "Shows the marker and fires a tracer 40 studs ahead of you.": "Показує позначку й пускає трасер на 40 стадів уперед.",
+  "Drawn with the hub's own textures. Your screen only: nothing is sent to the game and nobody else sees it.": "Намальовано власними текстурами хаба. Лише на вашому екрані: у гру нічого не надсилається, інші не бачать.",
+  "Hit marker when you get a kill and glowing tracers when you shoot.": "Хітмаркер при вбивстві та світні трасери при пострілі.",
+  "Hit effects": "Влучання",
+  "Hit effects are not running.": "Влучання не запущено.",
+  "Burst": "Вибух",
+  "Skull": "Череп",
+  "Spark": "Іскра",
+  "Ring": "Кільце",
+  "Laser": "Лазер",
+  "Energy": "Енергія",
+  "Menacing": "Загроза (ゴゴゴ)"
  },
  "patterns": [
   [
@@ -1691,7 +1726,8 @@
   "status.running": "працює",
   "status.stopped": "зупинено",
   "nav.watermark": "Водяний знак",
-  "nav.killfx": "Ефекти вбивства"
+  "nav.killfx": "Ефекти вбивства",
+  "nav.hitfx": "Влучання"
  },
  "keep": {
   "RightShift": true,
@@ -1735,7 +1771,6 @@
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
   "TrollHub": true,
-  "X": true,
-  "Menacing": true
+  "X": true
  }
 }

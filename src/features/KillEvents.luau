@@ -20,6 +20,8 @@ local Maid = import("core/Maid")
 local KillEvents = {}
 
 KillEvents.Confirmed = Signal.new("KillEvents.Confirmed")
+-- Used: you activated your own gun or knife ({ role = "sheriff" | "murderer", tool = Tool }); features/HitFX draws tracers on it
+KillEvents.Used = Signal.new("KillEvents.Used")
 
 local RECENT_S = 2.5
 local RANGE = { murderer = 45, sheriff = 600 }
@@ -96,8 +98,10 @@ function KillEvents.start(ctx)
 			end
 			if tool.Name == Settings.get("cosmetics.knifeTool") then
 				state.lastUse.murderer = os.clock()
+				KillEvents.Used:Fire({ role = "murderer", tool = tool })
 			elseif tool.Name == Settings.get("cosmetics.gunTool") then
 				state.lastUse.sheriff = os.clock()
+				KillEvents.Used:Fire({ role = "sheriff", tool = tool })
 			end
 		end))
 	end

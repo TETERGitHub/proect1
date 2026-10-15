@@ -339,6 +339,21 @@ local function buildKillFx(page)
 	resetButton(page, "KillFX")
 end
 
+local function buildHitFx(page)
+	local HitFX = import("features/HitFX")
+	section(page, "Hit marker", { "hitfx.marker", "hitfx.markerStyle", "hitfx.markerColor", "hitfx.markerSize", "hitfx.markerTime" })
+	section(page, "Bullet tracers", { "hitfx.tracer", "hitfx.tracerStyle", "hitfx.tracerColor", "hitfx.tracerWidth", "hitfx.tracerLife", "hitfx.impact" })
+	page:section("Preview")
+	page:action({ label = "Try it", desc = "Shows the marker and fires a tracer 40 studs ahead of you.", text = "Test", onClick = function()
+		local _, err = HitFX.test()
+		if err then
+			notify("Hit effects", err, "warn")
+		end
+	end })
+	page:note("Drawn with the hub's own textures. Your screen only: nothing is sent to the game and nobody else sees it.", "textDim", 30)
+	resetButton(page, "HitFX")
+end
+
 local function buildWatermark(page)
 	local Watermark = import("ui/Watermark")
 	section(page, "Watermark", { "watermark.enabled", "watermark.text", "watermark.position", "watermark.size", "watermark.background", "watermark.sticker" })
@@ -369,6 +384,7 @@ function Pages.registerAll()
 		{ "customknife", "knife", Custom.knife, "Your own murderer knife: models, colours, materials, preview and presets." },
 		{ "customchar", "person", Custom.char, "Costumes and accessories on your own avatar, with a safe preview." },
 		{ "killfx", "bolt", buildKillFx, "Big finishers on your victims: lightning, explosion, vaporize, black hole, ice shatter." },
+		{ "hitfx", "target", buildHitFx, "Hit marker when you get a kill and glowing tracers when you shoot." },
 		{ "watermark", "star", buildWatermark, "Your own badge on screen with flowing colours, FPS, ping and time." },
 		{ "aura", "star", buildAura, "Wings, halo, rune circle, chains and sparkles on your own character." },
 		{ "killmurderer", "knife", Custom.murderer, "The sound for a confirmed kill as murderer. Independent of the sheriff sound." },

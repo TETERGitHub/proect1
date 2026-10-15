@@ -1118,3 +1118,44 @@ T.test("models come from the key server, only what is missing", "listing, files 
 	-- not started by the loader: nothing to do
 	T.eq(select(2, Sync.sync({})), "not started by the loader")
 end)
+
+T.suite("Hit effects")
+T.test("kill shows the hit marker, a shot draws a tracer that fades away", "marker on Confirmed, tracer on Used(sheriff), both cleaned up", function()
+	local files = {}
+	T.fresh({ lookup = fakeFiles(files) })
+	import("features/FxKit")._reset()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local ok, err = pcall(function()
+		local HitFX = import("features/HitFX")
+		local KillEvents = import("features/KillEvents")
+		local Settings = import("core/Settings")
+		Settings.set("hitfx.marker", true); Settings.set("hitfx.tracer", true)
+		for _, style in ipairs(HitFX.MARKERS) do
+			Settings.set("hitfx.markerStyle", style)
+			KillEvents.Confirmed:Fire({ role = "sheriff", victim = style, source = "test" }); frames(2)
+			T.truthy(HitFX.markerVisible(), style .. " marker shows")
+		end
+		frames(60)
+		T.falsy(HitFX.markerVisible(), "marker fades away")
+		local cam = game.Workspace.CurrentCamera
+		for _, style in ipairs(HitFX.TRACERS) do
+			Settings.set("hitfx.tracerStyle", style)
+			T.truthy(HitFX.tracer(Vector3.new(0, 5, 0), Vector3.new(0, 5, -40)), style)
+		end
+		T.eq(HitFX.activeTracers(), #HitFX.TRACERS)
+		T.truthy(cam:FindFirstChild("MM2HubTracer") ~= nil)
+		-- a shot of your own gun draws one through the Used event (knife swings do not)
+		KillEvents.Used:Fire({ role = "murderer", tool = nil }); frames(1)
+		T.eq(HitFX.activeTracers(), #HitFX.TRACERS)
+		frames(120)
+		T.eq(HitFX.activeTracers(), 0, "tracers removed")
+		T.falsy(cam:FindFirstChild("MM2HubTracer"), "no parts left")
+		local okT = HitFX.test()
+		T.truthy(okT)
+	end)
+	h.unload(); Mock.uninstall()
+	import("features/FxKit")._reset()
+	T.truthy(ok, tostring(err))
+end)

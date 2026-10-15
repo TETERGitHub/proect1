@@ -36,6 +36,11 @@ function FxKit.asset(file)
 	return url
 end
 
+-- _reset(): forget which textures could be loaded (tests switch the file API on and off)
+function FxKit._reset()
+	table.clear(urls)
+end
+
 -- part(parent, shape, size, color, material, transparency) -> anchored, non-colliding effect part
 function FxKit.part(parent, shape, size, color, material, transparency)
 	local p = Instance.new(shape == "Wedge" and "WedgePart" or "Part")

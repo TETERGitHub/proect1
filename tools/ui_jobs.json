@@ -188,6 +188,14 @@
      "b": 255
     }
    }
+  },
+  {
+   "name": "hitfx",
+   "page": "hitfx",
+   "language": "ru",
+   "settings": {
+    "hitfx.tracer": true
+   }
   }
  ]
 }

@@ -362,6 +362,20 @@ add(with("killfx", "KillFX", {
 	bool("killfx.onSheriff", true, "As sheriff", "Play on kills with your gun."),
 }))
 
+add(with("hitfx", "HitFX", {
+	bool("hitfx.marker", true, "Hit marker", "A marker pops at the centre of your screen when one of your kills is confirmed."),
+	enum("hitfx.markerStyle", "Classic", { "Classic", "Burst", "Diamond", "Skull", "Cross", "Spark", "Ring", "Heart" }, "Marker style", "Shape of the hit marker (the hub's own drawings)."),
+	color("hitfx.markerColor", { r = 255, g = 70, b = 70 }, "Marker colour", "Colour of the hit marker."),
+	num("hitfx.markerSize", 56, 24, 160, 2, "Marker size", "Size of the hit marker in pixels."),
+	num("hitfx.markerTime", 0.45, 0.2, 1.5, 0.05, "Marker time", "How long the marker stays (seconds)."),
+	bool("hitfx.tracer", false, "Bullet tracers", "When you fire your gun, a glowing beam runs from the gun to where you aimed. Only you see it."),
+	enum("hitfx.tracerStyle", "Laser", { "Laser", "Energy", "Lightning", "Rainbow" }, "Tracer style", "Look of the tracer beam."),
+	color("hitfx.tracerColor", { r = 90, g = 210, b = 255 }, "Tracer colour", "Colour of the tracer (Rainbow ignores it)."),
+	num("hitfx.tracerWidth", 0.35, 0.1, 1.5, 0.05, "Tracer width", "Thickness of the tracer in studs."),
+	num("hitfx.tracerLife", 0.35, 0.1, 1.5, 0.05, "Tracer time", "How long the tracer stays (seconds)."),
+	bool("hitfx.impact", true, "Impact sparks", "Sparks and a flash where the tracer ends, a flash at the gun."),
+}))
+
 add(with("watermark", "Watermark", {
 	bool("watermark.enabled", true, "Watermark", "A badge on your screen with your text, the mascot and optional FPS, ping and time. Only you see it.", { master = true }),
 	{ key = "watermark.text", type = "string", default = "TrollHub", maxLen = 40, label = "Text", desc = "What the watermark says." },
