@@ -809,9 +809,9 @@ BUILD["Troll"] = function(a)
 	a:mesh("ring", v3(5.6, 0.5, 5.6), "s", function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + 0.15, base.Position.Z) * CFrame.Angles(0, -t * 1.2, 0)
 	end, NEON, 0.35, "Cylinder")
-	-- the owner's trollfaces (trolls.png cells; 0 = the menu mascot, 1-5 = the owner's pictures): four big ones circling you,
+	-- the owner's trollfaces (trolls.png cells; 0 = the menu mascot, 1-6 = the owner's pictures): four big ones circling you,
 	-- bobbing out of step, each a different face
-	local FACES = { 2, 3, 4, 5, 1, 0 }
+	local FACES = { 6, 2, 3, 4, 5, 1, 0 }
 	orbit(a, 4, 3.3, 2.2, 0.9, function(i, fn)
 		smiley(a, 2.4, function(t, base)
 			return fn(t, base) + v3(0, sin(t * 2.2 + i * 1.6) * 0.5 * a.s, 0)

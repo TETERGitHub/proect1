@@ -48,7 +48,7 @@ def main():
     faces = [Image.open(ROOT / "assets" / "ui" / "sticker.png").convert("RGBA")]
     faces[0].thumbnail((CELL - 6, CELL - 6), Image.LANCZOS)
     c0 = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0)); c0.paste(faces[0], ((CELL - faces[0].width) // 2, (CELL - faces[0].height) // 2), faces[0])
-    faces = [c0] + [sticker(p) for p in sorted((ROOT / "assets" / "trolls").glob("*.jpg"))]
+    faces = [c0] + [sticker(p) for p in sorted((ROOT / "assets" / "trolls").glob("*.jpg"), key=lambda p: (len(p.stem), p.stem))]
     sheet = Image.new("RGBA", (CELL * 4, CELL * 4), (0, 0, 0, 0))
     for i in range(16):
         sheet.paste(faces[i % len(faces)], ((i % 4) * CELL, (i // 4) * CELL))
