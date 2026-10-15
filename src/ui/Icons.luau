@@ -1,6 +1,6 @@
 --!nonstrict
--- ui/Icons: renders icons from data/IconData primitives using plain Frames (no image assets).
--- Depends on: IconData, Theme.
+-- ui/Icons: draws the hub icons: the detailed sprite sheet when bundled images load, else data/IconData primitives (plain Frames).
+-- Depends on: IconData, IconSheet, Theme, Flair (sheet image).
 
 local import = ...
 local IconData = import("data/IconData")
@@ -28,7 +28,35 @@ local function bindColor(inst, prop, token)
 end
 
 -- draw(parent, name, px, token) -> container Frame (px x px, transparent)
+-- The detailed icons: one anti-aliased sprite sheet drawn by tools/make_icons.py (data/IconSheet + assets/ui/icons.png in
+-- data/UiPack). Used whenever the executor can show bundled images; otherwise the primitive shapes below are drawn.
+local Sheet = import("data/IconSheet")
+
+local function sheetUrl()
+	local ok, url = pcall(function()
+		return import("ui/Flair").image("icons.png")
+	end)
+	return ok and url or nil
+end
+
 function Icons.draw(parent, name, px, token)
+	local idx = Sheet.index[name] or (not IconData[name] and Sheet.index.info) or nil
+	local url = idx and sheetUrl()
+	if url then
+		local img = Instance.new("ImageLabel")
+		img.Name = "Icon_" .. name
+		img.BackgroundTransparency = 1
+		img.BorderSizePixel = 0
+		img.Size = UDim2.fromOffset(px, px)
+		img.Image = url
+		img.ImageRectSize = Vector2.new(Sheet.cell, Sheet.cell)
+		img.ImageRectOffset = Vector2.new((idx % Sheet.cols) * Sheet.cell, (idx // Sheet.cols) * Sheet.cell)
+		img.ScaleType = Enum.ScaleType.Fit
+		bindColor(img, "ImageColor3", token)
+		drawn[img] = { { img, "ImageColor3" } }
+		img.Parent = parent
+		return img
+	end
 	local prims = IconData[name] or IconData.info
 	local k = px / 24
 	local box = Instance.new("Frame")
