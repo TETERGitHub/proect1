@@ -199,6 +199,43 @@ class HttpTests(unittest.TestCase):
             self.assertEqual(json.loads(r.read()), {"ok": True})
 
 
+class ModelsHttpTests(unittest.TestCase):
+    """the models pack: listing and files only for a valid key, only files named by index.json"""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        svc, _ = make_service(self.tmp, Clock(ISSUED + 3600))
+        self.models = pathlib.Path(self.tmp) / "models"
+        self.models.mkdir()
+        (self.models / "a_0.obj").write_bytes(b"v 0 0 0\n")
+        (self.models / "a_0.png").write_bytes(bytes(range(256)))
+        (self.models / "secret.txt").write_text("not served")
+        (self.models / "index.json").write_text(json.dumps({"version": 1, "models": [
+            {"id": "a", "parts": [{"mesh": "a_0.obj", "texture": "a_0.png"}, {"mesh": "../evil.obj"}]}]}))
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), app.make_handler(svc, app.RateLimiter(limit=100), app.ModelStore(self.models),
+                                                                            app.RateLimiter(limit=1000)))
+        self.port = self.httpd.server_address[1]
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.httpd.shutdown()
+
+    post = HttpTests.post
+
+    def test_listing_and_files(self):
+        status, body = self.post("/v1/models", {"key": KEY_ABS, "uid": 9})
+        self.assertEqual(status, 200)
+        self.assertEqual(sorted(f["name"] for f in body["files"]), ["a_0.obj", "a_0.png"])
+        self.assertIn('"models"', body["index"])
+        status, body = self.post("/v1/models/file", {"key": KEY_ABS, "uid": 9, "name": "a_0.png"})
+        self.assertEqual(status, 200)
+        self.assertEqual(base64.b64decode(body["data"]), bytes(range(256)))
+        for bad in ("secret.txt", "../evil.obj", "index.json", 5):
+            self.assertEqual(self.post("/v1/models/file", {"key": KEY_ABS, "uid": 9, "name": bad})[0], 404, bad)
+        self.assertEqual(self.post("/v1/models", {"key": "nope", "uid": 9})[0], 403)
+        self.assertEqual(self.post("/v1/models/file", {"key": "nope", "uid": 9, "name": "a_0.png"})[0], 403)
+
+
 class RateLimitTrust(unittest.TestCase):
     def test_forwarding_headers_are_trusted_only_from_the_local_proxy(self):
         class H(dict):

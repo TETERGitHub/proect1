@@ -180,7 +180,8 @@ function Loader.run(deps)
 	end
 
 	local function start(session)
-		local ok, hub = pcall(session.fn)
+		-- the hub learns where it came from (core/Launch): the models pack is fetched from the same server with the same key
+		local ok, hub = pcall(session.fn, { serverUrl = deps.serverUrl, key = session.canonical, uid = deps.uid, request = deps.request })
 		if not ok then
 			log(deps, "step 5/5 FAILED: %s", tostring(hub))
 			return false, "hub failed to start: " .. tostring(hub)
