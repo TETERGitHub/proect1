@@ -48,7 +48,12 @@ def obj(name):
 
 def tex(name):
     if name not in TEX:
-        im = Image.open(FX / name).convert("LA")
+        file, _, cell = name.partition("#")
+        im = Image.open(FX / file).convert("LA")
+        if cell:  # one frame of a 4x4 flipbook sheet
+            c = int(cell)
+            w, h = im.width // 4, im.height // 4
+            im = im.crop(((c % 4) * w, (c // 4) * h, (c % 4 + 1) * w, (c // 4 + 1) * h))
         TEX[name] = im
     return TEX[name]
 

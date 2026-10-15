@@ -171,7 +171,10 @@ methods.Emit = function(self, n)
 			local axis = math.random(1, 3)
 			local sgn = math.random() < 0.5 and -1 or 1
 			local lx, ly, lz = (math.random() * 2 - 1) * hx, (math.random() * 2 - 1) * hy, (math.random() * 2 - 1) * hz
-			if axis == 1 then lx = sgn * hx elseif axis == 2 then ly = sgn * hy else lz = sgn * hz end
+			local volume = self.ShapeStyle ~= nil and tostring(self.ShapeStyle):find("Volume") ~= nil
+			if not volume then
+				if axis == 1 then lx = sgn * hx elseif axis == 2 then ly = sgn * hy else lz = sgn * hz end
+			end
 			origin = cf * Vector3.new(lx, ly, lz)
 		end
 		local sx, sy = math.rad(self.SpreadAngle.X), math.rad(self.SpreadAngle.Y)
@@ -185,6 +188,9 @@ methods.Emit = function(self, n)
 			rot = self.Rotation.Min + math.random() * (self.Rotation.Max - self.Rotation.Min),
 			spin = self.RotSpeed.Min + math.random() * (self.RotSpeed.Max - self.RotSpeed.Min), squash = self.Orientation ~= nil,
 			owner = holder,
+			-- flipbook: one 4x4 cell per particle (Random = fixed random cell, Loop = advancing with age), as Roblox shows it
+			flip = self.FlipbookLayout ~= nil, flipRandom = self.FlipbookMode ~= nil and tostring(self.FlipbookMode):find("Random") ~= nil,
+			fps = self.FlipbookFramerate and self.FlipbookFramerate.Min or 24, cell0 = math.random(0, 15),
 		})
 	end
 end
@@ -228,7 +234,12 @@ function DUMP_SPRITES(frame)
 	for _, p in ipairs(SPRITES) do
 		local f = p.age / p.life
 		local c = sample(p.col, f)
-		print(string.format("S %d %s %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.2f %.1f %d %.3f %.3f %.3f", frame, p.tex, p.pos.x, p.pos.y, p.pos.z,
+		local texname = p.tex
+		if p.flip then
+			local cell = p.flipRandom and p.cell0 or (p.cell0 + math.floor(p.age * p.fps)) % 16
+			texname = texname .. "#" .. cell
+		end
+		print(string.format("S %d %s %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.2f %.1f %d %.3f %.3f %.3f", frame, texname, p.pos.x, p.pos.y, p.pos.z,
 			sample(p.size, f), sample(p.tr, f), c.R, c.G, c.B, p.light, p.rot, p.squash and 1 or 0, p.vel.x, p.vel.y, p.vel.z))
 	end
 end

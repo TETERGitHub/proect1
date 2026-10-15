@@ -89,10 +89,8 @@ function FxKit.emitter(holder, tex, o)
 		local em = Instance.new("ParticleEmitter")
 		em.Texture = url
 		FxKit.setEmitterColor(em, o.color or Color3.fromRGB(255, 255, 255))
-		local sz = o.size or { 1, 0 }
-		em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, sz[1]), NumberSequenceKeypoint.new(1, sz[2]) })
-		local tr = o.t or { 0, 1 }
-		em.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, tr[1]), NumberSequenceKeypoint.new(1, tr[2]) })
+		em.Size = FxKit.curve(o.size or { 1, 0 })
+		em.Transparency = FxKit.curve(o.t or { 0, 1 })
 		local life = o.life or { 0.6, 1.2 }
 		em.Lifetime = NumberRange.new(life[1], life[2])
 		local sp = o.speed or { 1, 3 }
@@ -109,13 +107,21 @@ function FxKit.emitter(holder, tex, o)
 			em.Orientation = Enum.ParticleOrientation.VelocityParallel
 		end
 		em.LockedToPart = o.lock == true
+		if o.zoffset then
+			em.ZOffset = o.zoffset
+		end
 		if o.flipbook then
 			-- animated texture: a 4x4 grid of frames (fire.png), looping or a random frame per particle (trolls.png)
 			em.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
 			em.FlipbookMode = o.flipbook == "random" and Enum.ParticleFlipbookMode.Random or Enum.ParticleFlipbookMode.Loop
 			em.FlipbookFramerate = NumberRange.new(o.fps or 24)
 		end
-		if o.surface then
+		if o.volume then
+			-- spawn anywhere inside the holder box (size the holder like the body part): a column of fire, not a shell
+			em.Shape = Enum.ParticleEmitterShape.Box
+			em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+			em.EmissionDirection = Enum.NormalId.Top
+		elseif o.surface then
 			-- spawn on the surface of the holder box (size the holder like the body part): flames come off the skin, not its centre
 			em.Shape = Enum.ParticleEmitterShape.Box
 			em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
@@ -126,6 +132,15 @@ function FxKit.emitter(holder, tex, o)
 		return em
 	end)
 	return ok and e or nil
+end
+
+-- curve({a, b, c, ...}) -> NumberSequence with the values spread evenly over the particle's life (2 or more values)
+function FxKit.curve(v)
+	local kps = {}
+	for i, x in ipairs(v) do
+		table.insert(kps, NumberSequenceKeypoint.new((i - 1) / (#v - 1), x))
+	end
+	return NumberSequence.new(kps)
 end
 
 function FxKit.setEmitterColor(em, col)

@@ -70,7 +70,13 @@ function Aura:emit(tex, o, role, fn)
 	if o.holderSize then
 		h.Size = o.holderSize
 	end
-	o.size = o.size and { o.size[1] * self.s, o.size[2] * self.s } or nil
+	if o.size then
+		local scaled = {}
+		for i, v in ipairs(o.size) do
+			scaled[i] = v * self.s
+		end
+		o.size = scaled
+	end
 	o.speed = o.speed and { o.speed[1] * self.s, o.speed[2] * self.s } or nil
 	o.accel = o.accel and o.accel * self.s or nil
 	local e = FxKit.emitter(h, tex, o)
@@ -112,6 +118,20 @@ function Aura:colorOf(role, seq)
 		if seq then
 			return ColorSequence.new({ ColorSequenceKeypoint.new(0, hot), ColorSequenceKeypoint.new(0.25, s), ColorSequenceKeypoint.new(0.6, p),
 				ColorSequenceKeypoint.new(1, p:Lerp(rgb(20, 4, 0), 0.75)) })
+		end
+		c = p
+	elseif role == "firecore" then
+		-- the hottest layer: white-yellow, warming to the secondary colour
+		if seq then
+			return ColorSequence.new({ ColorSequenceKeypoint.new(0, white), ColorSequenceKeypoint.new(0.4, s:Lerp(white, 0.6)),
+				ColorSequenceKeypoint.new(1, s) })
+		end
+		c = s:Lerp(white, 0.6)
+	elseif role == "firetip" then
+		-- the tongues: primary cooling to dark red-brown as they rise
+		if seq then
+			return ColorSequence.new({ ColorSequenceKeypoint.new(0, s:Lerp(p, 0.5)), ColorSequenceKeypoint.new(0.45, p),
+				ColorSequenceKeypoint.new(1, p:Lerp(rgb(25, 5, 0), 0.8)) })
 		end
 		c = p
 	elseif role == "pd" then
@@ -839,7 +859,9 @@ BUILD["Troll"] = function(a)
 end
 
 BUILD["Burning"] = function(a)
-	-- you are on fire: flames rise from every visible body part and follow it as you move and animate
+	-- you are on fire. Built like real fire rather than a cloud of sparks: a few large, overlapping flame sprites per body part
+	-- that are born small, swell and die out within a second (additive, so they merge into one body of flame with a hot core),
+	-- dark smoke rolling off the top, embers drifting up, and a flickering warm light on you and the ground.
 	local parts = {}
 	for _, d in ipairs(a.character:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.Transparency < 1 then
@@ -852,38 +874,76 @@ BUILD["Burning"] = function(a)
 			end
 		end
 	end
+	local torso = nil
 	for _, bp in ipairs(parts) do
+		if bp.Name == "UpperTorso" or bp.Name == "Torso" then
+			torso = bp
+		end
 		local sz = bp.Size
-		local vol = math.clamp(sz.X * sz.Y * sz.Z, 0.3, 6)
+		local vol = math.clamp(sz.X * sz.Y * sz.Z, 0.2, 6)
+		local k = 0.75 + math.clamp(math.max(sz.X, sz.Z), 0.5, 2.5) * 0.3
 		local follow = function()
 			return bp.Parent and bp.CFrame or nil
 		end
-		-- tall licking flames (secondary at the base to primary at the tips), a hot inner core and a few embers
-		local skin = sz * 1.05
-		-- animated flame tongues (fire.png flipbook), coloured like live fire over each particle's life
-		a:emit("fire", { rate = 18 + vol * 9, size = { 1.5, 2.4 }, life = { 0.45, 0.85 }, speed = { 1, 2.2 }, spread = 10, accel = v3(0, 7, 0), drag = 1.4,
-			t = { 0.15, 1 }, rot = { -8, 8 }, spin = { -10, 10 }, surface = true, holderSize = skin, flipbook = "loop", fps = 28 }, "fire", follow)
-		a:emit("fire", { rate = 8 + vol * 3, size = { 0.8, 1.2 }, life = { 0.3, 0.5 }, speed = { 0.5, 1.2 }, spread = 8, accel = v3(0, 5, 0),
-			t = { 0, 1 }, rot = { -5, 5 }, spin = { 0, 0 }, surface = true, holderSize = skin, flipbook = "loop", fps = 32 }, "fire", follow)
-		a:emit("glow", { rate = 3 + vol, size = { 1.4 * math.max(sz.X, sz.Y), 0.4 }, life = { 0.25, 0.4 }, speed = { 0, 0.5 }, t = { 0.55, 1 } }, "s", follow)
-		a:emit("spark", { rate = 2 + vol, size = { 0.22, 0.04 }, life = { 0.6, 1.2 }, speed = { 3, 7 }, spread = 35, accel = v3(0, 4, 0), drag = 0.5, squash = true,
-			surface = true, holderSize = skin }, "s", follow)
+		-- The fire is built in layers, like film / game VFX, from many flame wisps (fire_puff.png) that overlap and add up:
+		--   core  - small white-hot wisps hugging the part, short-lived
+		--   body  - the main orange flame, wisps swelling and rising off the part
+		--   tips  - fewer, taller wisps rising highest, cooling to dark red and fading
+		-- Each wisp is fairly see-through on its own, so the flame gets its brightness from how many overlap (dense and hot at
+		-- the base, thin and ragged at the top) instead of turning into a white ball. The holders follow the part's position but
+		-- not its rotation: fire always rises, whichever way the limb points.
+		local upright = function()
+			return bp.Parent and CFrame.new(bp.Position) or nil
+		end
+		a:emit("fire_puff", { rate = 10 + vol * 6, size = { 0.6 * k, 1.1 * k, 0.4 * k }, t = { 0.6, 0.35, 1 }, life = { 0.2, 0.35 },
+			speed = { 1.5, 3 }, spread = 12, accel = v3(0, 4, 0), drag = 2, rot = { -20, 20 }, spin = { -40, 40 }, volume = true,
+			holderSize = sz * 0.95, flipbook = "loop", fps = 30, light = 1, zoffset = 0.4 }, "firecore", upright)
+		a:emit("fire_puff", { rate = 16 + vol * 8, size = { 0.9 * k, 1.9 * k, 1.5 * k, 0.4 * k }, t = { 0.85, 0.45, 0.6, 1 },
+			life = { 0.35, 0.6 }, speed = { 3, 5 }, spread = 10, accel = v3(0, 5, 0), drag = 1.6, rot = { -25, 25 }, spin = { -50, 50 },
+			volume = true, holderSize = sz * 1.2, flipbook = "loop", fps = 24, light = 0.85 }, "fire", upright)
+		a:emit("fire_puff", { rate = 5 + vol * 3, size = { 1 * k, 2.2 * k, 1.2 * k }, t = { 0.9, 0.55, 1 }, life = { 0.55, 0.9 },
+			speed = { 5, 7.5 }, spread = 8, accel = v3(0, 3, 0), drag = 1.2, rot = { -15, 15 }, spin = { -30, 30 }, volume = true,
+			holderSize = sz * 1.1, flipbook = "loop", fps = 20, light = 0.6 }, "firetip", upright)
 	end
-	-- dark smoke rolling off the top, a warm glow and scorch ring at your feet
-	a:emit("smoke", { rate = 8, size = { 1.6, 4.5 }, life = { 1.2, 2 }, speed = { 2, 4 }, spread = 20, accel = v3(0, 2, 0), light = 0, t = { 0.45, 1 } }, "d", function(t, base)
-		return base * at(a, 0, 3.8, 0)
+	torso = torso or a.root
+	local function onTorso()
+		return torso.Parent and torso.CFrame or nil
+	end
+	local function aboveTorso()
+		return torso.Parent and CFrame.new(torso.Position + v3(0, torso.Size.Y * 0.4, 0)) or nil
+	end
+	-- the tall crown of the fire over the shoulders and head: big wisps, the highest tongues
+	a:emit("fire_puff", { rate = 18, size = { 1.6, 3.2, 2.2, 0.5 }, t = { 0.9, 0.5, 0.65, 1 }, life = { 0.55, 0.85 }, speed = { 4.5, 7 },
+		spread = 8, accel = v3(0, 4, 0), drag = 1.4, rot = { -20, 20 }, spin = { -40, 40 }, volume = true, holderSize = torso.Size * 1.3,
+		flipbook = "loop", fps = 20, light = 0.75 }, "fire", aboveTorso)
+	a:emit("fire_puff", { rate = 8, size = { 1.4, 3, 1.4 }, t = { 0.92, 0.6, 1 }, life = { 0.8, 1.1 }, speed = { 6, 9 }, spread = 6,
+		accel = v3(0, 2, 0), drag = 1, rot = { -12, 12 }, spin = { -20, 20 }, volume = true, holderSize = torso.Size * 1.1,
+		flipbook = "loop", fps = 18, light = 0.55 }, "firetip", aboveTorso)
+	-- smoke: dark, unlit, rolling and widening above the head
+	a:emit("smoke", { rate = 6, size = { 1.5, 3.5, 6 }, t = { 1, 0.7, 1 }, life = { 1.8, 3 }, speed = { 2, 3.5 }, spread = 15,
+		accel = v3(0.5, 1, 0), drag = 0.5, light = 0, rot = { 0, 360 }, spin = { -25, 25 } }, "d", function(t, base)
+		return base * at(a, 0, 5, 0)
 	end)
-	a:emit("glow", { rate = 3, size = { 6, 8 }, life = { 0.5, 0.8 }, speed = { 0, 0 }, t = { 0.7, 1 } }, "p", flat(a, 0.3))
-	a:mesh("ring", v3(4.5, 0.6, 4.5), "p", function(t, base)
-		return CFrame.new(base.Position.X, a.floorY + 0.1, base.Position.Z) * CFrame.Angles(0, t * 0.5, 0)
-	end, NEON, 0.45, "Cylinder")
-	-- a ring of real fire licking up round your feet
-	orbit(a, 6, 1.7, 0, 0.4, function(i, fn)
-		a:emit("fire", { rate = 12, size = { 1.3, 2 }, life = { 0.45, 0.8 }, speed = { 1, 2 }, spread = 12, accel = v3(0, 5, 0), drag = 1.4, t = { 0.2, 1 },
-			rot = { -8, 8 }, spin = { -10, 10 }, flipbook = "loop", fps = 26 }, "fire", function(t, base)
-			local cf = fn(t, base)
-			return CFrame.new(cf.Position.X, a.floorY + 0.2, cf.Position.Z)
-		end)
+	-- embers: tiny hot sparks drifting up and out
+	a:emit("spark", { rate = 10, size = { 0.16, 0.12, 0.02 }, t = { 0, 0.2, 1 }, life = { 1, 2.2 }, speed = { 3, 6 }, spread = 35,
+		accel = v3(0, 2.5, 0), drag = 1.2, squash = true, volume = true, holderSize = torso.Size * 1.2 }, "firecore", onTorso)
+	-- a faint heat glow round the body
+	a:emit("glow", { rate = 2, size = { 5.5, 7 }, t = { 0.82, 1 }, life = { 0.5, 0.8 }, speed = { 0, 0 } }, "p", onTorso)
+	-- flickering firelight on you and the ground
+	local holder = FxKit.holder(a.folder)
+	local light = nil
+	pcall(function()
+		light = Instance.new("PointLight")
+		light.Range = 14 * a.s
+		light.Shadows = false
+		light.Parent = holder
+	end)
+	a:add(holder, "keep", function(t)
+		if light then
+			light.Color = a.primary:Lerp(a.secondary, 0.5)
+			light.Brightness = (2.2 + 0.7 * sin(t * 17.3) * sin(t * 6.1) + 0.35 * sin(t * 31)) * a.intensity
+		end
+		return onTorso()
 	end)
 end
 
