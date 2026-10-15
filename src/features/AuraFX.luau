@@ -809,11 +809,13 @@ BUILD["Troll"] = function(a)
 	a:mesh("ring", v3(5.6, 0.5, 5.6), "s", function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + 0.15, base.Position.Z) * CFrame.Angles(0, -t * 1.2, 0)
 	end, NEON, 0.35, "Cylinder")
-	-- four laughing faces circling you, bobbing out of step
+	-- the owner's trollfaces (trolls.png cells; 0 = the menu mascot, 1-5 = the owner's pictures): four big ones circling you,
+	-- bobbing out of step, each a different face
+	local FACES = { 2, 3, 4, 5, 1, 0 }
 	orbit(a, 4, 3.3, 2.2, 0.9, function(i, fn)
-		face(a, 2.2, function(t, base)
+		smiley(a, 2.4, function(t, base)
 			return fn(t, base) + v3(0, sin(t * 2.2 + i * 1.6) * 0.5 * a.s, 0)
-		end, i * 2)
+		end, FACES[(i - 1) % #FACES + 1], "trolls.png")
 	end)
 	-- a small one bouncing above your head like a crown
 	face(a, 1.4, function(t, base)
@@ -823,9 +825,9 @@ BUILD["Troll"] = function(a)
 		spin = { -90, 90 }, t = { 0, 0.6 } }, "w", flat(a, 0.3))
 	-- the outer ring: the owner's trollfaces (trolls.png), all different
 	orbit(a, 10, 4.6, 1.2, -0.6, function(i, fn)
-		smiley(a, 1.4, function(t, base)
+		smiley(a, 1.7, function(t, base)
 			return fn(t, base) + v3(0, sin(t * 2.6 + i) * 0.4 * a.s, 0)
-		end, (i - 1) % 6, "trolls.png")
+		end, FACES[(i + 3) % #FACES + 1], "trolls.png")
 	end)
 	a:emit("trolls", { rate = 4, size = { 0.9, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
 		spin = { -90, 90 }, t = { 0, 0.6 }, flipbook = "random" }, "w", flat(a, 0.3))

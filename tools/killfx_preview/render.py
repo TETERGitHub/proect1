@@ -81,7 +81,8 @@ def load(name):
         elif line.startswith("G "):
             n = int(t[1])
             v = list(map(float, t[2:9]))
-            GUIS.setdefault(name, {}).setdefault(n, []).append((np.array(v[0:3]), v[3], int(v[4]), int(v[5]), v[6], t[9].replace("_", " ")))
+            GUIS.setdefault(name, {}).setdefault(n, []).append((np.array(v[0:3]), v[3], int(v[4]), int(v[5]), v[6], t[9].replace("_", " "),
+                                                                    t[10] if len(t) > 10 else "-"))
         elif line.startswith("F "):
             frames.setdefault(int(t[1]), [])
     LAST_FX[name] = (trails, beams)
@@ -89,23 +90,24 @@ def load(name):
 
 LAST_FX = {}
 GUIS = {}
+SHEETS = {}
 SHEET = None
 
 
 def draw_guis(im, guis):
-    """BillboardGuis (always on top): the laughing Trollface frame and its caption"""
-    global SHEET
-    if SHEET is None:
-        SHEET = Image.open(S.parent.parent / "assets" / "ui" / "sticker_anim.png").convert("LA")
+    """BillboardGuis (always on top): sticker faces from their own sheet (troll_anim.png, trolls.png) and captions"""
     d = ImageDraw.Draw(im)
-    for pos, studs, rx, ry, tr, cap in guis:
+    for pos, studs, rx, ry, tr, cap, file in guis:
         (xy, z) = proj(pos[None])
         if z[0] < 0.5 or studs <= 0.05:
             continue
         px = int(studs / z[0] * FOC)
         if px < 4:
             continue
-        cell = SHEET.crop((rx, ry, rx + 128, ry + 128)).resize((px, int(px * 0.8)))
+        if file not in SHEETS:
+            path = S.parent.parent / "assets" / "fx" / file
+            SHEETS[file] = Image.open(path if path.exists() else S.parent.parent / "assets" / "ui" / "sticker_anim.png").convert("LA")
+        cell = SHEETS[file].crop((rx, ry, rx + 128, ry + 128)).resize((px, px if file == "trolls.png" else int(px * 0.8)))
         l, a = cell.split()
         a = a.point(lambda v: int(v * (1 - tr)))
         x0, y0 = int(xy[0][0] - px / 2), int(xy[0][1] - px / 2)

@@ -245,8 +245,9 @@ function DUMP_FX(frame, root)
 			local rx, ry, tr = 0, 0, 0
 			if img and img.ImageRectOffset then rx, ry = img.ImageRectOffset.x, img.ImageRectOffset.y end
 			if img and img.ImageTransparency then tr = img.ImageTransparency end
-			print(string.format("G %d %.3f %.3f %.3f %.3f %d %d %.3f %s", frame, pos.x, pos.y, pos.z, o.Size.X.Scale, rx, ry, tr,
-				cap and cap.Text and string.gsub(cap.Text, " ", "_") or "-"))
+			local file = img and img.Image and string.match(tostring(img.Image), "[^:/]+$") or "-"
+			print(string.format("G %d %.3f %.3f %.3f %.3f %d %d %.3f %s %s", frame, pos.x, pos.y, pos.z, o.Size.X.Scale, rx, ry, tr,
+				cap and cap.Text and (string.gsub(cap.Text, " ", "_")) or "-", file))
 		end
 		if (o.ClassName == "Trail" or o.ClassName == "Beam") and o.Attachment0 and o.Attachment1 then
 			if not rawget(o, "_id") then fxId += 1; rawset(o, "_id", fxId) end
