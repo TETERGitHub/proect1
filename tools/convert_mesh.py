@@ -16,7 +16,7 @@ It does NOT download anything, does not touch licences, and never runs code from
 Environment limits to know: getcustomasset-based MeshIds depend on the executor (unverified here); Roblox uploads limit meshes to
 about 10k triangles each; recolouring does not tint textured meshes.
 """
-import argparse, base64, io, json, math, os, pathlib, re, struct, sys
+import argparse, base64, hashlib, io, json, math, os, pathlib, re, struct, sys
 import numpy as np
 from PIL import Image
 
@@ -1028,7 +1028,10 @@ def main():
         out_meshes.append(decimate(m, share))
     outdir = pathlib.Path(a.out)
     outdir.mkdir(parents=True, exist_ok=True)
-    parts, texes = [], []
+    parts, texes, tex_files = [], [], {}
+    for old in list(outdir.glob(a.id + "_*.png")) + list(outdir.glob(a.id + "_*.obj")):  # an earlier conversion of this model
+        if re.fullmatch(re.escape(a.id) + r"_\d+\.(png|obj)", old.name):
+            old.unlink()
     for i, m in enumerate(out_meshes):
         lo, hi = m.pos.min(axis=0), m.pos.max(axis=0)
         centre, psize = (lo + hi) / 2, hi - lo
@@ -1037,9 +1040,14 @@ def main():
         base = "%s_%d" % (a.id, i)
         write_obj(m, outdir / (base + ".obj"))
         tex = texture_for(m, a.max_texture)
-        tex.save(outdir / (base + ".png"))
+        buf = io.BytesIO()
+        tex.save(buf, "PNG", optimize=True)
+        digest = hashlib.sha1(buf.getvalue()).hexdigest()
+        if digest not in tex_files:  # body parts cut from one material share its texture: write it once
+            tex_files[digest] = base + ".png"
+            (outdir / (base + ".png")).write_bytes(buf.getvalue())
         texes.append(tex)
-        part = {"mesh": base + ".obj", "texture": base + ".png", "center": [round(float(c), 4) for c in centre], "size": [round(max(float(s), 0.05), 4) for s in psize], "tris": int(len(m.faces))}
+        part = {"mesh": base + ".obj", "texture": tex_files[digest], "center": [round(float(c), 4) for c in centre], "size": [round(max(float(s), 0.05), 4) for s in psize], "tris": int(len(m.faces))}
         if m.bone:
             part["bone"] = m.bone
         parts.append(part)
