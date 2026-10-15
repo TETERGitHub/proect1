@@ -26,6 +26,10 @@ NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
 NPDT = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 
 
+def srgb(c):
+    return c * 12.92 if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
+
+
 class Mesh:
     """One material's worth of triangles: positions (N,3), uvs (N,2), normals (N,3) per VERTEX, faces (M,3), a PIL texture or colour."""
     def __init__(self, name):
@@ -153,7 +157,8 @@ def meshes_from_gltf(path, by_bone=False, skip=None, anim=None):
             if mi is not None and mi < len(mats):
                 pbr = mats[mi].get("pbrMetallicRoughness", {})
                 f = pbr.get("baseColorFactor", [1, 1, 1, 1])
-                m.color = tuple(int(round(max(0, min(1, c)) * 255)) for c in f[:3])
+                # glTF colour factors are LINEAR; textures and Roblox colours are sRGB
+                m.color = tuple(int(round(srgb(max(0, min(1, c))) * 255)) for c in f[:3])
                 tex = pbr.get("baseColorTexture")
                 if tex is not None:
                     src = gltf["textures"][tex["index"]].get("source")
@@ -382,18 +387,74 @@ def sample_color(m, tex):
     return arr[y, x]
 
 
-def preview(meshes, texes, path, views):
-    sys.path.insert(0, str(pathlib.Path(__file__).parent))
-    import model_render as mr
-    tris, pid = [], 0
+def render_view(meshes, texes, size, az, el):
+    """Textured, smooth-shaded software render (orthographic) for previews; an approximation of how the mesh looks, not Roblox."""
+    a, e = math.radians(az), math.radians(el)
+    Ry = np.array([[math.cos(a), 0, math.sin(a)], [0, 1, 0], [-math.sin(a), 0, math.cos(a)]])
+    Rx = np.array([[1, 0, 0], [0, math.cos(e), -math.sin(e)], [0, math.sin(e), math.cos(e)]])
+    R = Rx @ Ry
+    allp = np.vstack([m.pos for m in meshes]) @ R.T
+    lo, hi = allp.min(axis=0), allp.max(axis=0)
+    scale = 0.86 * size / max(hi[0] - lo[0], hi[1] - lo[1], 1e-6)
+    cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
+    img = np.zeros((size, size, 3))
+    for i in range(size):
+        t = i / size
+        img[i, :, :] = np.array([44, 48, 60]) * (1 - t) + np.array([20, 22, 28]) * t
+    zbuf = np.full((size, size), -1e9)
+    light = np.array([-0.45, 0.75, 0.5]); light /= np.linalg.norm(light)
     for m, tex in zip(meshes, texes):
-        cols = sample_color(m, tex)
-        for f, c in zip(m.faces, cols):
-            tris.append((m.pos[f], pid, np.array(c), False, False, 1.0))
-        pid += 1
-    imgs = [mr.raster(tris, 460, az, el) for az, el in views]
-    from PIL import Image as I
-    sheet = I.new("RGB", (460 * len(imgs), 460))
+        P = m.pos @ R.T
+        N = m.nrm @ R.T if len(m.nrm) and np.abs(m.nrm).sum() > 0 else None
+        sx = (P[:, 0] - cx) * scale + size / 2
+        sy = size / 2 - (P[:, 1] - cy) * scale
+        tarr = np.asarray(tex, dtype=np.float64)
+        th, tw = tarr.shape[:2]
+        for f in m.faces:
+            x0, x1, x2 = sx[f]; y0, y1, y2 = sy[f]
+            minx, maxx = int(max(0, math.floor(min(x0, x1, x2)))), int(min(size - 1, math.ceil(max(x0, x1, x2))))
+            miny, maxy = int(max(0, math.floor(min(y0, y1, y2)))), int(min(size - 1, math.ceil(max(y0, y1, y2))))
+            if minx > maxx or miny > maxy:
+                continue
+            den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2)
+            if abs(den) < 1e-12:
+                continue
+            gx, gy = np.meshgrid(np.arange(minx, maxx + 1) + 0.5, np.arange(miny, maxy + 1) + 0.5)
+            w0 = ((y1 - y2) * (gx - x2) + (x2 - x1) * (gy - y2)) / den
+            w1 = ((y2 - y0) * (gx - x2) + (x0 - x2) * (gy - y2)) / den
+            w2 = 1 - w0 - w1
+            inside = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
+            if not inside.any():
+                continue
+            z = w0 * P[f[0], 2] + w1 * P[f[1], 2] + w2 * P[f[2], 2]
+            region = zbuf[miny:maxy + 1, minx:maxx + 1]
+            vis = inside & (z > region)
+            if not vis.any():
+                continue
+            uv = m.uv[f]
+            u = (w0 * uv[0, 0] + w1 * uv[1, 0] + w2 * uv[2, 0])[vis] % 1.0
+            v = (w0 * uv[0, 1] + w1 * uv[1, 1] + w2 * uv[2, 1])[vis] % 1.0
+            col = tarr[(v * (th - 1)).astype(int), (u * (tw - 1)).astype(int), :3]
+            if N is not None:
+                n = (w0[..., None] * N[f[0]] + w1[..., None] * N[f[1]] + w2[..., None] * N[f[2]])[vis]
+            else:
+                fn = np.cross(P[f[1]] - P[f[0]], P[f[2]] - P[f[0]]); fn /= max(np.linalg.norm(fn), 1e-9)
+                n = np.tile(fn, (int(vis.sum()), 1))
+            n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-9)
+            if np.mean(n[:, 2]) < 0:
+                n = -n  # back faces of thin parts are lit like front faces
+            d = np.clip(n @ light, 0, 1)
+            spec = np.clip(n @ (light + np.array([0, 0, 1])) / np.linalg.norm(light + np.array([0, 0, 1])), 0, 1) ** 24
+            shade = col * (0.32 + 0.78 * d[:, None]) + 90 * spec[:, None]
+            sub = img[miny:maxy + 1, minx:maxx + 1]
+            sub[vis] = shade
+            region[vis] = z[vis]
+    return Image.fromarray(np.clip(img, 0, 255).astype("uint8"))
+
+
+def preview(meshes, texes, path, views):
+    imgs = [render_view(meshes, texes, 460, az, el) for az, el in views]
+    sheet = Image.new("RGB", (460 * len(imgs), 460))
     for i, im in enumerate(imgs):
         sheet.paste(im, (i * 460, 0))
     sheet.save(path)
