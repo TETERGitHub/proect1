@@ -3,3 +3,6 @@ run_*.luau
 *.gif
 *_strip.png
 *.mp4
+auras_sheet.png
+run_aura.luau
+aura_*.gif

@@ -190,6 +190,33 @@ def frame_image(parts, bg, sprites=()):
 
 FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
 NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв"}
+AURA_NAMES = {"InfernoCrown": "Огненная корона", "StormGod": "Бог грозы", "Galaxy": "Галактика", "FrostMonarch": "Ледяной монарх",
+              "VoidWings": "Крылья пустоты", "Sakura": "Сакура", "Phoenix": "Феникс", "DragonSpirit": "Дух дракона",
+              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон"}
+if "--auras" in sys.argv:
+    EYE[:] = [11.0, 6.5, 14.0]; TARGET[:] = [0.0, 3.0, 0.0]
+    f = TARGET - EYE; f /= np.linalg.norm(f)
+    r = np.cross(f, [0, 1, 0]); r /= np.linalg.norm(r)
+    u = np.cross(r, f)
+    bg = background()
+    heroes = []
+    for key, title in AURA_NAMES.items():
+        frames, sprites = load("aura_" + key)
+        imgs = []
+        for n in sorted(frames):
+            im = frame_image(frames[n], bg, sprites.get(n, ()))
+            ImageDraw.Draw(im).text((12, 10), title, fill=(255, 255, 255), font=FONT)
+            imgs.append(im)
+        q = [im.convert("P", palette=Image.ADAPTIVE, colors=200) for im in imgs]
+        q[0].save(S / f"aura_{key}.gif", save_all=True, append_images=q[1:], duration=33, loop=0)
+        heroes.append(imgs[len(imgs) // 2])
+        print(key, len(imgs))
+    sheet = Image.new("RGB", (W * 3, H * 4))
+    for i, im in enumerate(heroes):
+        sheet.paste(im, ((i % 3) * W, (i // 3) * H))
+    sheet.save(S / "auras_sheet.png")
+    sys.exit(0)
+
 bg = background()
 for name in NAMES:
     frames, sprites = load(name)

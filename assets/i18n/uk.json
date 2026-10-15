@@ -1319,7 +1319,22 @@
   "Background strength": "Яскравість тла",
   "How visible the background picture is.": "Наскільки помітне зображення тла.",
   "Glass grain": "Зерно скла",
-  "A very fine frosted-glass grain and a soft highlight over the window.": "Дуже дрібне зерно матового скла й м'який відблиск поверх вікна."
+  "A very fine frosted-glass grain and a soft highlight over the window.": "Дуже дрібне зерно матового скла й м'який відблиск поверх вікна.",
+  "Classic: wings, halo, rune circle and chains (the switches below). The others are big full auras with their own shapes and particles.": "Класична: крила, німб, коло рун і ланцюги (перемикачі нижче). Інші — великі цілісні аури з власними формами й частинками.",
+  "Inferno Crown": "Вогняна корона",
+  "Storm God": "Бог грози",
+  "Galaxy": "Галактика",
+  "Frost Monarch": "Крижаний монарх",
+  "Void Wings": "Крила порожнечі",
+  "Sakura": "Сакура",
+  "Phoenix": "Фенікс",
+  "Dragon Spirit": "Дух дракона",
+  "Holy Light": "Святе світло",
+  "Toxic Rift": "Токсичний розлам",
+  "Shadow Reaper": "Темний жнець",
+  "Neon Cyber": "Кібер-неон",
+  "Aura size": "Розмір аури",
+  "Size of the wings (classic style) or of the whole aura (the other styles).": "Розмір крил (класичний стиль) або всієї аури (інші стилі)."
  },
  "patterns": [
   [

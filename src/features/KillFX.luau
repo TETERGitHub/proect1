@@ -10,7 +10,7 @@
 -- Own assets (tools/make_fx_assets.py -> data/FxPack): particle textures (glow, spark, smoke, flame, star, ring, arc) shown by
 -- ParticleEmitters, and meshes (ring, swirl, crystal, rock, flame) shown through SpecialMesh. They are written to MM2Hub/fx/ once and
 -- loaded with getcustomasset; an executor without that keeps the plain-part version of every effect (nothing is lost).
--- Depends on: Settings, Services, Perf, Logger, KillEvents, Env, Codec, FxPack.
+-- Depends on: Settings, Services, Perf, Logger, KillEvents, FxKit.
 
 local import = ...
 local Settings = import("core/Settings")
@@ -18,9 +18,7 @@ local Services = import("core/Services")
 local Perf = import("core/Perf")
 local Logger = import("core/Logger")
 local KillEvents = import("features/KillEvents")
-local Env = import("core/Env")
-local Codec = import("core/Codec")
-local FxPack = import("data/FxPack")
+local FxKit = import("features/FxKit")
 
 local KillFX = {}
 
@@ -46,28 +44,9 @@ end
 
 -- Own assets ---------------------------------------------------------------------------------------------------------------------
 
-local assetUrls = {} -- file -> url | false
-
--- asset(file) -> rbxasset url or nil (written to MM2Hub/fx/ on first use)
+-- asset(file) -> rbxasset url or nil (shared loader in features/FxKit)
 function KillFX.asset(file)
-	if assetUrls[file] ~= nil then
-		return assetUrls[file] or nil
-	end
-	local e = FxPack[file]
-	local url = nil
-	if e and Env.persistent() and Env.has("getcustomasset") then
-		local path = Env.ROOT .. "/fx/" .. file
-		local have = Env.read(path)
-		if not have or #have ~= e.bytes then
-			local raw = Codec.b64decode(e.data)
-			if raw and #raw == e.bytes then
-				Env.write(path, raw)
-			end
-		end
-		url = Env.customAsset(path)
-	end
-	assetUrls[file] = url or false
-	return url
+	return FxKit.asset(file)
 end
 
 -- Parts --------------------------------------------------------------------------------------------------------------------------

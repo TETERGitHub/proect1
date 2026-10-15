@@ -83,9 +83,15 @@ Enum = setmetatable({}, { __index = function(_, cat) return setmetatable({}, { _
 RaycastParams = { new = function() return {} end }
 
 local Inst = {}
+EMITTERS = {}
 local function newInst(class)
 	local o = { ClassName = class, Name = class, _children = {}, Transparency = 0, Shape = "Block", Material = "Plastic", Color = Color3.new(0.6,0.6,0.6), Size = Vector3.new(1,1,1), CFrame = CFrame.new() }
-	return setmetatable(o, Inst)
+	setmetatable(o, Inst)
+	if class == "ParticleEmitter" then
+		o._acc = 0
+		table.insert(EMITTERS, o)
+	end
+	return o
 end
 local methods = {}
 function methods.GetChildren(self) local out = {} for _, c in ipairs(self._children) do table.insert(out, c) end return out end
@@ -112,10 +118,12 @@ function methods.Clone(self)
 	return o
 end
 function methods.FindFirstChild(self, n) for _, c in ipairs(self._children) do if c.Name == n then return c end end end
+function methods.FindFirstChildOfClass(self, n) for _, c in ipairs(self._children) do if c.ClassName == n then return c end end end
 function methods.GetPivot(self) return self.CFrame end
 Inst.__index = function(t, k)
 	if methods[k] then return methods[k] end
 	if k == "Parent" then return rawget(t, "_parent") end
+	if k == "Position" and rawget(t, "CFrame") then return rawget(t, "CFrame").p end
 	return nil
 end
 Inst.__newindex = function(t, k, v)
@@ -179,6 +187,17 @@ local function sample(s, t)
 	return pts[#pts].Value
 end
 function STEP_SPRITES(dt)
+	for _, e in ipairs(EMITTERS) do
+		local h = e._parent
+		if h and not h._dead and not e._dead and (e.Rate or 0) > 0 then
+			e._acc += e.Rate * dt
+			local n = math.floor(e._acc)
+			if n > 0 then
+				e._acc -= n
+				methods.Emit(e, n)
+			end
+		end
+	end
 	for i = #SPRITES, 1, -1 do
 		local p = SPRITES[i]
 		p.age += dt

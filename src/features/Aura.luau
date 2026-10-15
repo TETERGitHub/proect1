@@ -11,6 +11,7 @@ local Services = import("core/Services")
 local Perf = import("core/Perf")
 local Logger = import("core/Logger")
 local VFX = import("features/AuraVFX")
+local AuraFX = import("features/AuraFX")
 
 local Aura = {}
 
@@ -47,19 +48,38 @@ local function sync()
 		return
 	end
 	local a = state.aura
-	if a and (a.destroyed or a.character ~= char or state.builtScale ~= s("wingScale")) then
+	local style = s("style")
+	if a and (a.destroyed or a.character ~= char or state.builtScale ~= s("wingScale") or state.builtStyle ~= style) then
 		destroyAura()
 		a = nil
 	end
 	if not a then
-		local ok, res = pcall(VFX.new, { character = char, preset = s("preset"), wingScale = s("wingScale") })
+		local ok, res
+		if style == "Classic" then
+			ok, res = pcall(VFX.new, { character = char, preset = s("preset"), wingScale = s("wingScale") })
+		else
+			ok, res = pcall(AuraFX.new, { character = char, style = style, scale = s("wingScale") })
+		end
 		if not ok then
 			state.status = "error: " .. tostring(res)
 			Logger.warn("Aura", "could not create the aura: %s", tostring(res))
 			return
 		end
 		a = res
-		state.aura, state.builtScale = a, s("wingScale")
+		state.aura, state.builtScale, state.builtStyle = a, s("wingScale"), style
+	end
+	if style ~= "Classic" then
+		-- the big styles (features/AuraFX): own colours or the style's palette; the classic part switches do not apply
+		local pal = AuraFX.palette[style] or AuraFX.palette[AuraFX.STYLES[1]]
+		if s("customColors") then
+			a:setColors(rgb(s("primary")), rgb(s("secondary")))
+		else
+			a:setColors(pal[1], pal[2])
+		end
+		a:setRainbow(s("rainbow"))
+		a:setIntensity(s("intensity"))
+		state.status = "on (" .. style .. ")"
+		return
 	end
 	local preset = VFX.presets[s("preset")] or VFX.presets.Angel
 	if s("customColors") then

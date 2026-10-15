@@ -18,7 +18,14 @@ local stubs = {
 	["core/Codec"] = { b64decode = function(s) return s end },
 	["data/FxPack"] = setmetatable({}, { __index = function(_, k) return { bytes = 0, data = "" } end }),
 }
-local KillFX = KILLFX_MODULE(function(name) return stubs[name] end)
+workspace = ws
+local loaded = {}
+local function import(name)
+	if stubs[name] then return stubs[name] end
+	if not loaded[name] then loaded[name] = MODULES[name](import) end
+	return loaded[name]
+end
+local KillFX = import("features/KillFX")
 KillFX.start({ maid = { Give = function() end } })
 
 -- the victim: a classic Roblox dummy (stand-in for any avatar)

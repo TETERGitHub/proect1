@@ -1319,7 +1319,22 @@
   "Background strength": "Intensidade do fundo",
   "How visible the background picture is.": "Quão visível é a imagem de fundo.",
   "Glass grain": "Grão do vidro",
-  "A very fine frosted-glass grain and a soft highlight over the window.": "Um grão muito fino de vidro fosco e um brilho suave sobre a janela."
+  "A very fine frosted-glass grain and a soft highlight over the window.": "Um grão muito fino de vidro fosco e um brilho suave sobre a janela.",
+  "Classic: wings, halo, rune circle and chains (the switches below). The others are big full auras with their own shapes and particles.": "Clássica: asas, auréola, círculo de runas e correntes (os botões abaixo). As outras são auras grandes e completas com formas e partículas próprias.",
+  "Inferno Crown": "Coroa infernal",
+  "Storm God": "Deus da tempestade",
+  "Galaxy": "Galáxia",
+  "Frost Monarch": "Monarca do gelo",
+  "Void Wings": "Asas do vazio",
+  "Sakura": "Sakura",
+  "Phoenix": "Fênix",
+  "Dragon Spirit": "Espírito do dragão",
+  "Holy Light": "Luz sagrada",
+  "Toxic Rift": "Fenda tóxica",
+  "Shadow Reaper": "Ceifador sombrio",
+  "Neon Cyber": "Neon cyber",
+  "Aura size": "Tamanho da aura",
+  "Size of the wings (classic style) or of the whole aura (the other styles).": "Tamanho das asas (estilo clássico) ou da aura inteira (os outros estilos)."
  },
  "patterns": [
   [

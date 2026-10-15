@@ -374,6 +374,7 @@ add(with("watermark", "Watermark", {
 
 add(with("aura", "Aura", {
 	bool("aura.enabled", false, "Aura", "Wings, halo, a rotating rune circle, orbiting chains and sparkles on your own character. Only you see it.", { master = true }),
+	enum("aura.style", "Classic", { "Classic", "Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit", "Holy Light", "Toxic Rift", "Shadow Reaper", "Neon Cyber" }, "Style", "Classic: wings, halo, rune circle and chains (the switches below). The others are big full auras with their own shapes and particles.", { labels = { Classic = "Classic", ["Inferno Crown"] = "Inferno Crown", ["Storm God"] = "Storm God", Galaxy = "Galaxy", ["Frost Monarch"] = "Frost Monarch", ["Void Wings"] = "Void Wings", Sakura = "Sakura", Phoenix = "Phoenix", ["Dragon Spirit"] = "Dragon Spirit", ["Holy Light"] = "Holy Light", ["Toxic Rift"] = "Toxic Rift", ["Shadow Reaper"] = "Shadow Reaper", ["Neon Cyber"] = "Neon Cyber" } }),
 	enum("aura.preset", "Angel", { "Angel", "Inferno", "Frost", "Toxic", "Crimson", "Rainbow" }, "Preset", "Colour scheme of the aura."),
 	bool("aura.wings", true, "Wings", "Angel wings behind your back; they flap faster while you run."),
 	bool("aura.halo", true, "Halo", "A double ring above your head."),
@@ -381,7 +382,7 @@ add(with("aura", "Aura", {
 	bool("aura.chains", true, "Chains", "Four chains orbiting around you."),
 	bool("aura.particles", true, "Sparkles and light", "Particles and a soft light. Switched off automatically in the low load profile and with reduced effects."),
 	num("aura.intensity", 1, 0.2, 2, 0.05, "Intensity", "Brightness and particle amount."),
-	num("aura.wingScale", 1, 0.5, 1.6, 0.05, "Wing size", "Size of the wings."),
+	num("aura.wingScale", 1, 0.5, 1.6, 0.05, "Aura size", "Size of the wings (classic style) or of the whole aura (the other styles)."),
 	bool("aura.rainbow", false, "Rainbow", "Colours cycle through the rainbow."),
 	bool("aura.customColors", false, "Own colours", "Use the two colours below instead of the preset."),
 	color("aura.primary", { r = 176, g = 84, b = 255 }, "Main colour", "Rims, rings, chains and the light."),

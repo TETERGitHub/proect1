@@ -600,6 +600,37 @@ T.test("the aura is built on your character and removed completely", "on, parts 
 	return n .. " parts"
 end)
 
+T.test("every big aura style builds, moves and is removed completely", "12 styles via the Aura page setting", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local Aura = import("features/Aura")
+	local AuraFX = import("features/AuraFX")
+	local cam = game.Workspace.CurrentCamera
+	Settings.set("aura.enabled", true)
+	local okRun, runErr = pcall(function()
+		for _, style in ipairs(AuraFX.STYLES) do
+			Settings.set("aura.style", style); frames(2)
+			T.eq(Aura.status(), "on (" .. style .. ")")
+			local a = Aura.current()
+			T.truthy(a ~= nil and a.style == style, style)
+			for _ = 1, 20 do a:step(1 / 30) end
+			local folder = cam:FindFirstChild("MM2HubAuraFX")
+			T.truthy(folder ~= nil and #folder:GetChildren() >= 8, style .. " parts")
+			a:setRainbow(true); a:step(0.2); a:setRainbow(false); a:setIntensity(2)
+		end
+		Settings.set("aura.style", "Classic"); frames(2)
+		T.eq(cam:FindFirstChild("MM2HubAuraFX"), nil, "switching back to Classic removes the big aura")
+		T.truthy(cam:FindFirstChild("AuraVFX") ~= nil)
+		Settings.set("aura.style", "Galaxy"); frames(2)
+	end)
+	done(h)
+	T.truthy(okRun, tostring(runErr))
+	T.eq(cam:FindFirstChild("MM2HubAuraFX"), nil, "unload removes it")
+	return #AuraFX.STYLES .. " styles"
+end)
+
 T.suite("Watermark and menu colour")
 T.test("watermark shows your text and stats and follows its settings", "text, FPS/ping/time, position, off", function()
 	T.fresh()
