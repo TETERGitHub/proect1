@@ -2,7 +2,7 @@
 -- ui/LicenseGate: activation window shown before the hub starts when the build requires a key. The window itself is
 -- ui/KeyCard (shared with the loader); this module only connects it to License. Calls onActivated(res) after a valid
 -- key was accepted.
--- Depends on: License, Env, Logger, Maid, LicenseText, KeyCard.
+-- Depends on: License, Env, Logger, Maid, LicenseText, KeyCard, Flair (sticker image).
 
 local import = ...
 local License = import("core/License")
@@ -11,6 +11,7 @@ local Logger = import("core/Logger")
 local Maid = import("core/Maid")
 local Ru = import("core/LicenseText")
 local KeyCard = import("ui/KeyCard")
+local Flair = import("ui/Flair")
 
 local Gate = {}
 
@@ -36,6 +37,7 @@ function Gate.show(onActivated)
 		placeholder = Ru.UI.placeholder,
 		button = Ru.UI.button,
 		busy = Ru.UI.checking,
+		sticker = { image = Flair.image("sticker_mouth.png"), frames = 10, cols = 5, cell = 128, period = 4.8 },
 		onSubmit = function(text)
 			card.setBusy(true)
 			local ok, res = License.activate(text)

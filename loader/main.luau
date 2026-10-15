@@ -5,6 +5,8 @@ local import = ...
 local Loader = import("loader/Loader")
 local Ru = import("core/LicenseText")
 local KeyCard = import("ui/KeyCard")
+local Codec = import("core/Codec")
+local UiPack = import("data/UiPack")
 
 local SERVER_URL = "@@SERVER_URL@@"
 local KEY_PATH = "MM2Hub/license.key"
@@ -32,6 +34,32 @@ local read = firstFunction(function() return readfile end)
 local exists = firstFunction(function() return isfile end)
 local mkdir = firstFunction(function() return makefolder end)
 local hui = firstFunction(function() return gethui end)
+local customAsset = firstFunction(function() return getcustomasset end, function() return getsynasset end)
+
+-- stickerImage() -> url | nil: the animated Trollface for the key window (bundled, written to MM2Hub/ui/ once)
+local function stickerImage()
+	local e = UiPack["sticker_mouth.png"]
+	if not (e and write and customAsset) then
+		return nil
+	end
+	local path = "MM2Hub/ui/sticker_mouth.png"
+	local ok, url = pcall(function()
+		if mkdir then
+			pcall(mkdir, "MM2Hub")
+			pcall(mkdir, "MM2Hub/ui")
+		end
+		local have = read and exists and exists(path) and read(path)
+		if not have or #have ~= e.bytes then
+			local raw = Codec.b64decode(e.data)
+			if not raw or #raw ~= e.bytes then
+				return nil
+			end
+			write(path, raw)
+		end
+		return customAsset(path)
+	end)
+	return ok and url or nil
+end
 
 local function notify(title, text)
 	pcall(function()
@@ -40,7 +68,7 @@ local function notify(title, text)
 end
 
 if not request or not compile then
-	notify("MM2 Hub", "В этом исполнителе нет HTTP-запросов или loadstring: загрузчик с лицензией не сможет работать.")
+	notify("TrollHub", "В этом исполнителе нет HTTP-запросов или loadstring: загрузчик с лицензией не сможет работать.")
 	return nil
 end
 
@@ -64,6 +92,7 @@ local function prompt(onSubmit, lastError)
 		placeholder = Ru.UI.placeholder,
 		button = Ru.UI.button,
 		busy = Ru.UI.checking,
+		sticker = { image = stickerImage(), frames = 10, cols = 5, cell = 128, period = 4.8 },
 		onSubmit = function(text)
 			card.setBusy(true)
 			onSubmit(text)

@@ -6,7 +6,7 @@ local Version = {}
 
 Version.VERSION = "1.0.0"
 Version.SCHEMA = 1 -- bump when the exported config layout changes, then add a migration
-Version.NAME = "MM2 Hub"
+Version.NAME = "TrollHub"
 
 Version.changelog = {
 	{

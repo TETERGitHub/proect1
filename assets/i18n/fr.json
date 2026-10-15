@@ -1227,7 +1227,13 @@
   "Visuals: custom crosshair, camera controls, local lighting/colour filters.": "Visuels : viseur perso, caméra, éclairage et filtres locaux.",
   "Local training range: target practice and physics stand (own objects only).": "Terrain d'entraînement local : cibles et banc physique (objets perso uniquement).",
   "Tools: session timer, stopwatch, countdown timers, notes.": "Outils : durée de session, chrono, minuteurs, notes.",
-  "done": "terminé"
+  "done": "terminé",
+  "Loading animation": "Animation de chargement",
+  "Shows the mascot and a progress bar inside the window when the hub starts.": "Affiche la mascotte et une barre de progression dans la fenêtre au démarrage du hub.",
+  "Custom cursor": "Curseur personnalisé",
+  "Replaces the mouse arrow with a glossy ring while the menu is open.": "Remplace la flèche de la souris par un anneau brillant tant que le menu est ouvert.",
+  "Menu sticker": "Autocollant du menu",
+  "The mascot sticker on the top-right corner of the window.": "L'autocollant de la mascotte dans le coin supérieur droit de la fenêtre."
  },
  "patterns": [
   [
@@ -1555,6 +1561,11 @@
   "Montserrat": true,
   "BuilderSans": true,
   "Arial": true,
-  "SourceSans": true
+  "SourceSans": true,
+  "iOS 27 Glass": true,
+  "iOS 27 Chrome": true,
+  "iOS 27 Prism": true,
+  "iOS 27 Violet": true,
+  "TrollHub": true
  }
 }

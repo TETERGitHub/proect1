@@ -148,10 +148,10 @@ end
 -- to a fainter bottom. With effects off it is a plain faint outline.
 function F.edge(inst, level)
 local s = Instance.new("UIStroke")
-	s.Thickness = 1
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	Theme.bind(s, "Color", function()
-		return Theme.effectsOn() and Theme.color("edge") or Theme.color("stroke")
+	s.Color = Color3.fromRGB(255, 255, 255) -- the gradient below carries the colour (plain, chrome, prism or violet rim)
+	Theme.bind(s, "Thickness", function()
+		return Theme.edgeWidth(level)
 	end)
 	s.Parent = inst
 	local g = Instance.new("UIGradient")
@@ -159,6 +159,9 @@ local s = Instance.new("UIStroke")
 	Theme.bind(g, "Transparency", function()
 		local top, bottom = Theme.edge(level)
 		return NumberSequence.new(top, bottom)
+	end)
+	Theme.bind(g, "Color", function()
+		return Theme.edgeColors()
 	end)
 	g.Parent = s
 	return s

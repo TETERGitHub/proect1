@@ -1,8 +1,9 @@
 --!nonstrict
 -- ui/KeyCard: the licence-key window used by both the in-script gate (ui/LicenseGate) and the standalone loader
 -- (loader/main). It imports nothing but plain Roblox objects, because it must work before any setting exists and
--- ships inside the tiny loader. Glass look = translucent card + thin light edge + faint sheen + soft shadow (no
--- real blur: Roblox offers none to scripts).
+-- ships inside the tiny loader. iOS 27 look: black glass card, a thick glossy chrome rim with a slowly travelling
+-- highlight, a white glossy button, and a local BlurEffect on the game world behind it (Roblox cannot blur GUI, only
+-- the 3D view; the blur exists only on this client and is removed with the card).
 -- States: idle, focused (accent ring), busy (button shows a progress label and ignores presses), error (red ring and
 -- message), success (green message). All motion is TweenService with short durations; everything is destroyed by close().
 
@@ -11,11 +12,12 @@ local KeyCard = {}
 -- built on first use: Roblox datatypes must not be created while the module loads
 local function palette()
 	return {
-		card = Color3.fromRGB(30, 30, 33),
-		field = Color3.fromRGB(58, 58, 62),
+		card = Color3.fromRGB(6, 6, 9),
+		field = Color3.fromRGB(26, 26, 32),
 		text = Color3.fromRGB(255, 255, 255),
-		dim = Color3.fromRGB(174, 174, 178),
-		accent = Color3.fromRGB(10, 132, 255),
+		dim = Color3.fromRGB(186, 186, 196),
+		accent = Color3.fromRGB(240, 242, 248),
+		accentText = Color3.fromRGB(8, 8, 12),
 		good = Color3.fromRGB(48, 209, 88),
 		bad = Color3.fromRGB(255, 69, 58),
 	}
@@ -50,14 +52,22 @@ local function corner(parent, r)
 end
 
 -- edge(parent): light top edge fading to a faint bottom edge
+local function chrome()
+	local K, rgb = ColorSequenceKeypoint.new, Color3.fromRGB
+	return ColorSequence.new({ K(0, rgb(255, 255, 255)), K(0.22, rgb(150, 154, 164)), K(0.45, rgb(250, 251, 255)),
+		K(0.62, rgb(96, 100, 110)), K(0.8, rgb(232, 235, 242)), K(1, rgb(170, 174, 184)) })
+end
+
+-- edge(parent, thickness) -> stroke, gradient: thick glossy chrome rim, bright at the top
 local function edge(parent, thickness)
-	local s = make("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = thickness or 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, parent)
-	make("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0.5, 0.9) }, s)
-	return s
+	local s = make("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = thickness or 2.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, parent)
+	local g = make("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0.05, 0.45), Color = chrome() }, s)
+	return s, g
 end
 
 -- build(parent, opts) -> card
---   opts = { title, prompt, placeholder, button, busy = "label while working", onSubmit = fn(text) }
+--   opts = { title, prompt, placeholder, button, busy = "label while working", onSubmit = fn(text),
+--            sticker = { image = url, frames = n, cols = n, cell = px, period = seconds } (optional animated mascot) }
 -- card = { gui parts..., setStatus(text, kind), setBusy(bool), focus(), destroy() }
 function KeyCard.build(parent, opts)
 	local PAL = palette()
@@ -69,7 +79,16 @@ function KeyCard.build(parent, opts)
 	end
 
 	local back = make("TextButton", { Name = "KeyCardBackdrop", Text = "", AutoButtonColor = false, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 1, BorderSizePixel = 0 }, parent)
-	tween(back, { BackgroundTransparency = 0.5 }, 0.3)
+	tween(back, { BackgroundTransparency = 0.45 }, 0.3)
+	-- blur the game world behind the card (local only; removed in destroy)
+	local blur
+	pcall(function()
+		blur = Instance.new("BlurEffect")
+		blur.Name = "MM2HubKeyBlur"
+		blur.Size = 0
+		blur.Parent = game:GetService("Lighting")
+		tween(blur, { Size = 16 }, 0.4)
+	end)
 
 	-- soft shadow: stacked rounded rectangles with a geometric transparency ramp
 	local stack = make("Frame", { Name = "Stack", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(440, 262), BackgroundTransparency = 1 }, back)
@@ -77,25 +96,60 @@ function KeyCard.build(parent, opts)
 		local layer = make("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 10), Size = UDim2.new(1, spec[1] * 2, 1, spec[1] * 2), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = spec[2], BorderSizePixel = 0 }, stack)
 		corner(layer, 22 + spec[1])
 	end
-	local card = make("Frame", { Name = "Card", Size = UDim2.fromScale(1, 1), BackgroundColor3 = PAL.card, BackgroundTransparency = 0.04, BorderSizePixel = 0, ClipsDescendants = true }, stack)
-	corner(card, 22)
-	edge(card)
-	local sheen = make("Frame", { Size = UDim2.new(1, 0, 0, 90), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BorderSizePixel = 0 }, card)
-	make("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0.94, 1) }, sheen)
-	local scale = make("UIScale", { Scale = 0.94 }, stack)
-	tween(scale, { Scale = 1 }, 0.35)
+	local card = make("Frame", { Name = "Card", Size = UDim2.fromScale(1, 1), BackgroundColor3 = PAL.card, BackgroundTransparency = 0.08, BorderSizePixel = 0, ClipsDescendants = true }, stack)
+	corner(card, 26)
+	local _, rimGradient = edge(card, 2.5)
+	local sheen = make("Frame", { Size = UDim2.new(1, 0, 0, 110), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BorderSizePixel = 0 }, card)
+	make("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0.88, 1) }, sheen)
+	local scale = make("UIScale", { Scale = 0.86 }, stack)
+	tween(scale, { Scale = 1 }, 0.5, Enum.EasingStyle.Back)
+	-- the chrome highlight travels slowly round the rim
+	pcall(function()
+		local t0 = os.clock()
+		local c = game:GetService("RunService").Heartbeat:Connect(function()
+			rimGradient.Rotation = 90 + math.sin((os.clock() - t0) * 0.9) * 60
+		end)
+		table.insert(conns, c)
+	end)
+
+	-- animated mascot on the card's top-right corner: the Trollface slowly opens its mouth wide and slowly closes it again
+	-- (sprite frames played forward then backward with an ease, one full cycle per opts.sticker.period seconds)
+	if opts.sticker and opts.sticker.image then
+		local st = opts.sticker
+		local cell, cols, frames = st.cell or 128, st.cols or 5, st.frames or 10
+		local img = make("ImageLabel", { Name = "Sticker", BackgroundTransparency = 1, Image = st.image, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -6, 0, 4), Size = UDim2.fromOffset(92, 92), Rotation = 12, ZIndex = 5,
+			ImageRectSize = Vector2.new(cell, cell), ImageRectOffset = Vector2.new(0, 0) }, stack)
+		local sscale = make("UIScale", { Scale = 0 }, img)
+		tween(sscale, { Scale = 1 }, 0.6, Enum.EasingStyle.Back)
+		pcall(function()
+			local t0, last = os.clock(), -1
+			local c = game:GetService("RunService").Heartbeat:Connect(function()
+				local t = (os.clock() - t0) / (st.period or 4.8)
+				local open = 0.5 - 0.5 * math.cos(t * 2 * math.pi) -- 0 closed .. 1 widest, smooth both ways
+				local f = math.clamp(math.floor(open * (frames - 1) + 0.5), 0, frames - 1)
+				if f ~= last then
+					last = f
+					img.ImageRectOffset = Vector2.new((f % cols) * cell, (f // cols) * cell)
+				end
+				img.Rotation = 12 + math.sin(t * 2 * math.pi) * 3
+			end)
+			table.insert(conns, c)
+		end)
+	end
 
 	-- header: product mark + title + prompt
-	local mark = make("Frame", { Position = UDim2.fromOffset(26, 24), Size = UDim2.fromOffset(34, 34), BackgroundColor3 = PAL.accent, BorderSizePixel = 0 }, card)
+	local mark = make("Frame", { Position = UDim2.fromOffset(26, 24), Size = UDim2.fromOffset(34, 34), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BorderSizePixel = 0 }, card)
 	corner(mark, 17)
-	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(110, 185, 255), PAL.accent) }, mark)
-	local dot = make("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 12), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BorderSizePixel = 0 }, mark)
+	make("UIGradient", { Rotation = 35, Color = chrome() }, mark)
+	edge(mark, 1.5)
+	local dot = make("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 12), BackgroundColor3 = Color3.fromRGB(8, 8, 12), BorderSizePixel = 0 }, mark)
 	corner(dot, 6)
 	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(72, 22), Size = UDim2.new(1, -98, 0, 22), Text = opts.title, Font = Enum.Font.MontserratBold, TextSize = 19, TextColor3 = PAL.text, TextXAlignment = Enum.TextXAlignment.Left }, card)
 	make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(72, 45), Size = UDim2.new(1, -98, 0, 30), Text = opts.prompt, Font = Enum.Font.MontserratMedium, TextSize = 12, TextColor3 = PAL.dim, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, card)
 
 	-- key field with focus / error ring
-	local box = make("TextBox", { Name = "KeyBox", Position = UDim2.fromOffset(26, 100), Size = UDim2.new(1, -52, 0, 44), BackgroundColor3 = PAL.field, BackgroundTransparency = 0.1, BorderSizePixel = 0, Text = "", PlaceholderText = opts.placeholder, PlaceholderColor3 = Color3.fromRGB(140, 140, 145), TextColor3 = PAL.text, Font = Enum.Font.MontserratMedium, TextSize = 14, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left }, card)
+	local box = make("TextBox", { Name = "KeyBox", Position = UDim2.fromOffset(26, 100), Size = UDim2.new(1, -52, 0, 44), BackgroundColor3 = PAL.field, BackgroundTransparency = 0.15, BorderSizePixel = 0, Text = "", PlaceholderText = opts.placeholder, PlaceholderColor3 = Color3.fromRGB(140, 140, 145), TextColor3 = PAL.text, Font = Enum.Font.MontserratMedium, TextSize = 14, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left }, card)
 	corner(box, 12)
 	make("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, box)
 	local ring = make("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.82, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, box)
@@ -127,15 +181,18 @@ function KeyCard.build(parent, opts)
 	local status = make("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(44, 154), Size = UDim2.new(1, -70, 0, 22), Text = "", Font = Enum.Font.MontserratMedium, TextSize = 12, TextColor3 = PAL.dim, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Center }, card)
 
 	-- primary button: hover, press, busy
-	local button = make("TextButton", { Name = "Submit", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(1, -52, 0, 46), BackgroundColor3 = PAL.accent, BorderSizePixel = 0, Text = opts.button, Font = Enum.Font.MontserratBold, TextSize = 15, TextColor3 = Color3.fromRGB(255, 255, 255), AutoButtonColor = false }, card)
-	corner(button, 14)
+	local button = make("TextButton", { Name = "Submit", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.new(1, -52, 0, 46), BackgroundColor3 = PAL.accent, BorderSizePixel = 0, Text = opts.button, Font = Enum.Font.MontserratBold, TextSize = 15, TextColor3 = PAL.accentText, AutoButtonColor = false }, card)
+	corner(button, 23)
+	-- glossy white pill: a light-to-silver gradient and a bright top edge
+	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(196, 200, 210)) }, button)
+	edge(button, 1.5)
 	local bscale = make("UIScale", { Scale = 1 }, button)
 	local function paintButton(down, hover)
 		local color = PAL.accent
 		if down then
-			color = Color3.fromRGB(8, 100, 200)
+			color = Color3.fromRGB(190, 194, 204)
 		elseif hover then
-			color = Color3.fromRGB(46, 150, 255)
+			color = Color3.fromRGB(255, 255, 255)
 		end
 		tween(button, { BackgroundColor3 = color, TextTransparency = state.busy and 0.35 or 0 }, 0.12)
 		tween(bscale, { Scale = down and 0.98 or 1 }, 0.12)
@@ -164,6 +221,17 @@ function KeyCard.build(parent, opts)
 		statusDot.BackgroundTransparency = (text and text ~= "") and 0 or 1
 		state.invalid = kind == "error"
 		paintRing()
+		if kind == "error" then
+			-- a short sideways shake, like a wrong passcode on iOS
+			pcall(function()
+				local x0 = UDim2.fromScale(0.5, 0.5) -- fixed rest position, so overlapping shakes never drift
+				for i, dx in ipairs({ -10, 9, -6, 4, 0 }) do
+					task.delay(i * 0.05, function()
+						stack.Position = x0 + UDim2.fromOffset(dx, 0)
+					end)
+				end
+			end)
+		end
 	end
 
 	-- setBusy(true): the button shows opts.busy, input is disabled; the card stays on screen until close()
@@ -216,6 +284,11 @@ function KeyCard.build(parent, opts)
 		pcall(function()
 			back:Destroy()
 		end)
+		if blur then
+			pcall(function()
+				blur:Destroy()
+			end)
+		end
 	end
 	return obj
 end

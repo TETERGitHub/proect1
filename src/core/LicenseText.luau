@@ -6,7 +6,7 @@
 local LicenseText = {}
 
 LicenseText.UI = {
-	title = "MM2 Hub",
+	title = "TrollHub",
 	prompt = "Введите ключ лицензии, чтобы продолжить.",
 	placeholder = "MM2H-XXXXX-XXXXX-...",
 	button = "Активировать",

@@ -213,7 +213,7 @@ T.test("themes meet contrast targets", "text/bg >= 4.5, dim/card >= 3.5, accentT
 		T.truthy(CU.contrast(t.accentText, t.accent) >= 3, name .. " accentText " .. CU.contrast(t.accentText, t.accent))
 		n += 1
 	end
-	T.eq(n, 8)
+	T.eq(n, 12)
 end)
 
 local LM = import("features/LightingMath")

@@ -82,6 +82,36 @@ class ServiceTests(unittest.TestCase):
         self.assertIn("expired", res["error"])
         self.assertFalse(svc.ping(KEY_ABS, 1)["ok"])
 
+    def test_forever_key_and_any_number_of_years(self):
+        import contextlib, io, types
+        svc, _ = make_service(self.tmp, self.clock)
+        key = keygen.make_key(SECRET, 0, ISSUED, keygen.FOREVER, b"\x01\x02\x03\x04")
+        self.assertTrue(svc.activate(key, 1)["ok"])
+        self.clock.t = 4102444800  # year 2100
+        self.assertTrue(svc.activate(key, 1)["ok"])
+        # keygen gen: 5000 years, 99999 years and --forever all give a key without a limit, 50 years a dated one
+        old = (keygen.LICENSE_DIR, keygen.LOG_FILE, keygen.load_secret)
+        keygen.LICENSE_DIR, keygen.LOG_FILE = pathlib.Path(self.tmp), pathlib.Path(self.tmp) / "issued.csv"
+        keygen.load_secret = lambda: SECRET
+        try:
+            def gen(years=0, forever=False, mode="absolute"):
+                a = types.SimpleNamespace(interactive=False, duration=None, years=years, months=0, weeks=0, days=0, hours=0, minutes=0,
+                                          seconds=0, forever=forever, mode=mode, count=1, note="", now=str(ISSUED))
+                out, err = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    keygen.cmd_gen(a)
+                return keygen.decode_key(SECRET, out.getvalue().strip()), err.getvalue()
+            for kw in ({"years": 5000}, {"years": 99999}, {"forever": True}, {"years": 300, "mode": "activation"}):
+                info, summary = gen(**kw)
+                self.assertTrue(info["valid"])
+                self.assertEqual((info["mode"], info["value"]), (0, keygen.FOREVER), kw)
+                self.assertIn("бессрочный", summary)
+            info, _ = gen(years=50)
+            self.assertEqual(info["mode"], 0)
+            self.assertLess(info["value"], keygen.FOREVER)
+        finally:
+            keygen.LICENSE_DIR, keygen.LOG_FILE, keygen.load_secret = old
+
     def test_activation_mode_counts_from_first_use(self):
         svc, _ = make_service(self.tmp, self.clock)
         self.clock.t = ISSUED + 10 * 86400

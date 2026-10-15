@@ -3,7 +3,7 @@
 
 return {
 	en = {
-		["app.title"] = "MM2 Hub",
+		["app.title"] = "TrollHub",
 		["nav.dashboard"] = "Dashboard",
 		["nav.search"] = "Search",
 		["nav.ui"] = "Interface",

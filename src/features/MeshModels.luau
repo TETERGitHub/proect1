@@ -112,6 +112,8 @@ function M.validate(raw)
 		id = id, kind = raw.kind, name = type(raw.name) == "string" and string.sub(raw.name, 1, 32) or id,
 		parts = parts, tris = total, credit = type(raw.credit) == "string" and string.sub(raw.credit, 1, 200) or "",
 		hold = vec3(raw.hold, -M.LIMITS.extent, M.LIMITS.extent) or { 0, 0, 0 },
+		-- knives only: "reverse" = held blade-down along the forearm (turned 180 degrees about the grip); anything else = blade up
+		grip = (raw.kind == "knife" and raw.grip == "reverse") and "reverse" or "normal",
 	}
 	if raw.kind == "char" then
 		entry.group = raw.group == "accessory" and "accessory" or "costume"
@@ -233,7 +235,11 @@ function M.build(kind, id)
 			part:SetAttribute("bone", p.bone)
 		end
 		part.Size = Vector3.new(p.size[1], p.size[2], p.size[3])
-		part.CFrame = root.CFrame * CFrame.new(p.center[1] - e.hold[1], p.center[2] - e.hold[2], p.center[3] - e.hold[3])
+		local rel = CFrame.new(p.center[1] - e.hold[1], p.center[2] - e.hold[2], p.center[3] - e.hold[3])
+		if e.grip == "reverse" then
+			rel = CFrame.Angles(math.pi, 0, 0) * rel
+		end
+		part.CFrame = root.CFrame * rel
 		part.Parent = model
 		-- unanchored in tools: without this weld the mesh would fall out of the Handle (the rig path replaces it with Welds)
 		local w = Instance.new("WeldConstraint")

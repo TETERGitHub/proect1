@@ -177,9 +177,44 @@ end
 local EDGE_STRENGTH = { window = 1, popover = 0.9, modal = 0.9, toast = 0.9, card = 0.3, control = 0.3, rail = 0.3 }
 
 function Theme.edge(level)
-local g = Theme.glassAmount()
-local k = EDGE_STRENGTH[level] or 0.5
-return 0.74 + (0.5 - 0.74) * g * k, 0.74 + (0.92 - 0.74) * g
+	local g = Theme.glassAmount()
+	local k = EDGE_STRENGTH[level] or 0.5
+	if themeData().edgeWidth then
+		-- iOS 27: a bright, nearly opaque rim at the top that stays visible all the way round
+		return 0.7 + (0.08 - 0.7) * g * k, 0.74 + (0.45 - 0.74) * g * k
+	end
+	return 0.74 + (0.5 - 0.74) * g * k, 0.74 + (0.92 - 0.74) * g
+end
+
+-- edgeWidth(level) -> stroke thickness. iOS 27 themes give the big floating surfaces a thick glossy rim; cards and controls
+-- keep a thinner one so the content does not look boxed in. 1 px when effects are off.
+local THICK = { window = 1, popover = 0.8, modal = 1, toast = 0.6, card = 0.4, control = 0.4, rail = 0 }
+
+function Theme.edgeWidth(level)
+	local w = themeData().edgeWidth
+	if not w or not Theme.effectsOn() then
+		return 1
+	end
+	return math.max(1, 1 + (w - 1) * (THICK[level] or 0.4))
+end
+
+-- edgeColors() -> ColorSequence for the rim: wet white, chrome bands, prism rainbow or white-to-violet (iOS 27 themes); plain
+-- edge colour for every other theme.
+function Theme.edgeColors()
+	local style = Theme.effectsOn() and themeData().edgeStyle or nil
+	local K = ColorSequenceKeypoint.new
+	local rgb = Color3.fromRGB
+	if style == "chrome" then
+		return ColorSequence.new({ K(0, rgb(255, 255, 255)), K(0.22, rgb(150, 154, 164)), K(0.45, rgb(250, 251, 255)),
+			K(0.62, rgb(96, 100, 110)), K(0.8, rgb(232, 235, 242)), K(1, rgb(170, 174, 184)) })
+	elseif style == "prism" then
+		return ColorSequence.new({ K(0, rgb(255, 120, 150)), K(0.18, rgb(255, 210, 120)), K(0.36, rgb(170, 255, 170)),
+			K(0.54, rgb(120, 230, 255)), K(0.72, rgb(150, 150, 255)), K(0.88, rgb(235, 140, 255)), K(1, rgb(255, 120, 150)) })
+	elseif style == "violet" then
+		return ColorSequence.new({ K(0, rgb(255, 255, 255)), K(0.45, rgb(214, 180, 255)), K(1, rgb(150, 80, 255)) })
+	end
+	local c = Theme.effectsOn() and Theme.color("edge") or Theme.color("stroke")
+	return ColorSequence.new(c, c)
 end
 
 -- sheen() -> transparency of the faint highlight laid over the top of large surfaces (1 = invisible)

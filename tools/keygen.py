@@ -6,6 +6,7 @@
   python3 tools/keygen.py gen --years 1 --months 2 --days 3 --hours 4 --minutes 5 --seconds 6
   python3 tools/keygen.py gen -i                                  # asks month / year / day / hour / minute / second
   python3 tools/keygen.py gen --duration 30d --mode activation    # 30 days counted from the buyer's first activation
+  python3 tools/keygen.py gen --forever                           # key without a time limit (any number of years also works)
   python3 tools/keygen.py info MM2H-XXXXX-...
   python3 tools/keygen.py list
 
@@ -38,6 +39,7 @@ VERSION = 1
 MAC_BYTES = 10
 B32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 MAX_U32 = 2**32 - 1
+FOREVER = MAX_U32  # "valid until" the last second the key format can hold (year 2106): a key without a time limit
 
 
 def b32encode(data: bytes) -> str:
@@ -178,19 +180,30 @@ def cmd_gen(args):
         parts = parse_duration(args.duration)
     else:
         parts = dict(years=args.years, months=args.months, weeks=args.weeks, days=args.days, hours=args.hours, minutes=args.minutes, seconds=args.seconds)
-    if not any(parts.values()):
-        sys.exit("Срок равен нулю. Укажите --duration '30d', отдельные флаги или используйте -i.")
+    if not any(parts.values()) and not args.forever:
+        sys.exit("Срок равен нулю. Укажите --duration '30d', отдельные флаги, --forever или используйте -i.")
     if any(v < 0 for v in parts.values()):
         sys.exit("Отрицательный срок недопустим.")
     now = int(args.now) if args.now else int(time.time())
     issued = dt.datetime.fromtimestamp(now, dt.timezone.utc)
     mode = 1 if args.mode == "activation" else 0
-    if mode == 0:
-        expiry = expiry_absolute(issued, parts)
-        value = int(expiry.timestamp())
+    value = None
+    if not args.forever:
+        if mode == 0:
+            try:
+                value = int(expiry_absolute(issued, parts).timestamp())
+            except (OverflowError, ValueError):  # past year 9999: Python's dates end there
+                value = None
+        else:
+            value = duration_seconds(parts)
+        if value is not None and (value > MAX_U32 or (mode == 1 and now + value > MAX_U32)):
+            value = None  # any number of years is allowed: past what the format holds the key simply has no limit
+    if value is None:
+        mode, args.mode, value = 0, "absolute", FOREVER
+        summary = "бессрочный (навсегда)"
+    elif mode == 0:
         summary = f"действует до {fmt_ts(value)}"
     else:
-        value = duration_seconds(parts)
         summary = f"действует {value} секунд ({value / 86400:.2f} дн.) с момента первой активации"
     LICENSE_DIR.mkdir(exist_ok=True)
     new_file = not LOG_FILE.exists()
@@ -211,7 +224,9 @@ def cmd_info(args):
     print("подпись  :", "ВЕРНА" if info["valid"] else "НЕВЕРНА")
     print("версия   :", info["version"])
     print("выдан    :", fmt_ts(info["issued"]))
-    if info["mode"] == 0:
+    if info["mode"] == 0 and info["value"] == FOREVER:
+        print("режим    : бессрочный (навсегда)")
+    elif info["mode"] == 0:
         print("режим    : с момента выдачи, действует до", fmt_ts(info["value"]))
         left = info["value"] - int(time.time())
         print("осталось :", f"{left // 86400} дн {(left % 86400) // 3600} ч {(left % 3600) // 60} мин" if left > 0 else "срок истёк")
@@ -237,6 +252,7 @@ def main():
     for name in ("years", "months", "weeks", "days", "hours", "minutes", "seconds"):
         g.add_argument(f"--{name}", type=int, default=0)
     g.add_argument("--mode", choices=["absolute", "activation"], default="absolute")
+    g.add_argument("--forever", action="store_true", help="key without a time limit")
     g.add_argument("--count", type=int, default=1)
     g.add_argument("--note", default="")
     g.add_argument("--now", help="override the issue time (unix seconds); for tests")

@@ -3,7 +3,7 @@
 -- of a feature (used by the "active features" filter and dashboard counter).
 -- scope "state" values (window geometry, favourites...) are not part of profiles.
 
-local THEMES = { "iOS", "iOS Light", "Midnight", "Obsidian", "Ocean", "Rose", "Forest", "HighContrast" }
+local THEMES = { "iOS", "iOS 27 Glass", "iOS 27 Chrome", "iOS 27 Prism", "iOS 27 Violet", "iOS Light", "Midnight", "Obsidian", "Ocean", "Rose", "Forest", "HighContrast" }
 
 local function bool(key, default, label, desc, extra)
 	local d = { key = key, type = "bool", default = default, label = label, desc = desc }
@@ -53,7 +53,7 @@ local function add(list)
 end
 
 add(with("ui", "Interface", {
-	enum("ui.theme", "iOS", THEMES, "Theme", "Colour scheme. 'iOS' is a glass-style dark theme inspired by the latest iOS."),
+	enum("ui.theme", "iOS 27 Glass", THEMES, "Theme", "Colour scheme. 'iOS' is a glass-style dark theme inspired by the latest iOS."),
 	bool("ui.useThemeAccent", true, "Use theme accent", "When off, the custom accent colour below is used."),
 	color("ui.accent", { r = 110, g = 120, b = 255 }, "Accent colour", "Custom accent used when 'Use theme accent' is off."),
 	num("ui.opacity", 0.96, 0.5, 1, 0.01, "Window opacity", "Background opacity of the main window."),
@@ -68,6 +68,9 @@ add(with("ui", "Interface", {
 	bool("ui.lockPosition", false, "Lock window", "Prevents moving and resizing the window."),
 	bool("ui.showTooltips", true, "Tooltips", "Shows descriptions when hovering a control."),
 	bool("ui.decor", true, "Decorative effects", "Animated accent line and soft gradient. Disabled automatically in low profile."),
+	bool("ui.splash", true, "Loading animation", "Shows the mascot and a progress bar inside the window when the hub starts."),
+	bool("ui.cursor", true, "Custom cursor", "Replaces the mouse arrow with a glossy ring while the menu is open."),
+	bool("ui.sticker", true, "Menu sticker", "The mascot sticker on the top-right corner of the window."),
 	enum("ui.language", "ru", { "ru", "en", "uk", "es", "pt", "fr" }, "Language", "Interface language.", { labels = { ru = "Русский", en = "English", uk = "Українська", es = "Español", pt = "Português", fr = "Français" } }),
 	enum("ui.font", "Auto", { "Auto", "Gotham", "Montserrat", "BuilderSans", "Arial", "SourceSans" }, "Font", "Auto: Montserrat for Russian and other non-English text (the default Gotham font has no Cyrillic letters in Roblox), the theme font for English. Pick another one if letters look uneven."),
 	bool("ui.notifications", true, "Notifications", "Show toast notifications."),

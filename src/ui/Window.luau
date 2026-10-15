@@ -10,6 +10,7 @@ local import = ...
 local F = import("ui/Framework")
 local Theme = import("ui/Theme")
 local Motion = import("ui/Motion")
+local Flair = import("ui/Flair")
 local Icons = import("ui/Icons")
 local Settings = import("core/Settings")
 local Perf = import("core/Perf")
@@ -310,6 +311,7 @@ function Window.show()
 	updateShells()
 	w.openScale.Scale = Motion.enabled() and 0.92 or 1
 	Motion.tween(w.openScale, { Scale = 1 }, 0.45, "spring")
+	Flair.sweep(w.window)
 	Window.VisibilityChanged:Fire(true)
 end
 
@@ -603,7 +605,7 @@ local function buildToasts(maid)
 	maid:Give(Notify.Shown:Connect(function(item)
 		local card = pool:Acquire()
 		local badge = card.Badge
-		card.TextBox.Title.Text = I18n.tr(item.title ~= "" and item.title or "MM2 Hub")
+		card.TextBox.Title.Text = I18n.tr(item.title ~= "" and item.title or "TrollHub")
 		card.TextBox.Text.Text = I18n.tr(item.text)
 		local token = levelToken[item.level] or "accent"
 		Theme.bind(badge, "BackgroundColor3", token)
@@ -1199,6 +1201,11 @@ function Window.start(ctx)
 	Window.navigate(first)
 	w.visible = false
 	Window.show()
+	Flair.loading(w.root, Theme.rad("window"), ctx.maid)
+	Flair.sticker(w.root, ctx.maid)
+	Flair.cursor(gui, ctx.maid, function()
+		return w ~= nil and w.visible and not Settings.get("state.minimized")
+	end)
 	if Settings.get("state.minimized") then
 		w.root.Size = UDim2.fromOffset(330, 46)
 		updateShells()

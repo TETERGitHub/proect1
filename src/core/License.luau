@@ -189,6 +189,9 @@ local function evaluate(info, state, now)
 		end
 		expiresAt = state.activatedAt + info.value
 	end
+	if info.mode == 0 and info.value >= 4294967295 then
+		return true, { mode = 0, expiresAt = info.value, remaining = math.huge, forever = true } -- key made with "forever"
+	end
 	if now >= expiresAt then
 		return false, "key expired " .. License.formatRemaining(now - expiresAt + 1) .. " ago"
 	end

@@ -634,6 +634,8 @@ def main():
                     "part follows its limb (arms raise with a held knife or gun, legs walk)")
     ap.add_argument("--scale", type=float, default=1.0, help="extra size factor applied after --length / --as-is (e.g. 0.65 to shrink an "
                     "--as-is model)")
+    ap.add_argument("--grip", choices=["normal", "reverse"], default="normal", help="knives: normal = blade up / forward, reverse = blade down "
+                    "along the forearm")
     ap.add_argument("--no-auto-grip", action="store_true", help="guns/knives: hold the model at its centre instead of at the detected grip")
     ap.add_argument("--max-tris", type=int, default=15000, help="triangle budget per mesh")
     ap.add_argument("--max-texture", type=int, default=1024)
@@ -700,6 +702,8 @@ def main():
         "tris": int(sum(p["tris"] for p in parts)), "credit": a.credit,
         "hold": [round(float(c), 4) for c in origin] if a.as_is else ([round(float(c), 4) for c in grip] if grip is not None else [0, 0, 0]),
     }
+    if a.kind == "knife" and a.grip == "reverse":
+        entry["grip"] = "reverse"
     if a.kind == "char":
         entry["group"] = a.group
         if a.group == "accessory":

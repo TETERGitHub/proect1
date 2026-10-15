@@ -26,8 +26,7 @@
    https://github.com/luau-lang/luau/releases/latest (файл luau-windows.zip), распакуй в C:\MM2Hub\tools\bin и выполни
    `python tools/run_tests.py C:\MM2Hub\tools\bin\luau.exe`. Сообщи мне итоговую строку TOTAL ... PASSED ... FAILED ...
    (ожидается 323 PASSED, 0 FAILED). Не заявляй, что тесты прошли, если ты их не запускал.
-6. Запусти панель управления: `python tools/control.py` (или дважды щёлкни START_WINDOWS.bat).
-   В меню выбери пункт 1 «Запустить сервер + HTTPS-туннель и собрать Loader.lua».
+6. Запусти сервер: `python tools/control.py serve` (для владельца есть окно PANEL_WINDOWS.bat — там то же кнопкой «Запустить сервер»).
    Программа сама создаст секрет ключей, соберёт хаб, запустит сервер, скачает cloudflared, получит адрес https://….trycloudflare.com
    и соберёт dist\Loader.lua под этот адрес. Дождись строки READY и покажи мне только публичный адрес и путь к Loader.lua.
 7. В том же меню выбери пункт 2 и создай тестовый ключ на 1 день (в поле «Дни» впиши 1, остальные оставь пустыми).

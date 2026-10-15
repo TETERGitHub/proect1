@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Панель MM2 Hub с окнами (без командной строки). Всё то же, что tools/control.py, но кнопками:
+"""Панель TrollHub с окнами (без командной строки). Всё то же, что tools/control.py, но кнопками:
 
   * сервер лицензий + бесплатный HTTPS-туннель: запуск, остановка, адрес, сборка Loader.lua;
   * создание ключей (срок, режим, количество, заметка) и копирование в буфер;
@@ -28,7 +28,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import control  # noqa: E402  (same logic as the console panel: one place for server, tunnel, keys)
 
-APP_TITLE = "MM2 Hub — панель ключей"
+APP_TITLE = "TrollHub — панель ключей"
 SETTINGS_FILE = ROOT / ".license" / "panel.json"
 
 # colours: black glass, white glossy edges, violet accent (the hub's "iOS 27" look)
@@ -110,10 +110,14 @@ def windows_autostart_on():
     return bool(d and (d / "MM2Hub_panel.cmd").exists())
 
 
-def generate_keys(values, mode_activation, count, note):
-    """Runs keygen.py gen (same as the console panel) and returns (keys, summary)."""
-    args = control.duration_args(values.get("months", 0), values.get("years", 0), values.get("days", 0),
-                                 values.get("hours", 0), values.get("minutes", 0), values.get("seconds", 0))
+def generate_keys(values, mode_activation, count, note, forever=False):
+    """Runs keygen.py gen and returns (keys, summary). Any number of years is accepted: a term longer than the key format holds
+    (year 2106) becomes a key without a time limit, the same as forever=True."""
+    if forever:
+        args = ["--forever"]
+    else:
+        args = control.duration_args(values.get("months", 0), values.get("years", 0), values.get("days", 0),
+                                     values.get("hours", 0), values.get("minutes", 0), values.get("seconds", 0))
     control.ensure_secret()
     cmd = [sys.executable, str(ROOT / "tools" / "keygen.py"), "gen", *args, "--mode", "activation" if mode_activation else "absolute",
            "--count", str(max(1, min(int(count), 100)))]
@@ -210,7 +214,7 @@ def label(master, text, dim=False, size=10, **kw):
 
 
 def entry(master, width=6, value=""):
-    e = tk.Entry(master, width=width, bg="#0d0d14", fg=TEXT, insertbackground=TEXT, relief="flat", font=(FONT, 11),
+    e = tk.Entry(master, width=width, bg="#0d0d14", fg=TEXT, insertbackground=TEXT, relief="flat", font=(FONT, 11), disabledbackground="#15151f", disabledforeground="#55556a",
                  highlightthickness=1, highlightbackground=EDGE, highlightcolor=ACCENT_HI)
     if value:
         e.insert(0, value)
@@ -270,7 +274,7 @@ class App:
                 pts += [x, y]
             c.create_line(*pts, smooth=True, fill=col, width=3 if k == 4 else 2)
         c.create_rectangle(0, 0, 250, 118, fill=BG, outline="")
-        c.create_text(26, 44, text="MM2 Hub", anchor="w", fill=TEXT, font=(FONT, 22, "bold"))
+        c.create_text(26, 44, text="TrollHub", anchor="w", fill=TEXT, font=(FONT, 22, "bold"))
         c.create_text(28, 78, text="ключи и сервер лицензий", anchor="w", fill=DIM, font=(FONT, 11))
 
     def build_server(self, parent):
@@ -313,6 +317,11 @@ class App:
             e = entry(grid, 7, "30" if key == "days" else "")
             e.grid(row=1, column=i, sticky="w", padx=(0, 10), pady=(2, 8))
             self.dur[key] = e
+        self.var_forever = tk.BooleanVar(value=False)
+        tk.Checkbutton(f, text="Навсегда (бессрочный ключ). Годы можно вводить любые — слишком большой срок тоже станет бессрочным",
+                       variable=self.var_forever, command=self.on_forever, bg=CARD, fg=TEXT, selectcolor="#0d0d14", activebackground=CARD,
+                       activeforeground=TEXT, font=(FONT, 10), anchor="w", justify="left", wraplength=540, highlightthickness=0,
+                       bd=0).pack(fill="x", pady=(0, 6))
         self.var_mode = tk.IntVar(value=0)
         mrow = tk.Frame(f, bg=CARD)
         mrow.pack(fill="x")
@@ -469,7 +478,7 @@ class App:
                 raw = e.get().strip()
                 values[k] = int(raw) if raw else 0
             count = int(self.count.get().strip() or "1")
-            keys, summary = generate_keys(values, self.var_mode.get() == 1, count, self.note.get().strip())
+            keys, summary = generate_keys(values, self.var_mode.get() == 1, count, self.note.get().strip(), self.var_forever.get())
         except ValueError as e:
             messagebox.showwarning(APP_TITLE, f"Проверьте поля: {e}")
             return
@@ -481,6 +490,11 @@ class App:
         self.summary.configure(text=summary)
         self.say(f"Создано ключей: {len(keys)}")
         self.refresh_list()
+
+    def on_forever(self):
+        state = "disabled" if self.var_forever.get() else "normal"
+        for e in self.dur.values():
+            e.configure(state=state)
 
     def copy_keys(self):
         text = self.out.get("1.0", "end").strip()

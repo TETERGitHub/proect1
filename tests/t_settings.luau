@@ -54,7 +54,7 @@ T.test("observe callNow", "initial callback", function()
 	T.fresh()
 	local seen
 	Settings.observe("ui.theme", function(v) seen = v end, true)
-	T.eq(seen, "iOS")
+	T.eq(seen, "iOS 27 Glass")
 end)
 T.test("reset key/category/module/all", "defaults restored at each scope", function()
 	T.fresh()

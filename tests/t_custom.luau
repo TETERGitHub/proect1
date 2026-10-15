@@ -494,6 +494,10 @@ T.test("index entries are validated", "bad ids, kinds, file names, sizes and bud
 	-- costume pieces split per R15 body part
 	T.truthy(bad(function(e) e.kind = "char"; e.group = "costume"; e.parts[1].bone = "LeftUpperArm" end))
 	T.falsy((bad(function(e) e.kind = "char"; e.group = "costume"; e.parts[1].bone = "Tail" end)))
+	-- knife grip: "reverse" = blade down along the forearm, only for knives; anything else falls back to normal
+	T.eq(bad(function(e) e.kind = "knife"; e.grip = "reverse" end).grip, "reverse")
+	T.eq(bad(function(e) e.kind = "knife"; e.grip = "sideways" end).grip, "normal")
+	T.eq(bad(function(e) e.grip = "reverse" end).grip, "normal")
 end)
 T.test("weapon meshes are welded and costume pieces carry their bone", "imported tool parts do not fall away; bone becomes an attribute", function()
 	local files = {}

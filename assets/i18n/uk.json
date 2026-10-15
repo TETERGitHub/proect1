@@ -1227,7 +1227,13 @@
   "Visuals: custom crosshair, camera controls, local lighting/colour filters.": "Візуал: власний приціл, керування камерою, локальне освітлення та фільтри.",
   "Local training range: target practice and physics stand (own objects only).": "Локальний полігон: мішені та фізичний стенд (лише власні об'єкти).",
   "Tools: session timer, stopwatch, countdown timers, notes.": "Інструменти: таймер сесії, секундомір, зворотні таймери, нотатки.",
-  "done": "готово"
+  "done": "готово",
+  "Loading animation": "Анімація завантаження",
+  "Shows the mascot and a progress bar inside the window when the hub starts.": "Під час запуску хаба показує маскота й смугу завантаження всередині вікна.",
+  "Custom cursor": "Власний курсор",
+  "Replaces the mouse arrow with a glossy ring while the menu is open.": "Поки меню відкрите, замість стрілки миші — глянцеве кільце.",
+  "Menu sticker": "Стікер меню",
+  "The mascot sticker on the top-right corner of the window.": "Стікер-маскот у правому верхньому куті вікна."
  },
  "patterns": [
   [
@@ -1555,6 +1561,11 @@
   "Montserrat": true,
   "BuilderSans": true,
   "Arial": true,
-  "SourceSans": true
+  "SourceSans": true,
+  "iOS 27 Glass": true,
+  "iOS 27 Chrome": true,
+  "iOS 27 Prism": true,
+  "iOS 27 Violet": true,
+  "TrollHub": true
  }
 }

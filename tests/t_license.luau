@@ -152,6 +152,16 @@ T.test("encode matches python byte for byte", "Luau-built key equals Python-buil
 	local nonce = Hash.fromHex(nonceHex)
 	T.eq(License.encode(0, ISSUED, 1771243200, nonce), K_ABS_46D)
 end)
+T.test("forever key never expires", "value 2^32-1 = no time limit, even past 2106", function()
+	setup()
+	local nonce = Hash.fromHex(License.parse(K_ABS_46D).nonce)
+	local key = License.encode(0, ISSUED, 4294967295, nonce)
+	for _, t in ipairs({ ISSUED, 4102444800, 4294967295, 5000000000 }) do
+		local ok, res = License.check(key, t)
+		T.truthy(ok, tostring(res)); T.eq(res.remaining, math.huge); T.truthy(res.forever)
+	end
+	T.eq(import("core/LicenseText").remaining(math.huge), "без ограничения срока")
+end)
 T.test("remaining time formatting", "d/h/m and expired", function()
 	T.eq(License.formatRemaining(90061), "1d 1h 1m"); T.eq(License.formatRemaining(3725), "1h 2m 5s")
 	T.eq(License.formatRemaining(61), "1m 1s"); T.eq(License.formatRemaining(0), "expired")
