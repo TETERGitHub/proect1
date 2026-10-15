@@ -147,7 +147,10 @@ ColorSequence = { new = function(a, b) return seq("ColorSequence", a, b) end }
 NumberSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
 ColorSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
 NumberRange = { new = function(a, b) return { Min = a, Max = b or a } end }
-Vector2 = { new = function(x, y) return { X = x, Y = y } end }
+Vector2 = { new = function(x, y) return { X = x, Y = y, x = x, y = y } end }
+UDim2 = { new = function(a, b, c, d) return { X = { Scale = a, Offset = b }, Y = { Scale = c, Offset = d } } end,
+	fromScale = function(a, b) return { X = { Scale = a, Offset = 0 }, Y = { Scale = b, Offset = 0 } } end,
+	fromOffset = function(a, b) return { X = { Scale = 0, Offset = a }, Y = { Scale = 0, Offset = b } } end }
 local rawTypeof = typeof
 typeof = function(v)
 	if type(v) == "table" and rawget(v, "_type") then return v._type end
@@ -223,6 +226,17 @@ end
 local fxId = 0
 function DUMP_FX(frame, root)
 	for _, o in ipairs(root:GetDescendants()) do
+		if o.ClassName == "BillboardGui" and o.Adornee and not o.Adornee._dead then
+			local face, cap = methods.FindFirstChild(o, "Face"), methods.FindFirstChild(o, "Caption")
+			local img = face or o._children[1]
+			local off = o.StudsOffset or Vector3.new(0, 0, 0)
+			local pos = o.Adornee.CFrame.p + off
+			local rx, ry, tr = 0, 0, 0
+			if img and img.ImageRectOffset then rx, ry = img.ImageRectOffset.x, img.ImageRectOffset.y end
+			if img and img.ImageTransparency then tr = img.ImageTransparency end
+			print(string.format("G %d %.3f %.3f %.3f %.3f %d %d %.3f %s", frame, pos.x, pos.y, pos.z, o.Size.X.Scale, rx, ry, tr,
+				cap and cap.Text and string.gsub(cap.Text, " ", "_") or "-"))
+		end
 		if (o.ClassName == "Trail" or o.ClassName == "Beam") and o.Attachment0 and o.Attachment1 then
 			if not rawget(o, "_id") then fxId += 1; rawset(o, "_id", fxId) end
 			local p0 = o.Attachment0._parent.CFrame * o.Attachment0.Position

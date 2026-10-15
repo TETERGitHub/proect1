@@ -13,7 +13,7 @@ local FxKit = import("features/FxKit")
 local AuraFX = {}
 
 AuraFX.STYLES = { "Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit",
-	"Holy Light", "Toxic Rift", "Shadow Reaper", "Neon Cyber" }
+	"Holy Light", "Toxic Rift", "Shadow Reaper", "Neon Cyber", "Troll", "Burning" }
 
 local function rgb(r, g, b)
 	return Color3.fromRGB(r, g, b)
@@ -33,6 +33,8 @@ AuraFX.palette = {
 	["Toxic Rift"] = { rgb(110, 255, 60), rgb(200, 255, 120) },
 	["Shadow Reaper"] = { rgb(220, 30, 50), rgb(40, 20, 50) },
 	["Neon Cyber"] = { rgb(0, 240, 255), rgb(255, 40, 200) },
+	["Troll"] = { rgb(255, 255, 255), rgb(170, 170, 185) },
+	["Burning"] = { rgb(255, 80, 20), rgb(255, 210, 70) },
 }
 
 local PI, TAU = math.pi, math.pi * 2
@@ -720,6 +722,109 @@ BUILD["Neon Cyber"] = function(a)
 	a:emit("spark", { rate = 30, size = { 0.35, 0.1 }, life = { 0.6, 1 }, speed = { 6, 10 }, spread = 5, squash = true }, "ps", function(t, base)
 		local ang = t * 3
 		return CFrame.new(base.Position.X + cos(ang) * 3.6 * a.s, a.floorY, base.Position.Z + sin(ang) * 3.6 * a.s)
+	end)
+end
+
+-- face(a, studs, fn, phase): a laughing Trollface billboard (sprite frames from troll_anim.png) carried by an invisible part
+local function face(a, studs, fn, phase)
+	local url = FxKit.asset("troll_anim.png")
+	local holder = FxKit.holder(a.folder)
+	local img
+	pcall(function()
+		local bb = Instance.new("BillboardGui")
+		bb.Adornee = holder
+		bb.LightInfluence = 0
+		bb.Size = UDim2.new(studs * a.s, 0, studs * a.s, 0)
+		img = Instance.new(url and "ImageLabel" or "TextLabel")
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromScale(1, 1)
+		if url then
+			img.Image = url
+			img.ImageRectSize = Vector2.new(128, 128)
+		else
+			img.Text = ":)"
+			img.TextScaled = true
+			img.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+		img.Parent = bb
+		bb.Parent = holder
+	end)
+	a:add(holder, "keep", function(t, base, it)
+		if img and url then
+			local frame = math.floor(t * 10 + (phase or 0)) % 8
+			img.ImageRectOffset = Vector2.new((frame % 4) * 128, (frame // 4) * 128)
+		end
+		return fn(t, base)
+	end)
+end
+
+BUILD["Troll"] = function(a)
+	a:mesh("ring", v3(8, 0.7, 8), "p", function(t, base)
+		return CFrame.new(base.Position.X, a.floorY + 0.12, base.Position.Z) * CFrame.Angles(0, t * 0.8, 0)
+	end, NEON, 0.2, "Cylinder")
+	a:mesh("ring", v3(5.6, 0.5, 5.6), "s", function(t, base)
+		return CFrame.new(base.Position.X, a.floorY + 0.15, base.Position.Z) * CFrame.Angles(0, -t * 1.2, 0)
+	end, NEON, 0.35, "Cylinder")
+	-- four laughing faces circling you, bobbing out of step
+	orbit(a, 4, 3.3, 2.2, 0.9, function(i, fn)
+		face(a, 2.2, function(t, base)
+			return fn(t, base) + v3(0, sin(t * 2.2 + i * 1.6) * 0.5 * a.s, 0)
+		end, i * 2)
+	end)
+	-- a small one bouncing above your head like a crown
+	face(a, 1.4, function(t, base)
+		return base * at(a, 0, 4.3 + math.abs(sin(t * 3)) * 0.35, 0)
+	end, 0)
+	a:emit("troll", { rate = 4, size = { 0.9, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
+		spin = { -90, 90 }, t = { 0, 0.6 } }, "w", flat(a, 0.3))
+	a:emit("star", { rate = 10, size = { 0.6, 0 }, life = { 0.8, 1.4 }, speed = { 1, 3 } }, "w", function(t, base)
+		return base * at(a, 0, 2, 0)
+	end)
+	wisps(a, 6, 2.5, 0.1, 4.2, 1.6, "w", 0.26)
+end
+
+BUILD["Burning"] = function(a)
+	-- you are on fire: flames rise from every visible body part and follow it as you move and animate
+	local parts = {}
+	for _, d in ipairs(a.character:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.Transparency < 1 then
+			-- skip held tools and accessories (hats, hair): only the body itself burns
+			local okA, inside = pcall(function()
+				return d:FindFirstAncestorOfClass("Tool") or d:FindFirstAncestorOfClass("Accessory")
+			end)
+			if not (okA and inside) then
+				table.insert(parts, d)
+			end
+		end
+	end
+	for _, bp in ipairs(parts) do
+		local sz = bp.Size
+		local vol = math.clamp(sz.X * sz.Y * sz.Z, 0.3, 6)
+		local follow = function()
+			return bp.Parent and bp.CFrame or nil
+		end
+		-- tall licking flames (secondary at the base to primary at the tips), a hot inner core and a few embers
+		a:emit("flame", { rate = 9 + vol * 5, size = { 1.1 * math.max(sz.X, sz.Z), 0.15 }, life = { 0.35, 0.7 }, speed = { 1.5, 3.5 }, spread = 18,
+			accel = v3(0, 7, 0), drag = 1, t = { 0.15, 1 }, rot = { -15, 15 }, spin = { -30, 30 } }, "sp", follow)
+		a:emit("glow", { rate = 3 + vol, size = { 1.4 * math.max(sz.X, sz.Y), 0.4 }, life = { 0.25, 0.4 }, speed = { 0, 0.5 }, t = { 0.55, 1 } }, "s", follow)
+		a:emit("spark", { rate = 2 + vol, size = { 0.22, 0.04 }, life = { 0.6, 1.2 }, speed = { 3, 7 }, spread = 35, accel = v3(0, 4, 0), drag = 0.5, squash = true }, "s", follow)
+	end
+	-- dark smoke rolling off the top, a warm glow and scorch ring at your feet
+	a:emit("smoke", { rate = 8, size = { 1.6, 4.5 }, life = { 1.2, 2 }, speed = { 2, 4 }, spread = 20, accel = v3(0, 2, 0), light = 0, t = { 0.45, 1 } }, "d", function(t, base)
+		return base * at(a, 0, 3.8, 0)
+	end)
+	a:emit("glow", { rate = 3, size = { 6, 8 }, life = { 0.5, 0.8 }, speed = { 0, 0 }, t = { 0.7, 1 } }, "p", flat(a, 0.3))
+	a:mesh("ring", v3(4.5, 0.6, 4.5), "p", function(t, base)
+		return CFrame.new(base.Position.X, a.floorY + 0.1, base.Position.Z) * CFrame.Angles(0, t * 0.5, 0)
+	end, NEON, 0.45, "Cylinder")
+	orbit(a, 8, 1.7, 0, 0.4, function(i, fn)
+		local _, p = a:mesh("flame", v3(0.7, 1.6, 0.7), i % 2 == 0 and "p" or "s", nil, NEON, 0.2, "Wedge")
+		a.items[#a.items].fn = function(t, base)
+			local h = 1.2 + sin(t * 8 + i * 1.9) * 0.45
+			FxKit.setSize(p, v3(0.7, h, 0.7) * a.s)
+			local cf = fn(t, base)
+			return CFrame.new(cf.Position.X, a.floorY + h * a.s / 2, cf.Position.Z) * (cf.Rotation or CFrame.new())
+		end
 	end)
 end
 

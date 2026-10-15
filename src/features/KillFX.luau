@@ -22,7 +22,7 @@ local FxKit = import("features/FxKit")
 
 local KillFX = {}
 
-KillFX.EFFECTS = { "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter" }
+KillFX.EFFECTS = { "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Troll" }
 KillFX.MAX_ACTIVE = 3
 
 local sin, cos, rand, PI = math.sin, math.cos, math.random, math.pi
@@ -737,6 +737,118 @@ function BUILD.BlackHole(fx)
 		emit(fx, c, "glow", 2, { color = Color3.fromRGB(255, 255, 255), size = { 6, 12 }, life = { 0.15, 0.25 }, speed = { 0, 0 } })
 	end)
 	fx.duration = 2.6
+end
+
+function BUILD.Troll(fx)
+	local c = fx.centre
+	local white = Color3.fromRGB(255, 255, 255)
+	-- 1. the body turns white and swells while spinning round its centre (0 - 0.55 s)
+	wave(fx, 0, 0.2, function(pc)
+		pc.part.Color = white
+		pc.part.Material = Enum.Material.SmoothPlastic
+		pcall(function()
+			pc.part.TextureID = ""
+		end)
+	end)
+	at(fx, 0.02, function()
+		for _, pc in ipairs(fx.pieces) do
+			local p = particle(fx, pc.part, { pos = pc.cf.Position, rot = pc.cf.Rotation or CFrame.new(), life = 0.53, t0 = 0, t1 = 0,
+				size1 = pc.part.Size * 1.45, spin = v3(0, 9, 0) })
+			p.orbit = { centre = c, radius = math.max(0.3, (pc.cf.Position - c).Magnitude), angle = math.atan2(pc.cf.Position.Z - c.Z, pc.cf.Position.X - c.X),
+				speed = 9, tilt = CFrame.new(0, pc.cf.Position.Y - c.Y, 0), rise = 0.6 }
+		end
+		emit(fx, c, "troll", 1, { size = { 3, 5 }, life = { 0.5, 0.55 }, speed = { 0, 0 }, light = 0, rot = { 0, 0 }, spin = { -40, 40 }, t = { 0.4, 1 } })
+	end)
+	fx.shift = 0.55
+	-- 2. pop: confetti, little trollfaces, a white shock ring
+	at(fx, 0, function()
+		for _, pc in ipairs(fx.pieces) do
+			pcall(function()
+				pc.part:Destroy()
+			end)
+		end
+		fx.pieces = {}
+		ball(fx, c, 1, 8, white, 0.2, 0.2)
+		ring(fx, v3(c.X, fx.floor + 0.25, c.Z), 14, white, 0.5, 0.3)
+		shock(fx, v3(c.X, fx.floor + 0.25, c.Z), 20, white, 0.5)
+		for i = 1, math.floor(70 * fx.detail) + 10 do
+			local col = Color3.fromHSV(rand(), 0.75, 1)
+			local bit = newPart(fx, "Block", v3(0.35, 0.05, 0.22) * fx.k, col, Enum.Material.SmoothPlastic)
+			local dir = randUnit()
+			particle(fx, bit, { pos = c, vel = (dir * (14 + rand() * 18) + v3(0, 16, 0)) * fx.k, spin = randUnit() * 12, gravity = -32, drag = 1.4,
+				life = 2.2 + rand() * 0.6, t0 = 0, t1 = 1, fadeFrom = 0.75, bounce = true })
+		end
+		emit(fx, c, "troll", 14, { size = { 1.2, 0.6 }, life = { 0.9, 1.4 }, speed = { 10, 20 }, accel = v3(0, -14, 0), drag = 1, light = 0, spin = { -200, 200 } })
+		emit(fx, c, "star", 30, { size = { 1, 0 }, life = { 0.4, 0.8 }, speed = { 10, 24 }, drag = 2 })
+	end)
+	-- 3. a giant laughing Trollface rises over the spot with "Problem?" under it, then fades away
+	at(fx, 0.02, function()
+		local url = KillFX.asset("troll_anim.png")
+		local holder = newPart(fx, "Block", v3(0.2, 0.2, 0.2), white, Enum.Material.SmoothPlastic, 1)
+		holder.CFrame = CFrame.new(c + v3(0, 2, 0) * fx.k)
+		local ok, gui = pcall(function()
+			local bb = Instance.new("BillboardGui")
+			bb.Name = "TrollFace"
+			bb.Adornee = holder
+			bb.AlwaysOnTop = true
+			bb.LightInfluence = 0
+			bb.Size = UDim2.fromScale(0.1, 0.1)
+			bb.StudsOffset = Vector3.new(0, 0, 0)
+			local img = Instance.new(url and "ImageLabel" or "TextLabel")
+			img.Name = "Face"
+			img.BackgroundTransparency = 1
+			img.Size = UDim2.fromScale(1, 0.8)
+			if url then
+				img.Image = url
+				img.ImageRectSize = Vector2.new(128, 128)
+				img.ImageRectOffset = Vector2.new(0, 0)
+			else
+				img.Text = ":)"
+				img.TextScaled = true
+				img.TextColor3 = white
+			end
+			img.Parent = bb
+			local label = Instance.new("TextLabel")
+			label.Name = "Caption"
+			label.BackgroundTransparency = 1
+			label.Position = UDim2.fromScale(0, 0.8)
+			label.Size = UDim2.fromScale(1, 0.2)
+			label.Text = "Problem?"
+			label.TextScaled = true
+			label.Font = Enum.Font.GothamBlack
+			label.TextColor3 = white
+			label.TextStrokeTransparency = 0.2
+			label.Parent = bb
+			bb.Parent = holder
+			return bb
+		end)
+		if not ok then
+			return
+		end
+		-- grow with an overshoot, laugh (sprite frames), float up, fade
+		local steps = 30
+		for i = 0, steps do
+			at(fx, 0.02 + i * 0.06, function()
+				local f = i / steps
+				local grow = f < 0.2 and (f / 0.2) * 1.15 or (f < 0.3 and 1.15 - (f - 0.2) * 1.5 or 1)
+				local size = 7 * fx.k * grow
+				gui.Size = UDim2.new(size, 0, size, 0)
+				gui.StudsOffset = Vector3.new(0, f * 2.5 * fx.k, 0)
+				local face = gui:FindFirstChild("Face")
+				local frame = i % 8
+				if face and face:IsA("ImageLabel") then
+					face.ImageRectOffset = Vector2.new((frame % 4) * 128, (frame // 4) * 128)
+					face.ImageTransparency = f > 0.75 and (f - 0.75) / 0.25 or 0
+				end
+				local cap = gui:FindFirstChild("Caption")
+				if cap then
+					cap.TextTransparency = f > 0.75 and (f - 0.75) / 0.25 or 0
+					cap.TextStrokeTransparency = 0.2 + (f > 0.75 and (f - 0.75) / 0.25 * 0.8 or 0)
+				end
+			end)
+		end
+	end)
+	fx.duration = 2.8
 end
 
 function BUILD.Shatter(fx)

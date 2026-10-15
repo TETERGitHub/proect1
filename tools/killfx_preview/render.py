@@ -78,12 +78,43 @@ def load(name):
             n = int(t[1])
             v = list(map(float, t[3:]))
             beams.setdefault(n, []).append((t[2], np.array(v[0:3]), np.array(v[3:6]), v[6], v[7], np.array(v[8:11]), v[11], v[12]))
+        elif line.startswith("G "):
+            n = int(t[1])
+            v = list(map(float, t[2:9]))
+            GUIS.setdefault(name, {}).setdefault(n, []).append((np.array(v[0:3]), v[3], int(v[4]), int(v[5]), v[6], t[9].replace("_", " ")))
         elif line.startswith("F "):
             frames.setdefault(int(t[1]), [])
     LAST_FX[name] = (trails, beams)
     return frames, sprites
 
 LAST_FX = {}
+GUIS = {}
+SHEET = None
+
+
+def draw_guis(im, guis):
+    """BillboardGuis (always on top): the laughing Trollface frame and its caption"""
+    global SHEET
+    if SHEET is None:
+        SHEET = Image.open(S.parent.parent / "assets" / "ui" / "sticker_anim.png").convert("LA")
+    d = ImageDraw.Draw(im)
+    for pos, studs, rx, ry, tr, cap in guis:
+        (xy, z) = proj(pos[None])
+        if z[0] < 0.5 or studs <= 0.05:
+            continue
+        px = int(studs / z[0] * FOC)
+        if px < 4:
+            continue
+        cell = SHEET.crop((rx, ry, rx + 128, ry + 128)).resize((px, int(px * 0.8)))
+        l, a = cell.split()
+        a = a.point(lambda v: int(v * (1 - tr)))
+        x0, y0 = int(xy[0][0] - px / 2), int(xy[0][1] - px / 2)
+        im.paste(Image.merge("RGB", (l, l, l)), (x0, y0), a)
+        if cap != "-" and tr < 0.95:
+            fnt = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", max(8, int(px * 0.14)))
+            w = d.textlength(cap, font=fnt)
+            d.text((xy[0][0] - w / 2, y0 + px * 0.8), cap, fill=(255, 255, 255), font=fnt, stroke_width=2, stroke_fill=(0, 0, 0))
+    return im
 
 
 def fx_polys(trails, beams, n):
@@ -262,10 +293,10 @@ def frame_image(parts, bg, sprites=(), extra=()):
     return Image.fromarray(np.clip(out + bloom, 0, 255).astype(np.uint8))
 
 FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
-NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв"}
+NAMES = {"Lightning": "Молния", "Explosion": "Взрыв", "Vaporize": "Испарение", "BlackHole": "Чёрная дыра", "Shatter": "Ледяной взрыв", "Troll": "Тролль"}
 AURA_NAMES = {"InfernoCrown": "Огненная корона", "StormGod": "Бог грозы", "Galaxy": "Галактика", "FrostMonarch": "Ледяной монарх",
               "VoidWings": "Крылья пустоты", "Sakura": "Сакура", "Phoenix": "Феникс", "DragonSpirit": "Дух дракона",
-              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон"}
+              "HolyLight": "Святой свет", "ToxicRift": "Токсичный разлом", "ShadowReaper": "Тёмный жнец", "NeonCyber": "Кибер-неон", "Troll": "Тролль"}
 if "--auras" in sys.argv:
     EYE[:] = [11.0, 6.5, 14.0]; TARGET[:] = [0.0, 3.0, 0.0]
     f = TARGET - EYE; f /= np.linalg.norm(f)
@@ -279,13 +310,14 @@ if "--auras" in sys.argv:
         imgs = []
         for n in sorted(frames):
             im = frame_image(frames[n], bg, sprites.get(n, ()), fx_polys(trails, beams, n))
+            draw_guis(im, GUIS.get("aura_" + key, {}).get(n, ()))
             ImageDraw.Draw(im).text((12, 10), title, fill=(255, 255, 255), font=FONT)
             imgs.append(im)
         q = [im.convert("P", palette=Image.ADAPTIVE, colors=200) for im in imgs]
         q[0].save(S / f"aura_{key}.gif", save_all=True, append_images=q[1:], duration=33, loop=0)
         heroes.append(imgs[len(imgs) // 2])
         print(key, len(imgs))
-    sheet = Image.new("RGB", (W * 3, H * 4))
+    sheet = Image.new("RGB", (W * 3, H * ((len(heroes) + 2) // 3)))
     for i, im in enumerate(heroes):
         sheet.paste(im, ((i % 3) * W, (i // 3) * H))
     sheet.save(S / "auras_sheet.png")
@@ -298,6 +330,7 @@ for name in NAMES:
     imgs = []
     for n in sorted(frames):
         im = frame_image(frames[n], bg, sprites.get(n, ()), fx_polys(trails, beams, n))
+        draw_guis(im, GUIS.get(name, {}).get(n, ()))
         ImageDraw.Draw(im).text((12, 10), NAMES[name], fill=(255, 255, 255), font=FONT)
         imgs.append(im)
     q = [im.convert("P", palette=Image.ADAPTIVE, colors=200) for im in imgs]

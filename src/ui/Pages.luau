@@ -298,7 +298,7 @@ local function buildKillFx(page)
 	section(page, "Colour", { "killfx.customColor", "killfx.color" })
 	section(page, "When", { "killfx.onMurderer", "killfx.onSheriff", "killfx.hideBody" })
 	page:section("Preview")
-	for _, name in ipairs({ "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter" }) do
+	for _, name in ipairs({ "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Troll" }) do
 		local label = ({ BlackHole = "Black hole", Shatter = "Ice shatter" })[name] or name
 		page:action({ label = label, desc = "Plays on a copy of your avatar 10 studs in front of you.", text = "Test", onClick = function()
 			local _, err = KillFX.test(name)

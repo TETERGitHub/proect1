@@ -343,7 +343,7 @@ for _, k in ipairs(CUSTOM_KINDS) do
 end
 add(with("killfx", "KillFX", {
 	bool("killfx.enabled", true, "Kill effects", "A big finisher on the victim when you get a confirmed kill: lightning, explosion, vaporize, black hole or ice shatter. Only you see it.", { master = true }),
-	enum("killfx.effect", "Lightning", { "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Random" }, "Effect", "Which finisher plays.", { labels = { Lightning = "Lightning", Explosion = "Explosion", Vaporize = "Vaporize", BlackHole = "Black hole", Shatter = "Ice shatter", Random = "Random" } }),
+	enum("killfx.effect", "Lightning", { "Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Troll", "Random" }, "Effect", "Which finisher plays.", { labels = { Lightning = "Lightning", Explosion = "Explosion", Vaporize = "Vaporize", BlackHole = "Black hole", Shatter = "Ice shatter", Troll = "Troll", Random = "Random" } }),
 	num("killfx.scale", 1, 0.5, 2, 0.05, "Size", "How big the effect is."),
 	num("killfx.detail", 1, 0.3, 1.5, 0.05, "Detail", "Number of sparks, shards and dust. Lowered automatically in the low load profile."),
 	bool("killfx.customColor", false, "Own colour", "Use your colour below instead of the effect's own colours."),
@@ -374,7 +374,7 @@ add(with("watermark", "Watermark", {
 
 add(with("aura", "Aura", {
 	bool("aura.enabled", false, "Aura", "Wings, halo, a rotating rune circle, orbiting chains and sparkles on your own character. Only you see it.", { master = true }),
-	enum("aura.style", "Classic", { "Classic", "Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit", "Holy Light", "Toxic Rift", "Shadow Reaper", "Neon Cyber" }, "Style", "Classic: wings, halo, rune circle and chains (the switches below). The others are big full auras with their own shapes and particles.", { labels = { Classic = "Classic", ["Inferno Crown"] = "Inferno Crown", ["Storm God"] = "Storm God", Galaxy = "Galaxy", ["Frost Monarch"] = "Frost Monarch", ["Void Wings"] = "Void Wings", Sakura = "Sakura", Phoenix = "Phoenix", ["Dragon Spirit"] = "Dragon Spirit", ["Holy Light"] = "Holy Light", ["Toxic Rift"] = "Toxic Rift", ["Shadow Reaper"] = "Shadow Reaper", ["Neon Cyber"] = "Neon Cyber" } }),
+	enum("aura.style", "Classic", { "Classic", "Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit", "Holy Light", "Toxic Rift", "Shadow Reaper", "Neon Cyber", "Troll", "Burning" }, "Style", "Classic: wings, halo, rune circle and chains (the switches below). The others are big full auras with their own shapes and particles.", { labels = { Classic = "Classic", ["Inferno Crown"] = "Inferno Crown", ["Storm God"] = "Storm God", Galaxy = "Galaxy", ["Frost Monarch"] = "Frost Monarch", ["Void Wings"] = "Void Wings", Sakura = "Sakura", Phoenix = "Phoenix", ["Dragon Spirit"] = "Dragon Spirit", ["Holy Light"] = "Holy Light", ["Toxic Rift"] = "Toxic Rift", ["Shadow Reaper"] = "Shadow Reaper", ["Neon Cyber"] = "Neon Cyber", Troll = "Troll", Burning = "Burning" } }),
 	enum("aura.preset", "Angel", { "Angel", "Inferno", "Frost", "Toxic", "Crimson", "Rainbow" }, "Preset", "Colour scheme of the aura."),
 	bool("aura.wings", true, "Wings", "Angel wings behind your back; they flap faster while you run."),
 	bool("aura.halo", true, "Halo", "A double ring above your head."),

@@ -3,7 +3,7 @@ S = pathlib.Path(sys.argv[0]).resolve().parent
 SRC = S.parent.parent / "src"
 mods = "MODULES = {}\n" + "".join('MODULES["%s"] = function(...)\n%s\nend\n' % (m, (SRC / (m + ".luau")).read_text()) for m in ("features/FxKit", "features/KillFX", "features/AuraFX"))
 LUAU = next((a for a in sys.argv[1:] if not a.startswith("--")), "/tmp/claude-0/luau/luau")
-for name in ([] if "--auras" in sys.argv else ["Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter"]):
+for name in ([] if "--auras" in sys.argv else ["Lightning", "Explosion", "Vaporize", "BlackHole", "Shatter", "Troll"]):
     body = (S / "prelude.luau").read_text() + "\n" + mods + (S / "main.luau").read_text().replace("EFFECT_NAME", '"%s"' % name)
     f = S / ("run_%s.luau" % name)
     f.write_text(body)
@@ -14,7 +14,7 @@ for name in ([] if "--auras" in sys.argv else ["Lightning", "Explosion", "Vapori
 
 
 AURAS = ["Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit", "Holy Light",
-         "Toxic Rift", "Shadow Reaper", "Neon Cyber"]
+         "Toxic Rift", "Shadow Reaper", "Neon Cyber", "Troll"]
 if "--auras" in sys.argv:
     for name in AURAS:
         body = (S / "prelude.luau").read_text() + "\n" + mods + (S / "aura_main.luau").read_text().replace("EFFECT_NAME", '"%s"' % name)
