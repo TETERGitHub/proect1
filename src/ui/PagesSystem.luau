@@ -374,6 +374,51 @@ function S.configs(page)
 		end },
 	})
 	render()
+	-- reset levels: each asks first and says what it covers; profiles themselves are never deleted
+	page:section("Reset")
+	local VISUAL = { "crosshair", "esp", "hitfx", "aura", "killfx", "watermark", "lighting", "camera", "custom" }
+	local function confirmThen(title, text, fn)
+		F.confirm({ title = title, text = text, danger = true, confirmText = "Reset", onConfirm = function()
+			local n = fn()
+			notify("Reset", I18n.tr("Settings reset:") .. " " .. tostring(n or 0), "success")
+		end })
+	end
+	page:action({ label = "Reset visual settings", desc = "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons back to defaults.", text = "Reset", style = "danger", onClick = function()
+		confirmThen("Reset visual settings", "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons return to their defaults.", function()
+			local n = 0
+			for _, c in ipairs(VISUAL) do
+				n += Settings.resetCategory(c) or 0
+			end
+			return n
+		end)
+	end })
+	page:action({ label = "Reset hotkeys", desc = "Every hotkey back to its default key.", text = "Reset", style = "danger", onClick = function()
+		confirmThen("Reset hotkeys", "Every hotkey returns to its default key.", function()
+			local n = 0
+			for _, b in ipairs(Input.list()) do
+				if b.key ~= b.default and Input.resetBinding(b.id) then
+					n += 1
+				end
+			end
+			return n
+		end)
+	end })
+	page:action({ label = "Reset window layout", desc = "Window position, size and minimised state back to defaults.", text = "Reset", style = "danger", onClick = function()
+		confirmThen("Reset window layout", "The window goes back to the default position and size.", function()
+			local n = 0
+			for _, k in ipairs({ "state.posX", "state.posY", "state.width", "state.height", "state.minimized" }) do
+				if not Settings.isDefault(k) and Settings.reset(k, "reset-layout") then
+					n += 1
+				end
+			end
+			return n
+		end)
+	end })
+	page:action({ label = "Reset all settings", desc = "Every setting of the active profile back to defaults. Saved profiles and your files are kept.", text = "Reset", style = "danger", onClick = function()
+		confirmThen("Reset all settings", "Every setting of the active profile returns to its default. Other saved profiles, models and sounds are not touched.", function()
+			return Settings.resetAll()
+		end)
+	end })
 end
 
 -- Diagnostics ----------------------------------------------------------------------------------------------------------------------------------
@@ -390,10 +435,16 @@ function S.diagnostics(page)
 	local mods
 	mods = dataList(page, {
 		rowHeight = 46, maxRows = 24,
-		buttons = { { icon = "repeatIcon", tip = "Restart module", fn = function(item)
-			local ok, err = Core.restart(item.name)
-			notify("Module", item.name .. (ok and " restarted" or (" failed: " .. tostring(err))), ok and "success" or "error")
-		end } },
+		buttons = {
+			{ icon = "repeatIcon", tip = "Start / restart module", fn = function(item)
+				local ok, err = Core.restart(item.name)
+				notify("Module", item.name .. (ok and " restarted" or (" failed: " .. tostring(err))), ok and "success" or "error")
+			end },
+			{ icon = "close", tip = "Stop module", fn = function(item)
+				local ok, err = Core.stopModule(item.name)
+				notify("Module", item.name .. (ok and " stopped" or (": " .. I18n.tr(tostring(err)))), ok and "success" or "warn")
+			end },
+		},
 	})
 	page:section("Environment")
 	local caps = dataList(page, { rowHeight = 30, maxRows = 20 })

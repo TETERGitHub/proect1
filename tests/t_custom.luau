@@ -1427,3 +1427,44 @@ T.test("speed, routes A/B compared, course timing, path, dead end, see-through, 
 	h.unload(); Mock.uninstall()
 	T.truthy(ok, tostring(err))
 end)
+
+T.suite("Core extras")
+T.test("stop one module safely, presets change only their keys, reset levels", "infrastructure protected; dependents protect; preset counts", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local ok, err = pcall(function()
+		local Core = import("core/Core")
+		local Settings = import("core/Settings")
+		local Presets = import("features/Presets")
+		T.eq(select(2, Core.stopModule("window")), "core infrastructure cannot be stopped")
+		T.eq(select(2, Core.stopModule("nope")), "unknown module")
+		local _, why = Core.stopModule("murder") -- the ESP depends on it
+		T.truthy(string.find(tostring(why), "needed by") ~= nil, tostring(why))
+		T.truthy(Core.stopModule("emotes"))
+		T.eq(Core.moduleState("emotes"), "stopped")
+		T.eq(select(2, Core.stopModule("emotes")), "not running")
+		T.truthy(Core.restart("emotes")); T.eq(Core.moduleState("emotes"), "running")
+		-- presets: only their keys, reported count, repeat = 0
+		local before = Settings.get("esp.enabled")
+		local n = Presets.apply("camera", "Competitive")
+		T.truthy(n > 0); T.eq(Settings.get("camera.fov"), 85); T.eq(Presets.apply("camera", "Competitive"), 0)
+		T.truthy(Presets.apply("look", "High Contrast") > 0); T.eq(Settings.get("crosshair.thickness"), 3)
+		T.eq(Settings.get("esp.enabled"), before, "other modules untouched")
+		T.eq(select(2, Presets.apply("look", "Nope")), "unknown preset")
+		for _, p in ipairs(Presets.CAMERA) do T.truthy(Presets.apply("camera", p.name) ~= nil, p.name) end
+		for _, p in ipairs(Presets.LOOK) do T.truthy(Presets.apply("look", p.name) ~= nil, p.name) end
+		-- every preset key exists
+		for _, list in ipairs({ Presets.CAMERA, Presets.LOOK }) do
+			for _, p in ipairs(list) do
+				for k in pairs(p.values) do T.truthy(Settings.has(k), p.name .. ": " .. k) end
+			end
+		end
+		-- reset of a category returns the visual settings to defaults
+		Settings.resetCategory("crosshair")
+		T.truthy(Settings.isDefault("crosshair.thickness"))
+	end)
+	h.unload(); Mock.uninstall()
+	T.truthy(ok, tostring(err))
+end)

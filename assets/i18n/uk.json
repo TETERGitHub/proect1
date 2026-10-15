@@ -1710,9 +1710,57 @@
   "Animation unavailable": "Анімація недоступна",
   "the character has no Animator": "у персонажа немає Animator",
   "this character is not R15 (these emotes are R15 animations)": "персонаж не R15 (ці емоції — анімації R15)",
-  "Emotes are not running.": "Емоції не запущені."
+  "Emotes are not running.": "Емоції не запущені.",
+  "Start / restart module": "Запустити / перезапустити модуль",
+  "Stop module": "Зупинити модуль",
+  "core infrastructure cannot be stopped": "ядро хаба не можна зупинити",
+  "not running": "не запущено",
+  "unknown module": "невідомий модуль",
+  "Settings reset:": "Скинуто налаштувань:",
+  "Settings changed:": "Змінено налаштувань:",
+  "Reset visual settings": "Скинути візуальні налаштування",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons back to defaults.": "Приціл, ESP, влучання, аура, ефекти вбивства, водяний знак, освітлення, камера й кастомна зброя — за замовчуванням.",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons return to their defaults.": "Приціл, ESP, влучання, аура, ефекти вбивства, водяний знак, освітлення, камера й кастомна зброя повернуться до значень за замовчуванням.",
+  "Reset hotkeys": "Скинути гарячі клавіші",
+  "Every hotkey back to its default key.": "Усі гарячі клавіші — за замовчуванням.",
+  "Every hotkey returns to its default key.": "Усі гарячі клавіші повернуться до стандартних.",
+  "Reset window layout": "Скинути положення вікна",
+  "Window position, size and minimised state back to defaults.": "Положення, розмір і згорнутість вікна — за замовчуванням.",
+  "The window goes back to the default position and size.": "Вікно повернеться у стандартне положення й розмір.",
+  "Reset all settings": "Скинути всі налаштування",
+  "Every setting of the active profile back to defaults. Saved profiles and your files are kept.": "Усі налаштування активного профілю — за замовчуванням. Збережені профілі й ваші файли залишаються.",
+  "Every setting of the active profile returns to its default. Other saved profiles, models and sounds are not touched.": "Усі налаштування активного профілю повернуться до значень за замовчуванням. Інші профілі, моделі й звуки не зачіпаються.",
+  "Look presets": "Пресети оформлення",
+  "Wide": "Широкий",
+  "Cinematic": "Кінематографічний",
+  "Competitive": "Змагальний",
+  "Clean": "Чистий",
+  "High Contrast": "Високий контраст",
+  "Roblox's own camera: no field-of-view override, no smoothing changes, no head bob.": "Стандартна камера Roblox: без зміни FOV, згладжування й похитування.",
+  "A wider view (field of view 95).": "Ширший огляд (FOV 95).",
+  "Narrower view, soft smoothing and a light head bob.": "Вужчий огляд, м'яке згладжування й легке похитування.",
+  "Field of view 85, quick response, no head bob or optional camera effects.": "FOV 85, швидкий відгук, без похитування й дод. ефектів камери.",
+  "No camera changes at all and the optional camera effects off.": "Жодних змін камери, дод. ефекти вимкнено.",
+  "Plain menu without decorations; a small dot crosshair; ESP names only.": "Просте меню без прикрас; приціл-крапка; в ESP лише ніки.",
+  "The glass menu with soft decorations; thin corner boxes.": "Скляне меню з м'якими прикрасами; тонкі кути боксів.",
+  "Solid surfaces, larger text, bold white crosshair with outline, thick ESP lines.": "Суцільні поверхні, великий текст, жирний білий приціл з обведенням, товсті лінії ESP.",
+  "Rainbow glowing crosshair, flowing title, highlights on.": "Райдужний світний приціл, переливний заголовок, підсвічування ввімкнено.",
+  "Everything decorative off and lighter ESP updates.": "Усе декоративне вимкнено, ESP оновлюється рідше.",
+  "Compact rows, smaller window scale and text.": "Компактні рядки, менший масштаб вікна й текст."
  },
  "patterns": [
+  [
+   "^(.+): needed by (.+)$",
+   "%s: потрібен модулю %s"
+  ],
+  [
+   "^needed by (.+)$",
+   "потрібен модулю %s"
+  ],
+  [
+   "^(.+) stopped$",
+   "%s зупинено"
+  ],
   [
    "^(%d+) waypoints$",
    "Точок шляху: %s"

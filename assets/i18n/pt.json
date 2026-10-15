@@ -1710,9 +1710,57 @@
   "Animation unavailable": "Animação indisponível",
   "the character has no Animator": "o personagem não tem Animator",
   "this character is not R15 (these emotes are R15 animations)": "este personagem não é R15 (estes emotes são R15)",
-  "Emotes are not running.": "Os emotes não estão ativos."
+  "Emotes are not running.": "Os emotes não estão ativos.",
+  "Start / restart module": "Iniciar / reiniciar módulo",
+  "Stop module": "Parar módulo",
+  "core infrastructure cannot be stopped": "a infraestrutura do hub não pode ser parada",
+  "not running": "não está ativo",
+  "unknown module": "módulo desconhecido",
+  "Settings reset:": "Configurações redefinidas:",
+  "Settings changed:": "Configurações alteradas:",
+  "Reset visual settings": "Redefinir configurações visuais",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons back to defaults.": "Mira, ESP, acertos, aura, abates, marca d'água, iluminação, câmera e armas próprias para o padrão.",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons return to their defaults.": "Mira, ESP, acertos, aura, abates, marca d'água, iluminação, câmera e armas próprias voltam ao padrão.",
+  "Reset hotkeys": "Redefinir atalhos",
+  "Every hotkey back to its default key.": "Cada atalho para a tecla padrão.",
+  "Every hotkey returns to its default key.": "Cada atalho volta à tecla padrão.",
+  "Reset window layout": "Redefinir a janela",
+  "Window position, size and minimised state back to defaults.": "Posição, tamanho e minimizado da janela para o padrão.",
+  "The window goes back to the default position and size.": "A janela volta à posição e tamanho padrão.",
+  "Reset all settings": "Redefinir todas as configurações",
+  "Every setting of the active profile back to defaults. Saved profiles and your files are kept.": "Todas as configurações do perfil ativo para o padrão. Perfis salvos e seus arquivos ficam.",
+  "Every setting of the active profile returns to its default. Other saved profiles, models and sounds are not touched.": "Todas as configurações do perfil ativo voltam ao padrão. Outros perfis, modelos e sons não são tocados.",
+  "Look presets": "Predefinições de aparência",
+  "Wide": "Amplo",
+  "Cinematic": "Cinematográfico",
+  "Competitive": "Competitivo",
+  "Clean": "Limpo",
+  "High Contrast": "Alto contraste",
+  "Roblox's own camera: no field-of-view override, no smoothing changes, no head bob.": "A câmera do Roblox: sem mudar FOV, suavização ou balanço.",
+  "A wider view (field of view 95).": "Visão mais ampla (FOV 95).",
+  "Narrower view, soft smoothing and a light head bob.": "Visão mais estreita, suavização suave e leve balanço.",
+  "Field of view 85, quick response, no head bob or optional camera effects.": "FOV 85, resposta rápida, sem balanço nem efeitos opcionais.",
+  "No camera changes at all and the optional camera effects off.": "Nenhuma mudança na câmera e efeitos opcionais desligados.",
+  "Plain menu without decorations; a small dot crosshair; ESP names only.": "Menu simples sem decoração; mira de ponto; ESP só nomes.",
+  "The glass menu with soft decorations; thin corner boxes.": "Menu de vidro com decoração suave; cantos finos.",
+  "Solid surfaces, larger text, bold white crosshair with outline, thick ESP lines.": "Superfícies sólidas, texto maior, mira branca grossa com contorno, linhas de ESP grossas.",
+  "Rainbow glowing crosshair, flowing title, highlights on.": "Mira arco-íris brilhante, título fluido, destaque ligado.",
+  "Everything decorative off and lighter ESP updates.": "Tudo decorativo desligado e ESP mais leve.",
+  "Compact rows, smaller window scale and text.": "Linhas compactas, janela e texto menores."
  },
  "patterns": [
+  [
+   "^(.+): needed by (.+)$",
+   "%s: necessário para %s"
+  ],
+  [
+   "^needed by (.+)$",
+   "necessário para %s"
+  ],
+  [
+   "^(.+) stopped$",
+   "%s parado"
+  ],
   [
    "^(%d+) waypoints$",
    "Pontos do caminho: %s"

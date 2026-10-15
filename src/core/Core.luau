@@ -219,6 +219,30 @@ function Core.restart(name)
 	return ok, m.err
 end
 
+-- the hub's own infrastructure cannot be switched off from the module list (everything else stands on it)
+local PROTECTED = { services = true, input = true, window = true }
+
+-- stopModule(name) -> ok, err: switches one module off (its connections, loops and objects are released). Refused for the
+-- infrastructure and while a running module depends on it.
+function Core.stopModule(name)
+	local m = modules[name]
+	if not m then
+		return false, "unknown module"
+	end
+	if PROTECTED[name] then
+		return false, "core infrastructure cannot be stopped"
+	end
+	if m.state ~= "running" then
+		return false, "not running"
+	end
+	for _, other in pairs(modules) do
+		if other.state == "running" and other.deps and table.find(other.deps, name) then
+			return false, "needed by " .. other.name
+		end
+	end
+	return stopOne(m), m.err
+end
+
 function Core.status()
 	local out = {}
 	for _, name in ipairs(order) do

@@ -1710,9 +1710,57 @@
   "Animation unavailable": "Animación no disponible",
   "the character has no Animator": "el personaje no tiene Animator",
   "this character is not R15 (these emotes are R15 animations)": "este personaje no es R15 (estos emotes son R15)",
-  "Emotes are not running.": "Los emotes no están activos."
+  "Emotes are not running.": "Los emotes no están activos.",
+  "Start / restart module": "Iniciar / reiniciar módulo",
+  "Stop module": "Detener módulo",
+  "core infrastructure cannot be stopped": "la infraestructura del hub no se puede detener",
+  "not running": "no está activo",
+  "unknown module": "módulo desconocido",
+  "Settings reset:": "Ajustes restablecidos:",
+  "Settings changed:": "Ajustes cambiados:",
+  "Reset visual settings": "Restablecer ajustes visuales",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons back to defaults.": "Mira, ESP, impactos, aura, remates, marca de agua, iluminación, cámara y armas propias a los valores por defecto.",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons return to their defaults.": "Mira, ESP, impactos, aura, remates, marca de agua, iluminación, cámara y armas propias vuelven a sus valores por defecto.",
+  "Reset hotkeys": "Restablecer atajos",
+  "Every hotkey back to its default key.": "Cada atajo a su tecla por defecto.",
+  "Every hotkey returns to its default key.": "Cada atajo vuelve a su tecla por defecto.",
+  "Reset window layout": "Restablecer la ventana",
+  "Window position, size and minimised state back to defaults.": "Posición, tamaño y minimizado de la ventana por defecto.",
+  "The window goes back to the default position and size.": "La ventana vuelve a la posición y tamaño por defecto.",
+  "Reset all settings": "Restablecer todos los ajustes",
+  "Every setting of the active profile back to defaults. Saved profiles and your files are kept.": "Todos los ajustes del perfil activo por defecto. Se mantienen los perfiles guardados y tus archivos.",
+  "Every setting of the active profile returns to its default. Other saved profiles, models and sounds are not touched.": "Todos los ajustes del perfil activo vuelven por defecto. Otros perfiles, modelos y sonidos no se tocan.",
+  "Look presets": "Preajustes de aspecto",
+  "Wide": "Amplio",
+  "Cinematic": "Cinematográfico",
+  "Competitive": "Competitivo",
+  "Clean": "Limpio",
+  "High Contrast": "Alto contraste",
+  "Roblox's own camera: no field-of-view override, no smoothing changes, no head bob.": "La cámara propia de Roblox: sin cambiar FOV, suavizado ni balanceo.",
+  "A wider view (field of view 95).": "Vista más amplia (FOV 95).",
+  "Narrower view, soft smoothing and a light head bob.": "Vista más estrecha, suavizado suave y leve balanceo.",
+  "Field of view 85, quick response, no head bob or optional camera effects.": "FOV 85, respuesta rápida, sin balanceo ni efectos opcionales.",
+  "No camera changes at all and the optional camera effects off.": "Sin cambios de cámara y efectos opcionales apagados.",
+  "Plain menu without decorations; a small dot crosshair; ESP names only.": "Menú simple sin decoración; mira de punto; ESP solo nombres.",
+  "The glass menu with soft decorations; thin corner boxes.": "Menú de cristal con decoración suave; esquinas finas.",
+  "Solid surfaces, larger text, bold white crosshair with outline, thick ESP lines.": "Superficies sólidas, texto grande, mira blanca gruesa con contorno, líneas de ESP gruesas.",
+  "Rainbow glowing crosshair, flowing title, highlights on.": "Mira arcoíris brillante, título fluido, resaltado activo.",
+  "Everything decorative off and lighter ESP updates.": "Todo lo decorativo apagado y ESP más ligero.",
+  "Compact rows, smaller window scale and text.": "Filas compactas, ventana y texto más pequeños."
  },
  "patterns": [
+  [
+   "^(.+): needed by (.+)$",
+   "%s: lo necesita %s"
+  ],
+  [
+   "^needed by (.+)$",
+   "lo necesita %s"
+  ],
+  [
+   "^(.+) stopped$",
+   "%s detenido"
+  ],
   [
    "^(%d+) waypoints$",
    "Puntos de ruta: %s"

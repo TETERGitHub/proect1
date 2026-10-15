@@ -1710,9 +1710,57 @@
   "Animation unavailable": "Animation indisponible",
   "the character has no Animator": "le personnage n'a pas d'Animator",
   "this character is not R15 (these emotes are R15 animations)": "ce personnage n'est pas R15 (ces emotes sont R15)",
-  "Emotes are not running.": "Les emotes ne sont pas actives."
+  "Emotes are not running.": "Les emotes ne sont pas actives.",
+  "Start / restart module": "Démarrer / redémarrer le module",
+  "Stop module": "Arrêter le module",
+  "core infrastructure cannot be stopped": "l'infrastructure du hub ne peut pas être arrêtée",
+  "not running": "pas actif",
+  "unknown module": "module inconnu",
+  "Settings reset:": "Réglages réinitialisés :",
+  "Settings changed:": "Réglages modifiés :",
+  "Reset visual settings": "Réinitialiser les réglages visuels",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons back to defaults.": "Réticule, ESP, impacts, aura, finitions, filigrane, éclairage, caméra et armes perso par défaut.",
+  "Crosshair, ESP, hit effects, aura, kill effects, watermark, lighting, camera and custom weapons return to their defaults.": "Réticule, ESP, impacts, aura, finitions, filigrane, éclairage, caméra et armes perso reviennent par défaut.",
+  "Reset hotkeys": "Réinitialiser les raccourcis",
+  "Every hotkey back to its default key.": "Chaque raccourci à sa touche par défaut.",
+  "Every hotkey returns to its default key.": "Chaque raccourci revient à sa touche par défaut.",
+  "Reset window layout": "Réinitialiser la fenêtre",
+  "Window position, size and minimised state back to defaults.": "Position, taille et réduction de la fenêtre par défaut.",
+  "The window goes back to the default position and size.": "La fenêtre revient à sa position et taille par défaut.",
+  "Reset all settings": "Réinitialiser tous les réglages",
+  "Every setting of the active profile back to defaults. Saved profiles and your files are kept.": "Tous les réglages du profil actif par défaut. Les profils enregistrés et vos fichiers sont conservés.",
+  "Every setting of the active profile returns to its default. Other saved profiles, models and sounds are not touched.": "Tous les réglages du profil actif reviennent par défaut. Autres profils, modèles et sons ne sont pas touchés.",
+  "Look presets": "Préréglages d'apparence",
+  "Wide": "Large",
+  "Cinematic": "Cinématique",
+  "Competitive": "Compétitif",
+  "Clean": "Épuré",
+  "High Contrast": "Contraste élevé",
+  "Roblox's own camera: no field-of-view override, no smoothing changes, no head bob.": "La caméra de Roblox : pas de FOV forcé, pas de lissage ni de balancement.",
+  "A wider view (field of view 95).": "Vue plus large (FOV 95).",
+  "Narrower view, soft smoothing and a light head bob.": "Vue plus serrée, lissage doux et léger balancement.",
+  "Field of view 85, quick response, no head bob or optional camera effects.": "FOV 85, réponse rapide, sans balancement ni effets optionnels.",
+  "No camera changes at all and the optional camera effects off.": "Aucun changement de caméra, effets optionnels désactivés.",
+  "Plain menu without decorations; a small dot crosshair; ESP names only.": "Menu sobre sans décorations ; réticule point ; ESP noms seulement.",
+  "The glass menu with soft decorations; thin corner boxes.": "Menu verre avec décorations douces ; coins fins.",
+  "Solid surfaces, larger text, bold white crosshair with outline, thick ESP lines.": "Surfaces pleines, texte plus grand, réticule blanc épais contouré, lignes ESP épaisses.",
+  "Rainbow glowing crosshair, flowing title, highlights on.": "Réticule arc-en-ciel lumineux, titre fluide, surbrillance active.",
+  "Everything decorative off and lighter ESP updates.": "Tout le décoratif coupé et ESP plus léger.",
+  "Compact rows, smaller window scale and text.": "Lignes compactes, fenêtre et texte plus petits."
  },
  "patterns": [
+  [
+   "^(.+): needed by (.+)$",
+   "%s : requis par %s"
+  ],
+  [
+   "^needed by (.+)$",
+   "requis par %s"
+  ],
+  [
+   "^(.+) stopped$",
+   "%s arrêté"
+  ],
   [
    "^(%d+) waypoints$",
    "Points de passage : %s"
