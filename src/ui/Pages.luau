@@ -283,6 +283,7 @@ end
 local function buildAura(page)
 	local Aura = import("features/Aura")
 	section(page, "Aura", { "aura.enabled", "aura.style", "aura.preset", "aura.intensity" })
+	section(page, "Layers", { "aura.highlight", "aura.pulse", "aura.spheres", "aura.sphereCount", "aura.feet" })
 	section(page, "Parts", { "aura.wings", "aura.wingScale", "aura.halo", "aura.circle", "aura.chains", "aura.particles" })
 	section(page, "Colours", { "aura.rainbow", "aura.customColors", "aura.primary", "aura.secondary" })
 	infoLine(page, "Status", function()

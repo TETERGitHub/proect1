@@ -109,6 +109,12 @@ function FxKit.emitter(holder, tex, o)
 			em.Orientation = Enum.ParticleOrientation.VelocityParallel
 		end
 		em.LockedToPart = o.lock == true
+		if o.flipbook then
+			-- animated texture: a 4x4 grid of frames (fire.png), looping or a random frame per particle (smileys.png)
+			em.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+			em.FlipbookMode = o.flipbook == "random" and Enum.ParticleFlipbookMode.Random or Enum.ParticleFlipbookMode.Loop
+			em.FlipbookFramerate = NumberRange.new(o.fps or 24)
+		end
 		if o.surface then
 			-- spawn on the surface of the holder box (size the holder like the body part): flames come off the skin, not its centre
 			em.Shape = Enum.ParticleEmitterShape.Box

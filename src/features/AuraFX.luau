@@ -106,6 +106,14 @@ function Aura:colorOf(role, seq)
 			return ColorSequence.new(s, p)
 		end
 		c = s
+	elseif role == "fire" then
+		-- live flame: white-hot core -> secondary -> primary -> dark smoky red at the tips
+		local hot = s:Lerp(white, 0.55)
+		if seq then
+			return ColorSequence.new({ ColorSequenceKeypoint.new(0, hot), ColorSequenceKeypoint.new(0.25, s), ColorSequenceKeypoint.new(0.6, p),
+				ColorSequenceKeypoint.new(1, p:Lerp(rgb(20, 4, 0), 0.75)) })
+		end
+		c = p
 	elseif role == "pd" then
 		if seq then
 			return ColorSequence.new(p, dark)
@@ -345,17 +353,24 @@ BUILD["Inferno Crown"] = function(a)
 	a:mesh("ring", v3(6.5, 1, 6.5), "s", function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + 0.15, base.Position.Z) * CFrame.Angles(0, -t * 0.9, 0)
 	end, NEON, 0.3, "Cylinder")
-	-- flame tongues dancing around the circle
-	orbit(a, 12, 3.6, 0, 0.6, function(i, fn)
-		local _, p = a:mesh("flame", v3(0.9, 2.4, 0.9), i % 2 == 0 and "p" or "s", nil, NEON, 0.15, "Wedge")
-		a.items[#a.items].fn = function(t, base)
-			local h = 2 + sin(t * 7 + i * 1.7) * 0.7 + sin(t * 13 + i) * 0.3
-			FxKit.setSize(p, v3(0.9, h, 0.9) * a.s)
+	-- real fire licking up all round the circle
+	orbit(a, 10, 3.6, 0, 0.6, function(i, fn)
+		a:emit("fire", { rate = 10, size = { 1.6, 2.6 }, life = { 0.5, 0.85 }, speed = { 1.5, 3 }, spread = 12, accel = v3(0, 6, 0), drag = 1.4, t = { 0.2, 1 },
+			rot = { -8, 8 }, spin = { -10, 10 }, flipbook = "loop", fps = 26 }, "fire", function(t, base)
 			local cf = fn(t, base)
-			return CFrame.new(cf.Position.X, a.floorY + h * a.s / 2, cf.Position.Z) * (cf.Rotation or CFrame.new())
-		end
+			return CFrame.new(cf.Position.X, a.floorY + 0.2, cf.Position.Z)
+		end)
 	end)
-	a:emit("flame", { rate = 45, size = { 2.2, 0.2 }, life = { 0.5, 0.9 }, speed = { 3, 7 }, spread = 25, accel = v3(0, 6, 0), drag = 1, t = { 0.1, 1 } }, "sp", flat(a, 0.3))
+	a:emit("fire", { rate = 40, size = { 1.8, 2.8 }, life = { 0.55, 0.9 }, speed = { 2, 4 }, spread = 25, accel = v3(0, 6, 0), drag = 1.4, t = { 0.15, 1 },
+		rot = { -8, 8 }, spin = { -10, 10 }, flipbook = "loop", fps = 26 }, "fire", function(t, base)
+		local ang = t * 2.7
+		return CFrame.new(base.Position.X + cos(ang) * 3.4 * a.s, a.floorY + 0.3, base.Position.Z + sin(ang) * 3.4 * a.s)
+	end)
+	a:emit("fire", { rate = 40, size = { 1.8, 2.8 }, life = { 0.55, 0.9 }, speed = { 2, 4 }, spread = 25, accel = v3(0, 6, 0), drag = 1.4, t = { 0.15, 1 },
+		rot = { -8, 8 }, spin = { -10, 10 }, flipbook = "loop", fps = 26 }, "fire", function(t, base)
+		local ang = t * 2.7 + PI
+		return CFrame.new(base.Position.X + cos(ang) * 3.4 * a.s, a.floorY + 0.3, base.Position.Z + sin(ang) * 3.4 * a.s)
+	end)
 	a:emit("spark", { rate = 28, size = { 0.35, 0.05 }, life = { 0.8, 1.6 }, speed = { 5, 12 }, spread = 35, accel = v3(0, 4, 0), drag = 0.6, squash = true }, "s", flat(a, 0.5))
 	a:emit("glow", { rate = 3, size = { 7, 9 }, life = { 0.6, 0.8 }, speed = { 0, 0 }, t = { 0.6, 1 } }, "p", flat(a, 0.4))
 	-- crown of flame spikes above the head
@@ -554,11 +569,13 @@ BUILD["Phoenix"] = function(a)
 	wing(a, 1, 13, 6, "p", "s", 2.6, 20)
 	wing(a, -1, 13, 6, "p", "s", 2.6, 20)
 	for side = -1, 1, 2 do
-		a:emit("flame", { rate = 30, size = { 1.6, 0.2 }, life = { 0.4, 0.8 }, speed = { 1, 3 }, accel = v3(0, 4, 0), t = { 0.1, 1 } }, "sp", function(t, base)
+		a:emit("fire", { rate = 30, size = { 1.6, 2.4 }, life = { 0.4, 0.8 }, speed = { 1, 3 }, accel = v3(0, 4, 0), t = { 0.15, 1 }, flipbook = "loop", fps = 26,
+			rot = { -10, 10 }, spin = { -10, 10 } }, "fire", function(t, base)
 			return base * at(a, side * 2.6, 3, 1.4)
 		end)
 	end
-	a:emit("flame", { rate = 25, size = { 1.4, 0.1 }, life = { 0.5, 1 }, speed = { 2, 4 }, spread = 20, accel = v3(0, 3, 0), t = { 0.2, 1 } }, "sp", function(t, base)
+	a:emit("fire", { rate = 25, size = { 1.4, 2.2 }, life = { 0.5, 1 }, speed = { 2, 4 }, spread = 20, accel = v3(0, 3, 0), t = { 0.2, 1 }, flipbook = "loop", fps = 26,
+		rot = { -10, 10 }, spin = { -10, 10 } }, "fire", function(t, base)
 		return base * at(a, 0, 0.6, 0.9) * CFrame.Angles(-1.2, 0, 0)
 	end)
 	a:emit("spark", { rate = 22, size = { 0.3, 0.05 }, life = { 0.8, 1.4 }, speed = { 3, 8 }, spread = 60, accel = v3(0, 3, 0), squash = true }, "s", function(t, base)
@@ -761,6 +778,30 @@ local function face(a, studs, fn, phase)
 	end)
 end
 
+-- smiley(a, studs, fn, cell): one of our smiley faces (smileys.png, 4x4 grid of 128 px) on a billboard
+local function smiley(a, studs, fn, cell, sheet)
+	local url = FxKit.asset(sheet or "smileys.png")
+	if not url then
+		return
+	end
+	local holder = FxKit.holder(a.folder)
+	pcall(function()
+		local bb = Instance.new("BillboardGui")
+		bb.Adornee = holder
+		bb.LightInfluence = 0
+		bb.Size = UDim2.new(studs * a.s, 0, studs * a.s, 0)
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromScale(1, 1)
+		img.Image = url
+		img.ImageRectSize = Vector2.new(128, 128)
+		img.ImageRectOffset = Vector2.new((cell % 4) * 128, (cell // 4) * 128)
+		img.Parent = bb
+		bb.Parent = holder
+	end)
+	a:add(holder, "keep", fn)
+end
+
 BUILD["Troll"] = function(a)
 	a:mesh("ring", v3(8, 0.7, 8), "p", function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + 0.12, base.Position.Z) * CFrame.Angles(0, t * 0.8, 0)
@@ -780,6 +821,17 @@ BUILD["Troll"] = function(a)
 	end, 0)
 	a:emit("troll", { rate = 4, size = { 0.9, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
 		spin = { -90, 90 }, t = { 0, 0.6 } }, "w", flat(a, 0.3))
+	-- an outer ring of our eight smileys turning the other way, and random smileys floating up
+	-- the outer ring alternates the owner's trollfaces (trolls.png) and emoji (smileys.png)
+	orbit(a, 10, 4.6, 1.2, -0.6, function(i, fn)
+		smiley(a, 1.4, function(t, base)
+			return fn(t, base) + v3(0, sin(t * 2.6 + i) * 0.4 * a.s, 0)
+		end, i % 2 == 0 and (1 + (i // 2) % 5) or (i // 2) % 16, i % 2 == 0 and "trolls.png" or "smileys.png")
+	end)
+	a:emit("trolls", { rate = 4, size = { 0.9, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
+		spin = { -90, 90 }, t = { 0, 0.6 }, flipbook = "random" }, "w", flat(a, 0.3))
+	a:emit("smileys", { rate = 5, size = { 0.8, 0.5 }, life = { 1.6, 2.4 }, speed = { 1, 2.5 }, spread = 40, accel = v3(0, 1.5, 0), light = 0,
+		spin = { -90, 90 }, t = { 0, 0.6 }, flipbook = "random" }, "w", flat(a, 0.3))
 	a:emit("star", { rate = 10, size = { 0.6, 0 }, life = { 0.8, 1.4 }, speed = { 1, 3 } }, "w", function(t, base)
 		return base * at(a, 0, 2, 0)
 	end)
@@ -808,10 +860,11 @@ BUILD["Burning"] = function(a)
 		end
 		-- tall licking flames (secondary at the base to primary at the tips), a hot inner core and a few embers
 		local skin = sz * 1.05
-		a:emit("flame", { rate = 22 + vol * 10, size = { 1.9, 0.5 }, life = { 0.55, 1.0 }, speed = { 1, 2.5 },
-			spread = 15, accel = v3(0, 10, 0), drag = 1.2, t = { 0.05, 1 }, rot = { -15, 15 }, spin = { -30, 30 }, surface = true, holderSize = skin }, "sp", follow)
-		a:emit("flame", { rate = 10 + vol * 4, size = { 1.0, 0.2 }, life = { 0.3, 0.55 }, speed = { 0.5, 1.5 }, spread = 10, accel = v3(0, 8, 0),
-			t = { 0, 1 }, surface = true, holderSize = skin }, "s", follow)
+		-- animated flame tongues (fire.png flipbook), coloured like live fire over each particle's life
+		a:emit("fire", { rate = 18 + vol * 9, size = { 1.5, 2.4 }, life = { 0.45, 0.85 }, speed = { 1, 2.2 }, spread = 10, accel = v3(0, 7, 0), drag = 1.4,
+			t = { 0.15, 1 }, rot = { -8, 8 }, spin = { -10, 10 }, surface = true, holderSize = skin, flipbook = "loop", fps = 28 }, "fire", follow)
+		a:emit("fire", { rate = 8 + vol * 3, size = { 0.8, 1.2 }, life = { 0.3, 0.5 }, speed = { 0.5, 1.2 }, spread = 8, accel = v3(0, 5, 0),
+			t = { 0, 1 }, rot = { -5, 5 }, spin = { 0, 0 }, surface = true, holderSize = skin, flipbook = "loop", fps = 32 }, "fire", follow)
 		a:emit("glow", { rate = 3 + vol, size = { 1.4 * math.max(sz.X, sz.Y), 0.4 }, life = { 0.25, 0.4 }, speed = { 0, 0.5 }, t = { 0.55, 1 } }, "s", follow)
 		a:emit("spark", { rate = 2 + vol, size = { 0.22, 0.04 }, life = { 0.6, 1.2 }, speed = { 3, 7 }, spread = 35, accel = v3(0, 4, 0), drag = 0.5, squash = true,
 			surface = true, holderSize = skin }, "s", follow)
@@ -824,14 +877,13 @@ BUILD["Burning"] = function(a)
 	a:mesh("ring", v3(4.5, 0.6, 4.5), "p", function(t, base)
 		return CFrame.new(base.Position.X, a.floorY + 0.1, base.Position.Z) * CFrame.Angles(0, t * 0.5, 0)
 	end, NEON, 0.45, "Cylinder")
-	orbit(a, 8, 1.7, 0, 0.4, function(i, fn)
-		local _, p = a:mesh("flame", v3(0.7, 1.6, 0.7), i % 2 == 0 and "p" or "s", nil, NEON, 0.2, "Wedge")
-		a.items[#a.items].fn = function(t, base)
-			local h = 1.2 + sin(t * 8 + i * 1.9) * 0.45
-			FxKit.setSize(p, v3(0.7, h, 0.7) * a.s)
+	-- a ring of real fire licking up round your feet
+	orbit(a, 6, 1.7, 0, 0.4, function(i, fn)
+		a:emit("fire", { rate = 12, size = { 1.3, 2 }, life = { 0.45, 0.8 }, speed = { 1, 2 }, spread = 12, accel = v3(0, 5, 0), drag = 1.4, t = { 0.2, 1 },
+			rot = { -8, 8 }, spin = { -10, 10 }, flipbook = "loop", fps = 26 }, "fire", function(t, base)
 			local cf = fn(t, base)
-			return CFrame.new(cf.Position.X, a.floorY + h * a.s / 2, cf.Position.Z) * (cf.Rotation or CFrame.new())
-		end
+			return CFrame.new(cf.Position.X, a.floorY + 0.2, cf.Position.Z)
+		end)
 	end)
 end
 

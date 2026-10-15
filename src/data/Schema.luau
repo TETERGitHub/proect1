@@ -375,6 +375,11 @@ add(with("watermark", "Watermark", {
 add(with("aura", "Aura", {
 	bool("aura.enabled", false, "Aura", "Wings, halo, a rotating rune circle, orbiting chains and sparkles on your own character. Only you see it.", { master = true }),
 	enum("aura.style", "Classic", { "Classic", "Inferno Crown", "Storm God", "Galaxy", "Frost Monarch", "Void Wings", "Sakura", "Phoenix", "Dragon Spirit", "Holy Light", "Toxic Rift", "Shadow Reaper", "Neon Cyber", "Troll", "Burning" }, "Style", "Classic: wings, halo, rune circle and chains (the switches below). The others are big full auras with their own shapes and particles.", { labels = { Classic = "Classic", ["Inferno Crown"] = "Inferno Crown", ["Storm God"] = "Storm God", Galaxy = "Galaxy", ["Frost Monarch"] = "Frost Monarch", ["Void Wings"] = "Void Wings", Sakura = "Sakura", Phoenix = "Phoenix", ["Dragon Spirit"] = "Dragon Spirit", ["Holy Light"] = "Holy Light", ["Toxic Rift"] = "Toxic Rift", ["Shadow Reaper"] = "Shadow Reaper", ["Neon Cyber"] = "Neon Cyber", Troll = "Troll", Burning = "Burning" } }),
+	bool("aura.highlight", true, "Glow outline", "A pulsing colour fill over your character with a thin outline, in the aura colours."),
+	num("aura.pulse", 0.5, 0, 1, 0.05, "Pulse speed", "How fast the glow fill breathes."),
+	bool("aura.spheres", true, "Orbiting spheres", "Glowing spheres circle you, each bobbing on its own wave, with light trails."),
+	num("aura.sphereCount", 4, 2, 8, 1, "Sphere count", "How many spheres circle you."),
+	bool("aura.feet", true, "Ring and foot trails", "A turning ring at your feet with rising stars, and a double light trail behind your feet while you walk."),
 	enum("aura.preset", "Angel", { "Angel", "Inferno", "Frost", "Toxic", "Crimson", "Rainbow" }, "Preset", "Colour scheme of the aura."),
 	bool("aura.wings", true, "Wings", "Angel wings behind your back; they flap faster while you run."),
 	bool("aura.halo", true, "Halo", "A double ring above your head."),

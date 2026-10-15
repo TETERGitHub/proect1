@@ -1336,7 +1336,18 @@
   "Aura size": "Tamanho da aura",
   "Size of the wings (classic style) or of the whole aura (the other styles).": "Tamanho das asas (estilo clássico) ou da aura inteira (os outros estilos).",
   "Troll": "Troll",
-  "Burning": "Em chamas"
+  "Burning": "Em chamas",
+  "Glow outline": "Brilho com contorno",
+  "A pulsing colour fill over your character with a thin outline, in the aura colours.": "Um preenchimento de cor pulsante sobre o personagem com um contorno fino, nas cores da aura.",
+  "Pulse speed": "Velocidade do pulso",
+  "How fast the glow fill breathes.": "Quão rápido o preenchimento respira.",
+  "Orbiting spheres": "Esferas em órbita",
+  "Glowing spheres circle you, each bobbing on its own wave, with light trails.": "Esferas brilhantes giram ao seu redor, cada uma oscilando no seu ritmo, com rastros de luz.",
+  "Sphere count": "Número de esferas",
+  "How many spheres circle you.": "Quantas esferas giram ao seu redor.",
+  "Ring and foot trails": "Anel e rastros dos pés",
+  "A turning ring at your feet with rising stars, and a double light trail behind your feet while you walk.": "Um anel girando nos seus pés com estrelas subindo e um rastro duplo de luz atrás dos pés ao andar.",
+  "Layers": "Camadas"
  },
  "patterns": [
   [

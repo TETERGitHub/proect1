@@ -1336,7 +1336,18 @@
   "Aura size": "Розмір аури",
   "Size of the wings (classic style) or of the whole aura (the other styles).": "Розмір крил (класичний стиль) або всієї аури (інші стилі).",
   "Troll": "Троль",
-  "Burning": "Горіння"
+  "Burning": "Горіння",
+  "Glow outline": "Підсвітка з обведенням",
+  "A pulsing colour fill over your character with a thin outline, in the aura colours.": "Пульсувальна заливка персонажа кольором аури з тонким обведенням.",
+  "Pulse speed": "Швидкість пульсу",
+  "How fast the glow fill breathes.": "Як швидко «дихає» заливка.",
+  "Orbiting spheres": "Літаючі сфери",
+  "Glowing spheres circle you, each bobbing on its own wave, with light trails.": "Сяйливі сфери кружляють навколо вас, кожна гойдається на своїй хвилі, за ними тягнуться шлейфи.",
+  "Sphere count": "Кількість сфер",
+  "How many spheres circle you.": "Скільки сфер кружляє навколо вас.",
+  "Ring and foot trails": "Кільце й шлейф від ніг",
+  "A turning ring at your feet with rising stars, and a double light trail behind your feet while you walk.": "Обертове кільце біля ніг із зірками, що злітають, і подвійний світлий шлейф від ніг під час ходьби.",
+  "Layers": "Шари"
  },
  "patterns": [
   [

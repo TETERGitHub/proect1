@@ -12,6 +12,7 @@ local Perf = import("core/Perf")
 local Logger = import("core/Logger")
 local VFX = import("features/AuraVFX")
 local AuraFX = import("features/AuraFX")
+local AuraLayers = import("features/AuraLayers")
 
 local Aura = {}
 
@@ -28,6 +29,15 @@ local function rgb(c)
 	return Color3.fromRGB(c.r, c.g, c.b)
 end
 
+local function destroyLayers()
+	if state and state.layers then
+		pcall(function()
+			state.layers:destroy()
+		end)
+		state.layers, state.layersKey = nil, nil
+	end
+end
+
 local function destroyAura()
 	if state and state.aura then
 		pcall(function()
@@ -35,6 +45,34 @@ local function destroyAura()
 		end)
 		state.aura = nil
 	end
+	destroyLayers()
+end
+
+-- syncLayers(char, p, s): the extra layers (highlight, spheres, feet ring + double trail) that go with any style
+local function syncLayers(char, p, s_)
+	local want = s("highlight") or s("spheres") or s("feet")
+	local key = table.concat({ tostring(s("highlight")), tostring(s("spheres") and s("sphereCount") or 0), tostring(s("feet")),
+		tostring(s("wingScale")), tostring(s("pulse")) }, "|")
+	if not want then
+		destroyLayers()
+		return
+	end
+	local l = state.layers
+	if l and (l.destroyed or l.character ~= char or state.layersKey ~= key) then
+		destroyLayers()
+		l = nil
+	end
+	if not l then
+		local ok, res = pcall(AuraLayers.new, { character = char, highlight = s("highlight"), pulse = s("pulse"),
+			spheres = s("spheres") and s("sphereCount") or 0, feet = s("feet"), scale = s("wingScale"), primary = p, secondary = s_ })
+		if not ok then
+			Logger.warn("Aura", "could not create the aura layers: %s", tostring(res))
+			return
+		end
+		state.layers, state.layersKey = res, key
+		l = res
+	end
+	l:setColors(p, s_)
 end
 
 local function sync()
@@ -78,14 +116,17 @@ local function sync()
 		end
 		a:setRainbow(s("rainbow"))
 		a:setIntensity(s("intensity"))
+		syncLayers(char, a.primary, a.secondary)
 		state.status = "on (" .. style .. ")"
 		return
 	end
 	local preset = VFX.presets[s("preset")] or VFX.presets.Angel
 	if s("customColors") then
 		a:setColors(rgb(s("primary")), rgb(s("secondary")))
+		syncLayers(char, rgb(s("primary")), rgb(s("secondary")))
 	else
 		a:setColors(preset.primary, preset.secondary)
+		syncLayers(char, preset.primary, preset.secondary)
 	end
 	a:setRainbow(s("rainbow") or preset.rainbow == true)
 	a:setIntensity(s("intensity"))

@@ -620,8 +620,17 @@ T.test("every big aura style builds, moves and is removed completely", "12 style
 			T.truthy(folder ~= nil and #folder:GetChildren() >= 8, style .. " parts")
 			a:setRainbow(true); a:step(0.2); a:setRainbow(false); a:setIntensity(2)
 		end
+		-- the extra layers come with any style and follow their switches
+		local layers = cam:FindFirstChild("MM2HubAuraLayers")
+		T.truthy(layers ~= nil, "glow outline, spheres and feet layers exist")
+		T.truthy(#layers:GetChildren() >= 4 + 1 + 1, "spheres + ring + stars")
+		Settings.set("aura.highlight", false); Settings.set("aura.spheres", false); Settings.set("aura.feet", false); frames(2)
+		T.eq(cam:FindFirstChild("MM2HubAuraLayers"), nil, "all layers off removes them")
+		Settings.set("aura.spheres", true); Settings.set("aura.sphereCount", 6); frames(2)
+		T.truthy(cam:FindFirstChild("MM2HubAuraLayers") ~= nil)
 		Settings.set("aura.style", "Classic"); frames(2)
 		T.eq(cam:FindFirstChild("MM2HubAuraFX"), nil, "switching back to Classic removes the big aura")
+		T.truthy(cam:FindFirstChild("MM2HubAuraLayers") ~= nil, "layers stay with the classic aura")
 		T.truthy(cam:FindFirstChild("AuraVFX") ~= nil)
 		Settings.set("aura.style", "Galaxy"); frames(2)
 	end)

@@ -127,6 +127,11 @@ local function emit(fx, pos, tex, n, o)
 		if o.squash then
 			e.Orientation = Enum.ParticleOrientation.VelocityParallel
 		end
+		if o.flipbook then
+			e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+			e.FlipbookMode = o.flipbook == "random" and Enum.ParticleFlipbookMode.Random or Enum.ParticleFlipbookMode.Loop
+			e.FlipbookFramerate = NumberRange.new(o.fps or 24)
+		end
 		e.Rate = 0
 		e.Parent = h
 		h.Parent = fx.folder
@@ -533,8 +538,8 @@ function BUILD.Explosion(fx)
 		shock(fx, v3(c.X, fx.floor + 0.3, c.Z), 34, orange, 0.7)
 		shock(fx, c, 22, yellow, 0.5, CFrame.Angles(PI / 2.3, 0, 0))
 		emit(fx, c, "glow", 4, { color = yellow, size = { 10, 20 }, life = { 0.2, 0.35 }, speed = { 0, 0 } })
-		emit(fx, c, "flame", 70, { color = ColorSequence.new({ ColorSequenceKeypoint.new(0, yellow), ColorSequenceKeypoint.new(0.4, orange),
-			ColorSequenceKeypoint.new(1, red) }), size = { 3.5, 7 }, life = { 0.45, 0.95 }, speed = { 10, 26 }, accel = v3(0, 12, 0), drag = 2.2,
+		emit(fx, c, "fire", 70, { flipbook = "loop", fps = 26, color = ColorSequence.new({ ColorSequenceKeypoint.new(0, yellow), ColorSequenceKeypoint.new(0.4, orange),
+			ColorSequenceKeypoint.new(1, red:Lerp(Color3.fromRGB(20, 4, 0), 0.7)) }), size = { 4, 8 }, life = { 0.45, 0.95 }, speed = { 10, 26 }, accel = v3(0, 12, 0), drag = 2.2,
 			rot = { -20, 20 }, spin = { -40, 40 }, t = { 0, 1 } })
 		emit(fx, c, "spark", 90, { color = ColorSequence.new(yellow, orange), size = { 0.8, 0.1 }, life = { 0.5, 1.1 }, speed = { 30, 55 },
 			accel = v3(0, -45, 0), drag = 0.8, squash = true })
@@ -778,7 +783,9 @@ function BUILD.Troll(fx)
 			particle(fx, bit, { pos = c, vel = (dir * (14 + rand() * 18) + v3(0, 16, 0)) * fx.k, spin = randUnit() * 12, gravity = -32, drag = 1.4,
 				life = 2.2 + rand() * 0.6, t0 = 0, t1 = 1, fadeFrom = 0.75, bounce = true })
 		end
-		emit(fx, c, "troll", 14, { size = { 1.2, 0.6 }, life = { 0.9, 1.4 }, speed = { 10, 20 }, accel = v3(0, -14, 0), drag = 1, light = 0, spin = { -200, 200 } })
+		emit(fx, c, "trolls", 10, { flipbook = "random",  size = { 1.2, 0.6 }, life = { 0.9, 1.4 }, speed = { 10, 20 }, accel = v3(0, -14, 0), drag = 1, light = 0, spin = { -200, 200 } })
+		emit(fx, c, "smileys", 16, { size = { 1.1, 0.6 }, life = { 0.9, 1.5 }, speed = { 10, 22 }, accel = v3(0, -14, 0), drag = 1, light = 0,
+			spin = { -200, 200 }, flipbook = "random" })
 		emit(fx, c, "star", 30, { size = { 1, 0 }, life = { 0.4, 0.8 }, speed = { 10, 24 }, drag = 2 })
 	end)
 	-- 3. a giant laughing Trollface rises over the spot with "Problem?" under it, then fades away
