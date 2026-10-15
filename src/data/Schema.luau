@@ -105,7 +105,13 @@ add(with("state", "State", {
 
 add(with("crosshair", "Crosshair", {
 	bool("crosshair.enabled", false, "Custom crosshair", "Draws your own crosshair at the screen centre.", { master = true }),
-	enum("crosshair.style", "Cross", { "Cross", "Dot", "Circle", "CrossCircle" }, "Style", "Shape of the crosshair."),
+	enum("crosshair.style", "Cross", { "Cross", "Dot", "Circle", "CrossCircle" }, "Style", "Shape of the line crosshair."),
+	enum("crosshair.design", "Lines", { "Lines", "Sniper", "Tactical", "Diamond", "Chevron", "Hexagon", "Star", "Brackets", "Tri", "Segments", "Scope", "Heart", "X" },
+		"Design", "Lines = the classic crosshair built from the settings below; the others are drawn designs (the hub's own textures)."),
+	num("crosshair.imageSize", 48, 16, 200, 2, "Design size", "Size of a drawn design in pixels."),
+	bool("crosshair.glow", false, "Glow", "Soft glow in the crosshair colour behind a drawn design."),
+	num("crosshair.spin", 0, -360, 360, 10, "Rotation speed", "Turns a drawn design (degrees per second, 0 = still)."),
+	bool("crosshair.pulse", false, "Pulse", "A drawn design gently breathes in size."),
 	num("crosshair.size", 10, 2, 60, 1, "Size", "Length of each arm / circle radius in pixels."),
 	num("crosshair.thickness", 2, 1, 8, 1, "Thickness", "Line thickness in pixels."),
 	num("crosshair.gap", 4, 0, 30, 1, "Centre gap", "Empty space around the centre."),
@@ -118,7 +124,7 @@ add(with("crosshair", "Crosshair", {
 	num("crosshair.dynamicAmount", 8, 0, 30, 1, "Spread amount", "Maximum extra gap while moving at full speed."),
 	num("crosshair.offsetX", 0, -200, 200, 1, "Offset X", "Horizontal offset from the screen centre."),
 	num("crosshair.offsetY", 0, -200, 200, 1, "Offset Y", "Vertical offset from the screen centre."),
-	bool("crosshair.hideCursor", false, "Hide system cursor", "Hides the mouse icon while the crosshair is on."),
+	bool("crosshair.hideCursor", true, "Hide the game's crosshair", "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off)."),
 }))
 
 add(with("camera", "Camera", {

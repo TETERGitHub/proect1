@@ -172,6 +172,22 @@
   {
    "name": "page_killsheriff",
    "page": "killsheriff"
+  },
+  {
+   "name": "crosshair_design",
+   "page": "crosshair",
+   "language": "ru",
+   "settings": {
+    "crosshair.enabled": true,
+    "crosshair.design": "Scope",
+    "crosshair.glow": true,
+    "crosshair.imageSize": 90,
+    "crosshair.color": {
+     "r": 120,
+     "g": 220,
+     "b": 255
+    }
+   }
   }
  ]
 }

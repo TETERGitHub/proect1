@@ -16,6 +16,7 @@ local Recents = import("core/Recents")
 local Registry = import("core/Registry")
 local I18n = import("core/I18n")
 local Layout = import("features/CrosshairLayout")
+local CI = import("features/CrosshairImage")
 local Tools = import("features/Tools")
 local Search = import("core/Search")
 
@@ -199,10 +200,20 @@ local function buildCrosshair(page)
 	local corner2 = Instance.new("UICorner")
 	corner2.CornerRadius = UDim.new(0.5, 0)
 	corner2.Parent = parts.dot.frame
+	local images = CI.new(center)
 	local function preview()
 		local function s(n)
 			return Settings.get("crosshair." .. n)
 		end
+		local cc = s("color")
+		if CI.has(s("design")) and CI.apply(images, { design = s("design"), size = math.min(s("imageSize"), 110), color = Color3.fromRGB(cc.r, cc.g, cc.b),
+			transparency = 1 - s("opacity"), outline = s("outline"), glow = s("glow") }) then
+			for _, p in pairs(parts) do
+				p.frame.Visible = false
+			end
+			return
+		end
+		CI.hide(images)
 		local layout = Layout.compute({ style = s("style"), size = s("size"), thickness = s("thickness"), gap = s("gap"), centerDot = s("centerDot"), dotSize = s("dotSize"), spread = 0 })
 		local c = s("color")
 		local color = Color3.fromRGB(c.r, c.g, c.b)
@@ -248,10 +259,11 @@ local function buildCrosshair(page)
 	end
 	preview()
 	resetButton(page, "Crosshair")
-	section(page, "General", { "crosshair.enabled", "crosshair.style", "crosshair.color", "crosshair.opacity" })
-	section(page, "Shape", { "crosshair.size", "crosshair.thickness", "crosshair.gap", "crosshair.centerDot", "crosshair.dotSize", "crosshair.outline" })
+	section(page, "General", { "crosshair.enabled", "crosshair.hideCursor", "crosshair.design", "crosshair.color", "crosshair.opacity" })
+	section(page, "Drawn design", { "crosshair.imageSize", "crosshair.glow", "crosshair.spin", "crosshair.pulse" })
+	section(page, "Lines", { "crosshair.style", "crosshair.size", "crosshair.thickness", "crosshair.gap", "crosshair.centerDot", "crosshair.dotSize", "crosshair.outline" })
 	section(page, "Dynamic", { "crosshair.dynamic", "crosshair.dynamicAmount" })
-	section(page, "Position", { "crosshair.offsetX", "crosshair.offsetY", "crosshair.hideCursor" })
+	section(page, "Position", { "crosshair.offsetX", "crosshair.offsetY" })
 end
 
 local function buildCamera(page)

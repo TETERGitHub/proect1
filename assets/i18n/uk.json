@@ -1347,7 +1347,30 @@
   "How many spheres circle you.": "Скільки сфер кружляє навколо вас.",
   "Ring and foot trails": "Кільце й шлейф від ніг",
   "A turning ring at your feet with rising stars, and a double light trail behind your feet while you walk.": "Обертове кільце біля ніг із зірками, що злітають, і подвійний світлий шлейф від ніг під час ходьби.",
-  "Layers": "Шари"
+  "Layers": "Шари",
+  "Shape of the line crosshair.": "Форма лінійного приціла.",
+  "Design": "Вигляд",
+  "Lines = the classic crosshair built from the settings below; the others are drawn designs (the hub's own textures).": "Лінії = звичайний приціл із налаштувань нижче; решта — намальовані прицели (власні текстури хаба).",
+  "Design size": "Розмір малюнка",
+  "Size of a drawn design in pixels.": "Розмір намальованого приціла в пікселях.",
+  "Glow": "Світіння",
+  "Soft glow in the crosshair colour behind a drawn design.": "М'яке світіння кольору приціла за малюнком.",
+  "Rotation speed": "Швидкість обертання",
+  "Turns a drawn design (degrees per second, 0 = still).": "Обертає малюнок (градусів за секунду, 0 = стоїть).",
+  "A drawn design gently breathes in size.": "Малюнок плавно «дихає» розміром.",
+  "Drawn design": "Намальований приціл",
+  "Lines": "Лінії",
+  "Diamond": "Ромб",
+  "Chevron": "Шеврон",
+  "Hexagon": "Шестикутник",
+  "Star": "Зірка",
+  "Brackets": "Дужки",
+  "Tri": "Трійник",
+  "Segments": "Сегменти",
+  "Scope": "Оптика",
+  "Heart": "Серце",
+  "Hide the game's crosshair": "Приховувати приціл гри",
+  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Поки увімкнено ваш приціл, приціл гри / значок миші приховано (повертається, коли відкриваєте меню або вимикаєте свій)."
  },
  "patterns": [
   [
@@ -1682,6 +1705,7 @@
   "iOS 27 Chrome": true,
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
-  "TrollHub": true
+  "TrollHub": true,
+  "X": true
  }
 }

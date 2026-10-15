@@ -1347,7 +1347,30 @@
   "How many spheres circle you.": "Quantas esferas giram ao seu redor.",
   "Ring and foot trails": "Anel e rastros dos pés",
   "A turning ring at your feet with rising stars, and a double light trail behind your feet while you walk.": "Um anel girando nos seus pés com estrelas subindo e um rastro duplo de luz atrás dos pés ao andar.",
-  "Layers": "Camadas"
+  "Layers": "Camadas",
+  "Shape of the line crosshair.": "Forma da mira de linhas.",
+  "Design": "Design",
+  "Lines = the classic crosshair built from the settings below; the others are drawn designs (the hub's own textures).": "Linhas = a mira clássica com as opções abaixo; as outras são miras desenhadas (texturas próprias do hub).",
+  "Design size": "Tamanho do design",
+  "Size of a drawn design in pixels.": "Tamanho da mira desenhada em pixels.",
+  "Glow": "Brilho",
+  "Soft glow in the crosshair colour behind a drawn design.": "Brilho suave na cor da mira atrás do design.",
+  "Rotation speed": "Velocidade de rotação",
+  "Turns a drawn design (degrees per second, 0 = still).": "Gira o design (graus por segundo, 0 = parado).",
+  "A drawn design gently breathes in size.": "O design «respira» suavemente de tamanho.",
+  "Drawn design": "Mira desenhada",
+  "Lines": "Linhas",
+  "Diamond": "Losango",
+  "Chevron": "Chevron",
+  "Hexagon": "Hexágono",
+  "Star": "Estrela",
+  "Brackets": "Colchetes",
+  "Tri": "Tri",
+  "Segments": "Segmentos",
+  "Scope": "Luneta",
+  "Heart": "Coração",
+  "Hide the game's crosshair": "Ocultar a mira do jogo",
+  "While your crosshair is on, the game's own crosshair / mouse icon is hidden (it comes back when you open the menu or turn yours off).": "Enquanto a sua mira está ligada, a mira do jogo / o ícone do rato fica oculto (volta ao abrir o menu ou ao desligar a sua)."
  },
  "patterns": [
   [
@@ -1682,6 +1705,7 @@
   "iOS 27 Chrome": true,
   "iOS 27 Prism": true,
   "iOS 27 Violet": true,
-  "TrollHub": true
+  "TrollHub": true,
+  "X": true
  }
 }

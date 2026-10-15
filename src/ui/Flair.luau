@@ -16,6 +16,7 @@ local Logger = import("core/Logger")
 local Theme = import("ui/Theme")
 local Motion = import("ui/Motion")
 local UiPack = import("data/UiPack")
+local MouseIcon = import("core/MouseIcon")
 
 local Flair = {}
 
@@ -501,33 +502,24 @@ function Flair.cursor(gui, maid, isOpen)
 	ds.Transparency = 0.4
 	ds.Parent = dot
 
-	local hidden = false -- true while we have the system icon switched off
-	local before = true
 	local function restore()
-		if hidden then
-			pcall(function()
-				uis.MouseIconEnabled = before
-			end)
-			hidden = false
-		end
+		MouseIcon.hide("menu", false) -- the system icon comes back unless the crosshair still wants it hidden
 		layer.Visible = false
 	end
-	maid:Give(restore)
+	maid:Give(function()
+		restore()
+		MouseIcon.menuOpen = false
+	end)
 	local rx, ry = nil, nil
 	local handle = Perf.every("ui.cursor", 60, function(dt)
 		local locked = uis.MouseBehavior ~= Enum.MouseBehavior.Default and uis.MouseBehavior ~= "Default"
+		MouseIcon.menuOpen = isOpen() and not locked -- the crosshair leaves the system icon alone while you use the menu
 		local want = Settings.get("ui.cursor") and isOpen() and not locked
 		if not want then
 			restore()
 			return
 		end
-		if not hidden then
-			before = uis.MouseIconEnabled
-			pcall(function()
-				uis.MouseIconEnabled = false
-			end)
-			hidden = true
-		end
+		MouseIcon.hide("menu", true)
 		layer.Visible = true
 		local pos = uis:GetMouseLocation()
 		local inset = Vector2.new(0, 0)

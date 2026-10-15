@@ -11,13 +11,15 @@ local Perf = import("core/Perf")
 local Env = import("core/Env")
 local Services = import("core/Services")
 local Layout = import("features/CrosshairLayout")
+local CI = import("features/CrosshairImage")
+local MouseIcon = import("core/MouseIcon")
 local Logger = import("core/Logger")
 
 local Crosshair = {}
 
 local KEYS = {
 	"enabled", "style", "size", "thickness", "gap", "color", "opacity", "centerDot", "dotSize",
-	"outline", "dynamic", "dynamicAmount", "offsetX", "offsetY", "hideCursor",
+	"outline", "dynamic", "dynamicAmount", "offsetX", "offsetY", "hideCursor", "design", "imageSize", "spin", "pulse", "glow",
 }
 
 local state = nil
@@ -63,15 +65,27 @@ local function render(spread)
 	if not enabled then
 		return
 	end
-	local layout = Layout.compute({
-		style = s("style"), size = s("size"), thickness = s("thickness"), gap = s("gap"),
-		centerDot = s("centerDot"), dotSize = s("dotSize"), spread = spread,
-	})
 	local c = s("color")
 	local color = Color3.fromRGB(c.r, c.g, c.b)
 	local transparency = 1 - s("opacity")
 	local outline = s("outline")
 	st.root.Position = UDim2.new(0.5, s("offsetX"), 0.5, s("offsetY"))
+	-- a drawn design (our own textures): replaces the line crosshair while it can be shown
+	local design = s("design")
+	if CI.has(design) and CI.apply(st.images, {
+		design = design, size = s("imageSize") + spread * 2, color = color, transparency = transparency, outline = outline,
+		glow = s("glow"), rotation = (st.t * s("spin")) % 360, scale = s("pulse") and (1 + 0.08 * math.sin(st.t * 5)) or 1,
+	}) then
+		for _, e in pairs(st.elements) do
+			e.frame.Visible = false
+		end
+		return
+	end
+	CI.hide(st.images)
+	local layout = Layout.compute({
+		style = s("style"), size = s("size"), thickness = s("thickness"), gap = s("gap"),
+		centerDot = s("centerDot"), dotSize = s("dotSize"), spread = spread,
+	})
 
 	for _, id in ipairs({ "top", "bottom", "left", "right" }) do
 		st.elements[id].frame.Visible = false
@@ -115,19 +129,13 @@ local function render(spread)
 	end
 end
 
+-- the game's own crosshair / mouse icon goes away while ours is on. While the menu is open the system icon stays (unless the
+-- menu draws its own cursor), so you can still click.
 local function applyCursor()
-	local uis = Services.UserInputService
-	if not uis then
-		return
-	end
-	if s("enabled") and s("hideCursor") then
-		if state.cursorOriginal == nil then
-			state.cursorOriginal = uis.MouseIconEnabled
-		end
-		uis.MouseIconEnabled = false
-	elseif state.cursorOriginal ~= nil then
-		uis.MouseIconEnabled = state.cursorOriginal
-		state.cursorOriginal = nil
+	local want = s("enabled") and s("hideCursor") and not (MouseIcon.menuOpen and not Settings.get("ui.cursor"))
+	MouseIcon.hide("crosshair", want == true)
+	if want then
+		MouseIcon.enforce() -- MM2 / shift-lock switch the icon back on when you equip a gun or turn the camera
 	end
 end
 
@@ -171,14 +179,9 @@ function Crosshair.start(ctx)
 	ringCorner.CornerRadius = UDim.new(0.5, 0)
 	ringCorner.Parent = elements.ring.frame
 
-	state = { gui = gui, root = root, elements = elements, spread = 0, dirty = true, cursorOriginal = nil }
+	state = { gui = gui, root = root, elements = elements, images = CI.new(root), spread = 0, t = 0, dirty = true }
 	ctx.maid:Give(function()
-		if state and state.cursorOriginal ~= nil then
-			local uis = Services.UserInputService
-			if uis then
-				uis.MouseIconEnabled = state.cursorOriginal
-			end
-		end
+		MouseIcon.hide("crosshair", false)
 		state = nil
 	end)
 
@@ -195,6 +198,11 @@ function Crosshair.start(ctx)
 			return
 		end
 		local enabled = s("enabled")
+		st.t += dt
+		applyCursor()
+		if enabled and CI.has(s("design")) and (s("spin") ~= 0 or s("pulse")) then
+			st.dirty = true -- turning / pulsing design
+		end
 		if enabled and s("dynamic") then
 			local speed, max = localSpeed()
 			local target = Layout.spread(speed, max, s("dynamicAmount"))
@@ -231,6 +239,11 @@ function Crosshair.elementCount()
 	local n = 0
 	for _, e in pairs(state.elements) do
 		if e.frame.Visible then
+			n += 1
+		end
+	end
+	for _, im in pairs(state.images) do
+		if im.Visible then
 			n += 1
 		end
 	end
