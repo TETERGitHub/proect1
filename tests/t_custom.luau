@@ -1222,3 +1222,72 @@ T.test("profiles, adaptive quality, battery, background pause, layout", "real se
 	h.unload(); Mock.uninstall()
 	T.truthy(ok, tostring(err))
 end)
+
+T.suite("Murder trainer")
+T.test("arena, swings, auto swing, throw with prediction, stats, log, replay, stop", "test mannequins only; target manager sees them", function()
+	T.fresh()
+	if Hub.current() then Hub.current().unload() end
+	Mock.uninstall(); local game = Mock.install(); Services.clear()
+	local h = Hub.run({ skipLicense = true })
+	local ok, err = pcall(function()
+		local MT = import("features/MurderTrainer")
+		local Settings = import("core/Settings")
+		local Training = import("features/Training")
+		Settings.set("murder.movement", "Still"); Settings.set("murder.count", 3); Settings.set("murder.sheriffs", 1)
+		T.eq(MT.swing("action"), nil, "no arena yet")
+		T.truthy(MT.spawnArena())
+		local list = MT.list()
+		T.eq(#list, 3); T.eq(list[1].role, "Sheriff"); T.eq(list[2].role, "Innocent")
+		-- the hub's single target manager sees the mannequins
+		local seen = 0
+		for _, t in ipairs(Training.targetList()) do if string.match(t.id, "^M%d$") then seen += 1 end end
+		T.eq(seen, 3)
+		-- out of reach: a miss with the reason
+		Settings.set("murder.reach", 3)
+		local id, why = MT.swing("action")
+		T.eq(id, nil); T.eq(why, "out of reach")
+		-- in reach (arena stands 18 studs ahead): hit, streak, mannequin goes down and comes back
+		Settings.set("murder.reach", 15); Settings.set("murder.arc", 180); Settings.set("murder.respawn", 0.5)
+		id = MT.swing("action")
+		T.truthy(id ~= nil, "hit")
+		local st = MT.stats()
+		T.eq(st.hits, 1); T.eq(st.misses, 1); T.eq(st.streak, 1)
+		T.truthy(st.reasons["out of reach"] == 1)
+		for _ = 1, 30 do MT.tick(0.05) end
+		local alive = 0
+		for _, m in ipairs(MT.list()) do if m.alive then alive += 1 end end
+		T.eq(alive, 3, "mannequin came back")
+		-- auto swing: strikes by itself on the delay, only while on; stop() switches it off at once
+		Settings.set("murder.autoSwing", true); Settings.set("murder.swingDelay", 0.2)
+		for _ = 1, 20 do MT.tick(0.05) end
+		T.truthy(MT.stats().hits >= 3, "auto swing hits: " .. MT.stats().hits)
+		MT.stop()
+		T.eq(Settings.get("murder.autoSwing"), false)
+		local before = MT.stats().swings
+		for _ = 1, 20 do MT.tick(0.05) end
+		T.eq(MT.stats().swings, before, "no swings after stop")
+		-- throw: cooldown, flight, prediction error recorded
+		Settings.set("murder.throwCooldown", 1)
+		T.truthy(MT.throw())
+		local again, why2 = MT.throw()
+		T.eq(again, nil); T.truthy(string.find(why2, "not ready") ~= nil)
+		for _ = 1, 80 do MT.tick(0.05) end
+		st = MT.stats()
+		T.eq(st.throws, 1)
+		T.truthy(st.avgPredictionError ~= nil and st.avgPredictionError < 0.5, "prediction matches the flight")
+		-- the model itself: a straight throw from in front of a mannequin hits it
+		local m = MT.list()[2]
+		local pts, endPos, hitD = MT.simulate(m.position + Vector3.new(0, 0, 10), Vector3.new(0, 0, -1), 1, 1 / 60)
+		T.truthy(hitD ~= nil, "simulated knife hits the mannequin")
+		-- log and replay
+		T.truthy(#MT.log() > 5)
+		T.truthy(MT.replayLength() > 1)
+		T.truthy(MT.playReplay()); T.truthy(MT.isReplaying())
+		for _ = 1, 400 do MT.tick(0.05) end
+		T.falsy(MT.isReplaying(), "replay finished")
+		MT.clearArena()
+		T.eq(#MT.list(), 0)
+	end)
+	h.unload(); Mock.uninstall()
+	T.truthy(ok, tostring(err))
+end)

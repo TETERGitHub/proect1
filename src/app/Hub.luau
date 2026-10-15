@@ -55,6 +55,15 @@ local function registerActions(h)
 	A("window.prevTab", "Previous page", "Switches to the previous page.", Window.prevTab, { "tab" })
 	A("window.focusSearch", "Focus search", "Puts the cursor in the search box.", Window.focusSearch)
 	A("ui.toggleCompact", "Toggle compact mode", "Hides descriptions to fit more rows.", function() Settings.toggle("ui.compact", "action") end)
+	do
+		local MT = import("features/MurderTrainer")
+		A("murder.arena", "Murder arena on / off", "Puts up or clears the Murderer practice arena (test mannequins).", function()
+			if MT.isActive() then MT.clearArena() else MT.spawnArena() end
+		end, { "murderer", "training", "mannequin" })
+		A("murder.swing", "Practice swing", "Swings at the arena mannequins.", function() MT.swing("action") end, { "knife", "murderer" })
+		A("murder.throw", "Practice throw", "Throws the simulated knife at the arena.", function() MT.throw() end, { "knife", "murderer" })
+		A("murder.stop", "Stop practice", "Stops auto swing, knives in flight and the replay at once.", function() MT.stop() end, { "murderer" })
+	end
 	A("crosshair.toggle", "Toggle crosshair", "Turns the custom crosshair on or off.", function() Settings.toggle("crosshair.enabled", "action") end, { "aim", "dot" })
 	A("lowprofile.toggle", "Toggle low load profile", "Halves update rates and disables heavy effects.", function() Settings.toggle("perf.lowProfile", "action") end, { "fps", "performance" })
 	A("camera.reset", "Reset camera", "Resets camera settings and restores originals.", Camera.reset)
@@ -168,6 +177,7 @@ local function registerModules(h)
 		{ "screenbuttons", "ui/ScreenButtons", { "services" } },
 		{ "antifling", "features/AntiFling", { "services" } },
 		{ "selectaim", "features/TargetSelect", { "services", "training" } },
+		{ "murder", "features/MurderTrainer", { "services", "training", "selectaim", "killsounds" } },
 		{ "ghost", "features/Ghost", { "services" } },
 		{ "modelsync", "features/ModelSync", { "services" } },
 		{ "hitfx", "features/HitFX", { "services", "killsounds" } },

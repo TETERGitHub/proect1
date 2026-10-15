@@ -723,9 +723,30 @@ function Training.fireProbe()
 	return true
 end
 
+-- extra test-object sources (other practice modules, e.g. features/MurderTrainer's mannequins): name -> fn() -> items
+local sources = {}
+
+function Training.addSource(name, fn)
+	sources[name] = fn
+end
+
+function Training.removeSource(name)
+	sources[name] = nil
+end
+
 -- targetList(): the test objects Select Aim may choose from. Items: { id, name, part, alive }.
 function Training.targetList()
 	local out = {}
+	for name, fn in pairs(sources) do
+		local ok, list = pcall(fn)
+		if ok and type(list) == "table" then
+			for _, item in ipairs(list) do
+				table.insert(out, item)
+			end
+		else
+			Logger.warn("Training", "target source '%s' failed: %s", name, tostring(list))
+		end
+	end
 	if not state then
 		return out
 	end

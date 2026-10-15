@@ -339,6 +339,91 @@ local function buildKillFx(page)
 	resetButton(page, "KillFX")
 end
 
+local function buildMurder(page)
+	local MT = import("features/MurderTrainer")
+	local function fmt(v, f)
+		return v and string.format(f, v) or "N/A"
+	end
+	local lines = {}
+	local function line(label, fn)
+		local update = infoLine(page, label, fn)
+		table.insert(lines, update)
+	end
+	page:section("Arena")
+	line("Arena", function() local st = MT.status(); return not st.running and "N/A" or st.active and (st.alive .. " / " .. st.mannequins) or "off" end)
+	line("Throw", function() local st = MT.status(); return st.running and (st.cooldown and string.format("%s %.1f s", I18n.tr(st.throw), st.cooldown) or st.throw) or "N/A" end)
+	line("Recorded for replay", function() return string.format("%.1f s", MT.replayLength()) end)
+	for _, a in ipairs({
+		{ "Arena on / off", "Puts up the test mannequins in front of you, or clears them.", "Toggle", function()
+			if MT.isActive() then MT.clearArena() else
+				local ok, err = MT.spawnArena()
+				if not ok then notify("Murder trainer", err, "warn") end
+			end
+		end },
+		{ "Swing", "A practice swing at the mannequins (your real knife also counts).", "Swing", function()
+			local id, why = MT.swing("action")
+			notify("Murder trainer", id and ("Hit " .. id) or ("Missed: " .. I18n.tr(why or "")), id and "success" or "info")
+		end },
+		{ "Throw", "Throws the simulated knife along your view.", "Throw", function()
+			local ok, why = MT.throw()
+			if not ok then notify("Murder trainer", why, "warn") end
+		end },
+		{ "Stop everything", "Stops auto swing, knives in flight and the replay at once.", "Stop", function() MT.stop() end },
+		{ "Replay", "Plays the last seconds back as ghosts (you white, mannequins in their test colour, knives red).", "Play", function()
+			local ok, why = MT.playReplay()
+			if not ok then notify("Murder trainer", why, "warn") end
+		end },
+		{ "Reset statistics", "Clears hits, misses, streaks and times.", "Reset", function() MT.resetStats() end },
+	}) do
+		page:action({ label = a[1], desc = a[2], text = a[3], onClick = a[4] })
+	end
+	page:section("Statistics")
+	line("Hits / misses", function() local st = MT.stats(); return st and (st.hits .. " / " .. st.misses) or "N/A" end)
+	line("Accuracy", function() local st = MT.stats(); return st and fmt(st.accuracy and st.accuracy * 100, "%.0f%%") or "N/A" end)
+	line("Streak (best)", function() local st = MT.stats(); return st and (st.streak .. " (" .. st.best .. ")") or "N/A" end)
+	line("Throws (hits)", function() local st = MT.stats(); return st and (st.throws .. " (" .. st.throwHits .. ")") or "N/A" end)
+	line("Hit distance avg / min / max", function() local st = MT.stats(); return st and (fmt(st.avgDistance, "%.1f") .. " / " .. fmt(st.minDistance, "%.1f") .. " / " .. fmt(st.maxDistance, "%.1f")) or "N/A" end)
+	line("Reaction avg / median", function() local st = MT.stats(); return st and (fmt(st.avgReaction, "%.2f s") .. " / " .. fmt(st.medianReaction, "%.2f s")) or "N/A" end)
+	line("Hits from behind", function() local st = MT.stats(); return st and tostring(st.backstabs) or "N/A" end)
+	line("Throw prediction error", function() local st = MT.stats(); return st and fmt(st.avgPredictionError, "%.2f") or "N/A" end)
+	page:section("Why the misses")
+	local reasons = dataList(page, { rowHeight = 34, maxRows = 8 })
+	page:section("Event log")
+	local logList = dataList(page, { rowHeight = 40, maxRows = 12 })
+	local function refresh()
+		for _, f in ipairs(lines) do
+			f()
+		end
+		local st = MT.stats()
+		local items = {}
+		for reason, n in pairs(st and st.reasons or {}) do
+			table.insert(items, { title = reason, value = tostring(n), rawValue = true })
+		end
+		table.sort(items, function(a, b) return tonumber(a.value) > tonumber(b.value) end)
+		reasons.set(items)
+		local logItems = {}
+		local entries = MT.log()
+		for i = #entries, math.max(1, #entries - 11), -1 do
+			local e = entries[i]
+			table.insert(logItems, { title = I18n.tr(e.label), sub = e.detail, raw = false, value = string.format("%.1f s", e.t), rawValue = true })
+		end
+		logList.set(logItems)
+	end
+	local h = Perf.every("ui.murder", 2, function()
+		if visible("murder") then
+			refresh()
+		end
+	end)
+	page.maid:Give(h.Cancel)
+	refresh()
+	section(page, "Mannequins", { "murder.count", "murder.sheriffs", "murder.distance", "murder.movement", "murder.speed", "murder.respawn" })
+	section(page, "Swing", { "murder.reach", "murder.arc", "murder.requireVisible", "murder.useKnife", "murder.autoSwing", "murder.swingDelay", "murder.autoTarget" })
+	section(page, "Throw", { "murder.throwSpeed", "murder.gravity", "murder.throwCooldown", "murder.showPath", "murder.pathPoints" })
+	section(page, "Replay", { "murder.replaySeconds", "murder.playbackSpeed" })
+	page:note("Practice only: the mannequins and their roles exist only on your screen. Auto swing and the throw model work on them alone, never on players in a real round. Pick a mannequin as the target on the Training page (target selector).", "textDim", 44)
+	resetButton(page, "MurderTrainer")
+end
+
 local function buildMobile(page)
 	local Mobile = import("features/Mobile")
 	local lines = {}
@@ -411,6 +496,7 @@ function Pages.registerAll()
 		{ "crosshair", "target", buildCrosshair, "Draw your own crosshair on screen. Everything stays on your client." },
 		{ "camera", "camera", buildCamera, "Zoom, field of view, mouse sensitivity, camera mode and local invisibility." },
 		{ "lighting", "sun", buildLighting, "Time of day, colour correction, blur and bloom on your own screen." },
+		{ "murder", "bolt", buildMurder, "Murderer practice on test mannequins: swings, auto swing, knife throws with a predicted path, statistics, log and replay." },
 		{ "training", "bolt", Game.training, "A local practice range with targets, a dummy, a hitbox lab and the Select Aim selector." },
 		{ "defence", "shield", Game.defence, "Protect your own character from abnormal speed, spin and pushing." },
 		{ "cosmetics", "shirt", Game.cosmetics, "Skins for your gun, knife and character. You supply the models." },

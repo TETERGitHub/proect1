@@ -362,6 +362,29 @@ add(with("killfx", "KillFX", {
 	bool("killfx.onSheriff", true, "As sheriff", "Play on kills with your gun."),
 }))
 
+add(with("murder", "MurderTrainer", {
+	num("murder.count", 4, 1, 8, 1, "Mannequins", "How many test mannequins stand in the arena."),
+	num("murder.sheriffs", 1, 0, 3, 1, "Sheriffs among them", "Mannequins with the TEST role Sheriff (blue torso); the rest are Innocent (green)."),
+	num("murder.distance", 12, 6, 40, 1, "Arena distance", "How far in front of you the mannequins stand, in studs."),
+	enum("murder.movement", "Walk", { "Still", "Walk", "Strafe" }, "Movement", "How the mannequins move: stand, walk back and forth, or strafe to random points."),
+	num("murder.speed", 8, 0, 16, 1, "Movement speed", "Speed of moving mannequins in studs per second."),
+	num("murder.respawn", 2, 0.5, 10, 0.5, "Comeback time", "Seconds before a hit mannequin comes back."),
+	num("murder.reach", 7, 3, 15, 0.5, "Swing reach", "How far the practice swing reaches, in studs (the real MM2 knife reach is not known to the client)."),
+	num("murder.arc", 70, 20, 180, 5, "Swing arc", "Half-angle in front of you a swing covers, in degrees."),
+	bool("murder.requireVisible", true, "Need line of sight", "A swing only counts when nothing solid is between you and the mannequin."),
+	bool("murder.useKnife", true, "Real knife swings count", "While the arena is up, swinging your real knife also swings at the mannequins."),
+	bool("murder.autoSwing", false, "Auto swing (arena only)", "Swings at a mannequin in reach by itself. Works only on this module's mannequins, never on players."),
+	num("murder.swingDelay", 0.6, 0.15, 3, 0.05, "Auto swing delay", "Seconds between automatic swings."),
+	enum("murder.autoTarget", "Nearest", { "Nearest", "Selected" }, "Auto swing target", "Nearest mannequin in reach, or only the one chosen in the target selector (Training page)."),
+	num("murder.throwSpeed", 90, 20, 200, 5, "Throw speed", "Speed of the simulated knife in studs per second (a setting of this model, not MM2's)."),
+	num("murder.gravity", 0, 0, 196, 2, "Throw gravity", "Downward pull on the simulated knife (0 = straight line)."),
+	num("murder.throwCooldown", 1.5, 0.2, 10, 0.1, "Throw cooldown", "Seconds before you can throw again."),
+	bool("murder.showPath", true, "Show predicted path", "Dots along the path a throw from your current aim would take, and its impact point."),
+	num("murder.pathPoints", 24, 8, 60, 1, "Path detail", "Number of dots on the predicted path."),
+	num("murder.replaySeconds", 15, 5, 60, 1, "Replay length", "How many seconds of the session are kept for the replay."),
+	num("murder.playbackSpeed", 1, 0.25, 3, 0.25, "Replay speed", "Playback speed of the replay."),
+}))
+
 add(with("mobile", "Mobile", {
 	enum("mobile.profile", "Custom", { "Custom", "Auto", "Ultra Low", "Balanced", "High" }, "Quality profile", "Ultra Low / Balanced / High set the hub's load settings together; Auto adapts them to your FPS; Custom keeps your own values."),
 	num("mobile.targetFps", 40, 20, 60, 1, "Target FPS", "Auto quality lowers the quality when the frame rate stays under this, and raises it after a long stretch well above it."),
